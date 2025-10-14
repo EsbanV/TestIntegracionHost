@@ -26,3 +26,6 @@ try {
   console.error('RESOLVE FAIL react/jsx-runtime:', e?.message);
   process.exit(1);
 }
+
+const { execSync } = require('child_process');
+console.log('npm config list:\n', execSync('npm config list', { stdio: 'pipe' }).toString());
