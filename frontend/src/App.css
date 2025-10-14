@@ -1,0 +1,15 @@
+/* App global overrides for full-bleed pages (e.g., Login) */
+#root { max-width: none; margin: 0; padding: 0; text-align: initial; }
+
+.app-background {
+  background-image: url('./assets/img/FONDO.jpg');
+  background-size: cover;
+  background-position: center;
+  min-height: 100vh;
+}
+
+.bg-fondo {
+  background-image: url('/FONDO.jpg');
+  background-size: cover;
+  background-position: center;
+}
