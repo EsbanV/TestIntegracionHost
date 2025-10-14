@@ -1,4 +1,4 @@
-import img from "/favicon.png";
+import img from "../../../../public/favicon.png";
 import styles from './Login.module.css'
 import { useEffect, useRef, useState } from 'react'
 import { isAllowedEmailDomain, parseAllowedDomainsFromEnv } from '../../marketplace/utils/validators'

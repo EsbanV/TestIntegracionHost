@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
+    "composite": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "strict": true,
-    "noEmit": true,
+    "target": "ES2020",
     "skipLibCheck": true,
-    "types": ["vite/client"]
+    "strict": true,
+    "types": ["node"]
   },
   "include": ["vite.config.ts"]
 }
