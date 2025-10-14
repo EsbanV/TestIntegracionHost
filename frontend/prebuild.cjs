@@ -1,13 +1,19 @@
 // frontend/prebuild.cjs
 const fs = require('fs');
-const path = require('path');
+const { execSync } = require('child_process');
 
 console.log('CWD:', process.cwd());
 console.log('NODE v:', process.version);
-console.log('Has node_modules?', fs.existsSync('./node_modules'));
-console.log('Has node_modules/react?', fs.existsSync('./node_modules/react'));
-if (fs.existsSync('./node_modules')) {
-  console.log('node_modules entries (first 20):', fs.readdirSync('./node_modules').slice(0, 20));
+
+const hasNM = fs.existsSync('./node_modules');
+const hasReactDir = fs.existsSync('./node_modules/react');
+console.log('Has node_modules?', hasNM);
+console.log('Has node_modules/react?', hasReactDir);
+if (hasNM) {
+  try {
+    const list = fs.readdirSync('./node_modules').slice(0, 30);
+    console.log('node_modules entries (first 30):', list);
+  } catch {}
 }
 
 try {
@@ -24,8 +30,17 @@ try {
   console.log('react/jsx-runtime path:', jsxPath);
 } catch (e) {
   console.error('RESOLVE FAIL react/jsx-runtime:', e?.message);
-  process.exit(1);
 }
 
-const { execSync } = require('child_process');
-console.log('npm config list:\n', execSync('npm config list', { stdio: 'pipe' }).toString());
+// Muestra configuración real de npm
+try {
+  const cfg = execSync('npm config list', { stdio: 'pipe' }).toString();
+  console.log('npm config list:\n', cfg);
+} catch {}
+// Muestra variables de entorno relevantes
+for (const key of Object.keys(process.env).filter(k => k.startsWith('NPM_CONFIG_')).sort()) {
+  console.log(key, '=', process.env[key]);
+}
+
+// Si no está react, corta el build para que lo veamos aquí arriba
+if (!hasReactDir) process.exit(1);
