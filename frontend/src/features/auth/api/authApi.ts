@@ -1,17 +1,38 @@
 import type { Credentials } from '../use-cases/LoginUser'
 import type { User } from '../../../types/User'
 
-export async function login(credentials: Credentials): Promise<User> {
-  await new Promise((r) => setTimeout(r, 500))
+const API = import.meta.env.VITE_API_URL;
 
-  if (!credentials.email.includes('@')) {
-    throw new Error('Invalid email format')
-  }
-
+export async function loginOrRegister(credentials: Credentials): Promise<User> {
+  const res = await fetch(`${API}/api/auth/login-or-register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(credentials),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const data = await res.json();
+  localStorage.setItem('app_token', data.token);
   return {
-    id: 'u-1',
-    email: credentials.email,
-    name: 'Demo User',
-    token: 'fake-token-123',
-  }
+    id: data.user.id,
+    email: data.user.emailInstitucional,
+    name: data.user.nombre,
+    token: data.token,
+  };
+}
+
+export async function googleSignIn(credential: string): Promise<User> {
+  const res = await fetch(`${API}/api/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ credential }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const data = await res.json();
+  localStorage.setItem('app_token', data.token);
+  return {
+    id: data.user.id,
+    email: data.user.emailInstitucional,
+    name: data.user.nombre,
+    token: data.token,
+  };
 }

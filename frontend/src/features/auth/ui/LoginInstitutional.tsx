@@ -5,7 +5,7 @@ import { isAllowedEmailDomain, parseAllowedDomainsFromEnv } from '../../marketpl
 import LoginFooter from './LoginFooter'
 
 type Props = {
-  onOAuth?: () => void | Promise<void>
+  onOAuth?: (credential: string) => void | Promise<void>
 }
 
 const ALUMNO_DOMAIN = "alu.uct.cl"

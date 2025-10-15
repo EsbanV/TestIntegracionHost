@@ -11,9 +11,12 @@ import AboutPage from '../features/shared/ui/AboutPage.tsx'
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<LoginPage />} />
-      <Route element={<PageLayout />}>
+      <Route element={<ProtectedRoute />}>
         <Route path="/home" element={<HomePage />} />
+      </Route>
+      <Route path="/login" element={<LoginPage />} />
+
+      <Route element={<PageLayout />}>
         <Route path="/crear" element={<CrearPublicacionPage />} />
           <Route path="/mis-publicaciones" element={<MisPublicacionesPage />} />
         <Route path="/perfil" element={<PerfilPage />} />
