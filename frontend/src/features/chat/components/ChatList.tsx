@@ -9,7 +9,7 @@ export function ChatList({
   if (!chats || chats.length === 0) {
     return (
       // CAMBIO: Fondo amarillo
-      <aside className="h-full w-full min-w-0 flex flex-col bg-yellow-400">
+      <aside className="h-full w-full min-w-0 flex flex-col bg-light-yellow-400">
         {/* CAMBIO: Texto negro */}
         <div className="flex flex-1 items-center justify-center text-black opacity-75">
           No hay conversaciones

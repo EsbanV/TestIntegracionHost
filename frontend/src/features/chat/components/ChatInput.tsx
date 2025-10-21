@@ -211,6 +211,7 @@ export function ChatInput({ onSend }: { onSend: (t: string, file?: File|null)=>P
           >
             📎
           </button>
+
           <button
             type="button"
             onClick={() => submit()}
@@ -220,6 +221,7 @@ export function ChatInput({ onSend }: { onSend: (t: string, file?: File|null)=>P
           >
             Enviar
           </button>
+      
         </div>
 
         {preview && (

@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { LoginPage } from '../features/auth/ui'
 import HomePage from '../features/marketplace/ui/HomePage'
 import CrearPublicacionPage from '../features/marketplace/ui/CrearPublicacionPage'
+import EditarPublicacionPage from '../features/marketplace/ui/EditarPublicacionPage'
 import MisPublicacionesPage from '../features/marketplace/ui/MisPublicacionesPage'
 import PerfilPage from '../features/marketplace/ui/PerfilPage'
 import PageLayout from '../features/shared/ui/PageLayout'
@@ -19,6 +20,7 @@ export function AppRoutes() {
       <Route element={<PageLayout />}>
         <Route path="/home" element={<HomePage />} />
         <Route path="/crear" element={<CrearPublicacionPage />} />
+        <Route path="/editar" element={<EditarPublicacionPage />} />
         <Route path="/mis-publicaciones" element={<MisPublicacionesPage />} />
         <Route path="/ayuda" element={<AyudaPage />} />
         <Route path="/perfil" element={<PerfilPage />} />

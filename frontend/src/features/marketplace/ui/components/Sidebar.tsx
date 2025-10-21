@@ -76,7 +76,7 @@ export function Sidebar({
               // Tu lógica de logout aquí
               console.log("Cerrando sesión...");
             }}
-            className="px-3 py-2 rounded-xl font-medium text-white no-underline hover:bg-yellow-500 w-full text-left"
+            className="px-3 py-2 rounded-xl font-medium text-white no-underline bg-red-500 hover:bg-yellow-500 w-full text-left"
           >
             Cerrar Sesion
           </button>

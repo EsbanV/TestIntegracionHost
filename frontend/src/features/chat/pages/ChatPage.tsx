@@ -347,14 +347,22 @@ export default function ChatPage() {
   }, [])
 
   return (
-    <div className="grid h-screen overflow-hidden max-h-222 grid-cols-[64px_320px_1fr]">
-      <aside className="border-r bg-white max-h-222">
+    // CAMBIO: Fondo principal con un patrón y un color base (simulando la imagen)
+    // Nota: El patrón de fondo visible en la imagen debe ser implementado con CSS externo.
+    // Usaremos un color de fondo base y una clase de placeholder 'bg-pattern-chat'
+    // También ajustamos la rejilla para que ocupe toda la pantalla visible
+    <div className="grid h-screen overflow-hidden max-h-screen grid-cols-[64px_320px_1fr] bg-gray-100 bg-pattern-chat">
+
+      {/* COLUMNA 1: MiniSidebar (Fondo Amarillo Fuerte) */}
+      <aside className="border-r border-yellow-600 bg-yellow-600 max-h-screen">
         <MiniSidebar active="chats" />
       </aside>
 
-      <div className="border-r bg-white min-w-0 min-h-0 max-h-222 flex flex-col">
-        <div className="shrink-0 px-4 py-3 border-b">
-          <h2 className="text-sm font-semibold text-slate-700">Mis Chats</h2>
+      {/* COLUMNA 2: Lista de Chats (Fondo Amarillo) */}
+      <div className="border-r border-yellow-500 min-w-0 min-h-0 max-h-screen flex flex-col bg-yellow-400">
+        {/* CABECERA "Mis Chats" - Azul Oscuro */}
+        <div className="shrink-0 px-4 py-3 border-b border-blue-900 bg-blue-900">
+          <h2 className="text-sm font-semibold text-white">Chats</h2> {/* Cambio de texto y color */}
         </div>
 
         {/* Inserto ChatRules inline para que el botón sea visible en la columna de chats */}
@@ -362,21 +370,25 @@ export default function ChatPage() {
           <ChatRules inline />
         </div>
 
-        <div className="flex-1 min-h-0 max-h-222 overflow-y-auto overflow-x-hidden">
+        <div className="flex-1 min-h-0 max-h-screen overflow-y-auto overflow-x-hidden">
+          {/* ChatList tiene su propio fondo amarillo, aquí el contenedor es redundante pero se mantiene el flujo */}
           <ChatList chats={chats} onSelectChat={setChatActivo} chatActivo={chatActivo} />
         </div>
       </div>
 
-      {/* columna: conversación (header fijo + ventana scrolleable + input fijo) */}
-      <div className="min-w-0 min-h-0 max-h-222 flex flex-col">
+{/* COLUMNA 3: Conversación (Header fijo + Ventana scrolleable + Input fijo) */}
+      <div className="min-w-0 min-h-0 max-h-screen flex flex-col">
+        {/* Header - Ya tiene el fondo azul oscuro */}
         <div className="shrink-0">
           <ChatHeader chatActivo={chatSeleccionado as any} />
         </div>
-        <div className="flex-1 min-h-0 max-h-222">
+        {/* ChatWindow - Ya tiene el efecto frosted glass */}
+        <div className="flex-1 min-h-0 max-h-screen">
           <ChatWindow mensajes={(chatSeleccionado as any)?.mensajes ?? []} />
         </div>
+        {/* ChatInput - Ya tiene el fondo claro/transparente */}
         <div className="shrink-0">
-          <ChatInput onSend={handleSend} />
+          <ChatInput onSend={handleSend} /> {/* AQUÍ ESTÁ EL INPUT */}
         </div>
       </div>
     </div>

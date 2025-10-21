@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { Sidebar } from './components/Sidebar'
 import SearchAndFilter from './components/SearchAndFilter'
 import InfiniteFeed from './components/InfiniteFeed'
+import Header from '../../shared/ui/Header'
 
 export default function HomePage() {
   const [searchTerm, setSearchTerm] = useState<string>('')
@@ -34,6 +35,8 @@ export default function HomePage() {
       <Sidebar active="marketplace" />
 
       <div className="min-w-0">
+        
+        <Header />
         <div className="sticky top-0 z-10 bg-white/70 backdrop-blur border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
             <SearchAndFilter

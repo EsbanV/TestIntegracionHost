@@ -2,6 +2,7 @@ import React from "react";
 import FAQ from "./components/FAQ";
 import ChatBox from "./components/ChatBox";
 import { Sidebar } from "./components/Sidebar";
+import Header from '../../shared/ui/Header'
 
 export default function AyudaPage() {
   return (
@@ -11,6 +12,7 @@ export default function AyudaPage() {
       </aside>
 
       <div className="min-w-0">
+        <Header />
         <main className="p-6">
           <div className="max-w-2xl mx-auto space-y-6">
             <FAQ />

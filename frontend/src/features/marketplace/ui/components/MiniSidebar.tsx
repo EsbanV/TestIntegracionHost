@@ -1,9 +1,13 @@
+// src/components/MiniSidebar.tsx (VERSION REFRACTORIZADA CON NUEVOS COLORES)
+
 import { Link } from "react-router-dom";
 import logo from "../../../../assets/img/logouct.png";
 
 type SidebarProps = {
   active?: "marketplace" | "chats";
 };
+
+// --- ICONOS (Sin Cambios) ---
 
 function IconStore(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -39,18 +43,28 @@ function IconChats(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+// -----------------------------
+
 export function MiniSidebar({ active = "marketplace" }: SidebarProps) {
   const base =
     "w-12 h-12 rounded-xl grid place-items-center transition-colors duration-150";
-  const inactive = "text-slate-500 hover:bg-violet-50 hover:text-violet-600";
-  const activeCls = "text-violet-600 bg-violet-50 ring-1 ring-violet-200";
+    
+  // Colores Inactivos: Texto Negro (contorno de la bolsa) sobre el fondo Naranja.
+  // El hover es un púrpura suave (bg-purple-100) para indicar la selección.
+  const inactive = "text-black hover:bg-amber-600 hover:text-black";
+  
+  // Colores Activos: Texto Púrpura (contorno del chat) sobre el fondo Naranja/Amarillo más claro.
+  // Usamos ring-purple para el contorno de selección.
+  const activeCls = "text-purple-700 bg-amber-400 ring-2 ring-purple-500/50"; 
 
   return (
     // Fondo de aside a alto completo; contenido sticky
-    <aside className="relative bg-white border-r">
+    // CRÍTICO: Cambio de color de fondo a un Amarillo/Naranja fuerte
+    <aside className="relative bg-yellow-400 border-r border-amber-600"> 
       <div className="sticky top-0 h-dvh flex flex-col items-center gap-6 p-4">
         {/* Logo superior */}
-        <Link to="/home" className="w-11 h-11 rounded-xl grid place-items-center bg-slate-50">
+        {/* Usar un fondo de contraste para el logo */}
+        <Link to="/home" className="w-11 h-11 rounded-xl grid place-items-center bg-white">
           <img
             src={logo}
             alt="Logo UCT"

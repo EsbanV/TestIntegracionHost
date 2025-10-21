@@ -80,38 +80,12 @@ export default function PerfilPage() {
 
       <div className="min-w-0 flex flex-col h-screen">
         
-        {/* ================================================================== */}
-        {/* CAMBIO: Header actualizado para coincidir con 'image_055d80.png' */}
-        {/* ================================================================== */}
-        <header className="h-[64px] bg-blue-900 flex items-center justify-between px-6 shrink-0">
-          
-          {/* Lado Izquierdo (Logo + Título) */}
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9">
-              <img src={logo} alt="MarketUCT Logo" className="h-full w-full object-contain" />
-            </div>
-            <strong className="font-semibold text-white text-lg">MarketUCT</strong>
-          </div>
-
-          {/* Lado Derecho (Botón Perfil) */}
-          <button className="flex items-center gap-2 rounded-full bg-blue-700 pl-2 pr-4 py-1.5 text-sm font-medium text-white hover:bg-blue-600 transition-colors">
-            {/* Círculo blanco del icono */}
-            <div className="h-7 w-7 rounded-full bg-white grid place-items-center text-blue-700">
-               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M12 12c2.76 0 5-2.24 5-5S14.76 2 12 2 7 4.24 7 7s2.24 5 5 5Z" fill="currentColor"/>
-                <path d="M4 20c0-3.31 3.58-6 8-6s8 2.69 8 6v1H4v-1Z" fill="currentColor"/>
-              </svg>
-            </div>
-            Perfil
-          </button>
-        </header>
-        {/* ================================================================== */}
-        {/* Fin del Header */}
-        {/* ================================================================== */}
-
         {/* <main> (Todo el contenido de abajo es idéntico al de la respuesta anterior) */}
-        <main className="flex-1 overflow-y-auto max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10 w-full bg-gradient-to-br from-blue-100 to-white">
-          
+        <main 
+          ref={scrollContainerRef as any} // Reutilizamos el ref o definimos uno nuevo para el main
+          className="flex-1 overflow-y-auto max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10 w-full bg-gradient-to-br from-blue-100 to-white scrollbar-hide scroll-smooth"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} // Soluciones para Firefox y IE/Edge
+        >
           <section className="flex flex-col items-center gap-4 pt-4 pb-8">
             <img 
               src={UserDefault} 

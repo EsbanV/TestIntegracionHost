@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import LoginFooter from '../../auth/ui/LoginFooter';
 import './AboutPage.css';
+import Header from '../../shared/ui/Header';
 
 export default function AboutPage() {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
@@ -46,8 +47,10 @@ export default function AboutPage() {
     { name: 'Equipo de Soporte', role: 'Atención al Usuario', description: 'Siempre disponibles para ayudar' }
   ];
 
+
   return (
     <div className="min-h-screen flex flex-col bg-transparent about-page-root">
+      <Header/>
       {/* Hero Section con animación de entrada */}
       <header className="text-center py-12 md:py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
         {/* Elementos decorativos animados */}

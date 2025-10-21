@@ -250,22 +250,11 @@ const MyPublicationsFeed: React.FC<MyPublicationsFeedProps> = ({
                         )}
                       </div>
 
-                      {/* botón Editar */}
-                      {onEdit ? (
-                        <button
-                          onClick={() => onEdit(post.id)}
+                      <button
                           className="text-xs md:text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
                         >
-                          Editar
+                          <Link to="/editar">Editar</Link>
                         </button>
-                      ) : (
-                        <Link
-                          to={`/mis-publicaciones/editar/${post.id}`}
-                          className="text-xs md:text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
-                        >
-                          Editar
-                        </Link>
-                      )}
                     </div>
                   </div>
                 </div>

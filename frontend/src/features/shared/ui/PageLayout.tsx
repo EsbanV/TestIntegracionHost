@@ -1,6 +1,5 @@
 // src/shared/ui/PageLayout.tsx
 import { Outlet, useLocation } from 'react-router-dom'
-import Header from './Header'
 import FloatingChat from './FloatingChat'
 
 export default function PageLayout() {
@@ -10,7 +9,7 @@ export default function PageLayout() {
 
   return (
     <div className="grid h-screen grid-rows-[auto,1fr] min-h-screen">
-      <Header />
+      
 
       {/* En /chats: ocultamos scroll global para evitar doble scroll.
           En el resto: habilitamos scroll vertical en <main>. */}
