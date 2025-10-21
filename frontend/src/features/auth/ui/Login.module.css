@@ -1,134 +1,167 @@
 /* Login styles copied for feature module to ensure CSS Modules export names */
 .heroBg {
-	min-height: 100dvh;
-	width: 100%;
-	background: url('/src/assets/FondoLogin.jpg') center/cover no-repeat;
-	background-size: cover;
-	background-color: #0b1020;
-	display: grid;
-	place-items: center;
-	padding: 24px;
-	box-sizing: border-box;
-	overflow-x: hidden;
+    min-height: 100dvh;
+    width: 100%;
+    background: url('/src/assets/FondoLogin.jpg') center/cover no-repeat;
+    background-size: cover;
+    background-color: #0b1020;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .card {
-	width: min(520px, 92%);
-	background-color: rgba(255, 255, 255, 0.22);
-	-webkit-backdrop-filter: saturate(140%) blur(8px);
-	backdrop-filter: saturate(140%) blur(8px);
-	border-radius: 18px;
-	box-shadow: 0 10px 30px rgba(0,0,0,.18);
-	padding: 28px 24px;
-	display: grid;
-	gap: 14px;
+    width: min(520px, 92%);
+    background-color: rgba(255, 255, 255, 0.22);
+    -webkit-backdrop-filter: saturate(140%) blur(8px);
+    backdrop-filter: saturate(140%) blur(8px);
+    border-radius: 18px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    padding: 28px 24px;
+    display: grid;
+    gap: 14px;
+    align-items: start;
 }
 
-.header { 
-	display: grid; 
-	gap: 8px; 
-	justify-items: start; }
+.header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
 
 .logo{
-	width: 44px; height: 44px; border-radius: 12px;
-	display: grid; place-items: center;
+    width: 44px; height: 44px; border-radius: 12px;
+    display: grid; place-items: center;
 }
 .logoImg{
-	max-width: 70%;
-	max-height: 70%;
-	object-fit: contain;
+    max-width: 70%;
+    max-height: 70%;
+    object-fit: contain;
 }
 
-.title { 
-	margin: 0; 
-	font-size: 22px; }
+.headerText {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.title {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1;
+    font-weight: 700;
+    color: #fff;
+}
 
 .badge {
-	font-family: 'Times New Roman', Times, serif;
-	display: inline-block; 
-	padding: 4px 10px; border-radius: 999px;
-	background: rgba(0, 0, 0, 0.5); 
-	color: rgb(255, 255, 255); 
-	font-weight: 700; 
-	font-size: 12px;
+    font-family: 'Times New Roman', Times, serif;
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.45);
+    color: rgb(255, 255, 255);
+    font-weight: 700;
+    font-size: 12px;
+    opacity: 0.95;
 }
 
 .googleBtn {
-	display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-	height: 52px; border-radius: 14px; width: 100%;
-	border: 1px solid rgba(230, 230, 230, 0.85);
-	background-color: rgba(252, 252, 252, 0.92);
-	font-weight: 800; cursor: pointer;
-	color: #2b3245;
-	box-shadow: 0 2px 0 rgba(0,0,0,.04);
-	transition: transform .06s ease, background-color .2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 52px;
+    border-radius: 14px;
+    width: 100%;
+    border: 1px solid rgba(230, 230, 230, 0.85);
+    background-color: rgba(252, 252, 252, 0.92);
+    font-weight: 800;
+    cursor: pointer;
+    color: #2b3245;
+    box-shadow: 0 2px 0 rgba(0,0,0,.04);
+    transition: transform .06s ease, background-color .2s ease;
 }
 .googleBtn:hover { background-color: rgba(255,255,255,0.98); }
 .googleBtn:active { transform: translateY(1px); }
-.googleBtn:disabled { 
-	opacity: .6; 
-	cursor: not-allowed; 
+.googleBtn:disabled {
+    opacity: .6;
+    cursor: not-allowed;
 }
 
 .g { width: 20px; height: 20px }
 
 .divider {
-	display: grid; 
-	grid-template-columns: 1fr auto 1fr; 
-	align-items: center; 
-	gap: 10px;
-	color: #9ca3af; 
-	font-size: 12px; 
-	margin-top: 2px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 10px;
+    color: #9ca3af;
+    font-size: 12px;
+    margin-top: 2px;
 }
 
-.divider::before, .divider::after { 
-	content: ""; 
-	height: 1px; 
-	background: #e5e7eb; 
+.divider::before, .divider::after {
+    content: "";
+    height: 1px;
+    background: #e5e7eb;
 }
 
-.muted { 
-	margin: 0; 
-	color: #6b7280; 
-	font-size: 14px; }
-
-.link { 
-	color: #7c3aed; 
-	font-weight: 700; 
-	text-decoration: none; 
+.muted {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
 }
 
-.label { 
-	font-size: 14px; 
-	font-weight: 600; 
+.link {
+    color: #7c3aed;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #f8fafc;
+    margin-bottom: 6px;
+    display: block;
 }
 
 .input {
-	height: 44px; 
-	border-radius: 12px; 
-	border: 1px solid #e5e7eb; 
-	padding: 0 12px; 
-	outline: none;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    padding: 0 12px;
+    outline: none;
+    box-sizing: border-box;
 }
 
-.inputError { 
-	border-color: #fca5a5; 
-	background: #fef2f2; 
+.inputError {
+    border-color: #fca5a5;
+    background: #fef2f2;
 }
 
-.helperError { 
-	color: #b91c1c; 
-	margin: -6px 0 0 2px; 
-	font-size: 12px; 
+.helperError {
+    color: #b91c1c;
+    margin: -6px 0 0 2px;
+    font-size: 12px;
 }
 
 .error {
-	margin-top: 10px;
-	color: #b91c1c;
-	background: #fef2f2;
-	border: 1px solid #fecaca;
-	border-radius: 10px;
-	padding: 10px 12px;
-	font-size: 14px;
+    margin-top: 10px;
+    color: #b91c1c;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+}
+
+/* Footer spacing fix so LoginFooter doesn't collide with card on small screens */
+.footerWrap {
+    margin-top: 18px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
 }

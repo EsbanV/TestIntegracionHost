@@ -99,37 +99,84 @@
 	width: 34px;
 	height: 34px;
 	border-radius: 50%;
-	background: url('/favicon.png') center/cover, rgba(255,255,255,0.25);
+	object-fit: cover;
 	border: 2px solid rgba(255,255,255,0.35);
 	box-shadow: 0 0 0 2px rgba(0,0,0,0.15);
 }
 
-/* Search */
-.searchBar {
+/* Contenedor de acciones - asegura que los botones estén en fila */
+.actions { 
+	display: flex; 
+	flex-direction: row;
+	align-items: center; 
+	gap: 1rem; 
+	margin-left: auto;
+}
+
+/* Botón de Logout - mismo estilo que profileLink */
+.logoutButton {
 	display: flex;
 	align-items: center;
-	background: rgba(255,255,255,0.15);
-	border: 1px solid rgba(255,255,255,0.3);
-	border-radius: 10px;
-	padding: .35rem .6rem;
-	gap: .5rem;
-	min-width: 240px;
-	max-width: 340px;
-	flex: 1;
-}
-.searchIcon { font-size: .9rem; opacity: .85; }
-.searchInput {
-	flex: 1;
-	background: transparent;
-	outline: none;
-	border: none;
+	gap: .55rem;
+	text-decoration: none;
 	color: #fff;
 	font-size: .85rem;
+	font-weight: 500;
+	padding: .35rem .6rem .35rem .35rem;
+	border-radius: 100px;
+	background: rgba(255,255,255,0.12);
+	border: 1px solid rgba(255,255,255,0.2);
+	transition: background .2s;
+	cursor: pointer;
 }
-.searchInput::placeholder { color: rgba(255,255,255,0.75); }
 
-.actions { display: flex; align-items: center; gap: 1rem; }
+.logoutButton:hover {
+	background: rgba(255,255,255,0.22);
+}
 
+.logoutButton:focus-visible {
+	outline: 2px solid #fff;
+	outline-offset: 2px;
+}
+
+.logoutAvatar {
+	width: 34px;
+	height: 34px;
+	border-radius: 50%;
+	background: rgba(255, 80, 80, 0.8);
+	border: 2px solid rgba(255,255,255,0.35);
+	box-shadow: 0 0 0 2px rgba(0,0,0,0.15);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: .75rem;
+	font-weight: 600;
+}
+
+.logoutAvatar::before {
+	content: '✕';
+	color: #fff;
+}
+
+.logoutButtonMobile {
+	display: flex;
+	align-items: center;
+	gap: .55rem;
+	text-decoration: none;
+	color: #fff;
+	font-size: .85rem;
+	font-weight: 500;
+	padding: .35rem .6rem .35rem .35rem;
+	border-radius: 100px;
+	background: rgba(255,255,255,0.12);
+	border: 1px solid rgba(255,255,255,0.2);
+	transition: background .2s;
+	cursor: pointer;
+}
+
+.logoutButtonMobile:hover {
+	background: rgba(255,255,255,0.22);
+}
 
 .menuToggle {
 	display: none;
@@ -197,7 +244,12 @@
 	.mobileNavList a:hover { background: rgba(255,255,255,0.2); }
 	.mobileSearch { display: flex; }
 	.mobileSearch .searchBar { display: flex; max-width: none; flex: 1; }
-	.mobilePanelFooter { display: flex; justify-content: flex-end; }
+	.mobilePanelFooter { 
+		display: flex; 
+		justify-content: space-between;
+		align-items: center;
+		gap: .75rem;
+	}
 	.profileLink { align-self: flex-start; }
 }
 

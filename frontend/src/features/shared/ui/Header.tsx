@@ -1,12 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import styles from './Header.module.css'
-import LogoMUCT from '../../../assets/img/logoMUCT.png' // logo como componente React
+import LogoMUCT from '../../../assets/img/logoMUCT.png'
+import UserDefault from '../../../assets/img/user_default.png'
+import { LogoutUser } from '../../auth/use-cases/LogoutUser'
 
 export const Header: React.FC = () => {
   const [open, setOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -47,13 +50,29 @@ export const Header: React.FC = () => {
     return () => document.removeEventListener('mousedown', onClick)
   }, [open])
 
+  const handleLogout = () => {
+    try {
+      const logoutUseCase = new LogoutUser()
+      logoutUseCase.execute()
+      
+      // Cerrar menú móvil si está abierto
+      setOpen(false)
+      
+      // Redireccionar al login
+      navigate('/login', { replace: true })
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error)
+      alert('Hubo un error al cerrar sesión. Por favor, intenta nuevamente.')
+    }
+  }
+
   return (
     <header className={styles.headerRoot}>
       <div className={styles.headerInner}>
         <button
           id="menu-toggle-btn"
           type="button"
-            className={styles.menuToggle}
+          className={styles.menuToggle}
           aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
           aria-expanded={open}
           aria-controls="mobile-menu-panel"
@@ -65,13 +84,13 @@ export const Header: React.FC = () => {
 
         <div className={styles.logoArea}>      
           <div className={styles.logoPlaceholder} aria-hidden="true">
-                    <img
-        src={LogoMUCT}
-        alt="Marketplace UCT"
-        className={styles.logoImg}
-        decoding="async"
-        fetchPriority="high"   // es el logo del header; mejor alta prioridad
-      />
+            <img
+              src={LogoMUCT}
+              alt="Marketplace UCT"
+              className={styles.logoImg}
+              decoding="async"
+              fetchPriority="high"
+            />
           </div>
           <span>Marketplace UCT</span>
         </div>
@@ -81,15 +100,30 @@ export const Header: React.FC = () => {
             <li><NavLink className={styles.navLink} to="/home">Inicio</NavLink></li>
             <li><NavLink className={styles.navLink} to="/crear">Crear Publicación</NavLink></li>
             <li><NavLink className={styles.navLink} to="/mis-publicaciones">Mis Publicaciones</NavLink></li>
+            <li><NavLink className={styles.navLink} to='/Ayuda'>Ayuda</NavLink></li>
             <li><NavLink className={styles.navLink} to="/about">Acerca de</NavLink></li>
           </ul>
         </nav>
 
         <div className={styles.actions}>
           <NavLink to="/perfil" className={styles.profileLink} aria-label="Perfil usuario">
-            <span className={styles.profileAvatar} aria-hidden="true" />
+            <img 
+              src={UserDefault} 
+              alt="Usuario" 
+              className={styles.profileAvatar}
+            />
             <span>Perfil</span>
           </NavLink>
+          
+          <button
+            onClick={handleLogout}
+            className={styles.logoutButton}
+            aria-label="Cerrar sesión"
+            title="Cerrar sesión"
+          >
+            <span className={styles.logoutAvatar} aria-hidden="true" />
+            <span>Salir</span>
+          </button>
         </div>
       </div>
 
@@ -104,6 +138,7 @@ export const Header: React.FC = () => {
               <li><NavLink to="/home" onClick={() => setOpen(false)}>Inicio</NavLink></li>
               <li><NavLink to="/crear" onClick={() => setOpen(false)}>Crear Publicación</NavLink></li>
               <li><NavLink to="/mis-publicaciones" onClick={() => setOpen(false)}>Mis Publicaciones</NavLink></li>
+              <li><NavLink to="/ayuda" onClick={() => setOpen(false)}>Ayuda</NavLink></li>
               <li><NavLink to="/about" onClick={() => setOpen(false)}>Acerca de</NavLink></li>
             </ul>
           </nav>
@@ -123,9 +158,22 @@ export const Header: React.FC = () => {
           </div>
           <div className={styles.mobilePanelFooter}>
             <NavLink to="/perfil" className={styles.profileLink} aria-label="Perfil usuario" onClick={() => setOpen(false)}>
-              <span className={styles.profileAvatar} aria-hidden="true" />
+              <img 
+                src={UserDefault} 
+                alt="Usuario" 
+                className={styles.profileAvatar}
+              />
               <span>Perfil</span>
             </NavLink>
+            
+            <button
+              onClick={handleLogout}
+              className={styles.logoutButtonMobile}
+              aria-label="Cerrar sesión"
+            >
+              <span className={styles.logoutAvatar} aria-hidden="true" />
+              <span>Salir</span>
+            </button>
           </div>
         </div>
       </div>

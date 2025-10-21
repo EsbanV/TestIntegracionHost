@@ -1,8 +1,9 @@
-import React, { useRef, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useRef, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { usePostsWithFilters } from '../../../../hooks/usePostsWithFilters'
 import { RatingStars } from './RatingStars'
-import { formatInt } from '../../utils/format'
+import { formatInt, formatCLP } from '../../utils/format'
+import { PostDetailModal, PostDetailData } from './modals/PostDetailModal'
 
 interface InfiniteFeedProps {
   searchTerm: string
@@ -10,11 +11,16 @@ interface InfiniteFeedProps {
   onStatsChange?: (hasResults: boolean, totalResults: number) => void
 }
 
+// Agrega placeholders para probar carrusel (puedes desactivar luego)
+const AUGMENT_IMAGES_FOR_DEV = true
+const DEV_STRESS_LONG_DESC = false
+
 const InfiniteFeed: React.FC<InfiniteFeedProps> = ({
   searchTerm = '',
   selectedCategoryId = '',
   onStatsChange
 }) => {
+  const navigate = useNavigate()
   const observer = useRef<IntersectionObserver | null>(null)
   const lastPostElementRef = useRef<HTMLDivElement | null>(null)
 
@@ -32,6 +38,85 @@ const InfiniteFeed: React.FC<InfiniteFeedProps> = ({
     searchTerm: searchTerm.trim(),
     categoryId: selectedCategoryId
   })
+
+  // Modal state
+  const [openModal, setOpenModal] = useState(false)
+  const [selectedPost, setSelectedPost] = useState<PostDetailData | null>(null)
+
+  const parsePrice = (v: unknown): number => {
+    const n = parseInt(String(v ?? '').replace(/\D/g, ''), 10)
+    return Number.isFinite(n) ? n : 0
+  }
+
+  const buildDevImages = (seedBase: string, existing: string[]) => {
+  if (!AUGMENT_IMAGES_FOR_DEV) return existing
+  if ((existing?.length ?? 0) > 1) return existing
+  const seed = encodeURIComponent(String(seedBase || 'seed').replace(/\s+/g, '-'))
+  const variants = Array.from({ length: 12 }, (_, i) => `https://picsum.photos/seed/${seed}-${i + 1}/1200/675`)
+  if (existing?.length === 1) return [existing[0], ...variants]
+  return variants
+}
+
+  const mapPostToDetail = (post: any): PostDetailData => {
+    const baseImages: string[] = post.images ?? (post.image ? [post.image] : [])
+    const images = buildDevImages(String(post.id ?? post.title ?? 'post'), baseImages)
+
+    const baseDesc = post.description ?? 'Sin descripción'
+    const longAddon =
+      DEV_STRESS_LONG_DESC
+        ? '\n\n' +
+          'Características destacadas:\n' +
+          '- Pantalla 15.6" 144Hz\n- GPU RTX 4060\n- 16GB RAM\n- SSD 1TB NVMe\n' +
+          '\n'.repeat(2) +
+          'Descripción extendida: '.concat(baseDesc, ' ').repeat(20)
+        : ''
+
+    return {
+      id: String(post.id),
+      titulo: post.title ?? 'Sin título',
+      descripcion: baseDesc + longAddon,
+      precio: parsePrice(post.price),
+      stock: post.stock ?? 1,
+      campus: post.campus ?? 'San Juan Pablo II',
+      categoria: post.categoryName ?? 'Sin categoría',
+      condicion: post.condition ?? 'Usado',
+      fechaPublicacion: post.publishedAt ?? new Date(),
+      imagenes: images,
+      vendedor: {
+        id: post.sellerId ?? post.authorId ?? undefined,
+        nombre: post.author ?? 'Usuario',
+        avatarUrl: post.avatar,
+        reputacion:
+          typeof post.sellerRating === 'number'
+            ? post.sellerRating
+            : typeof post.rating === 'number'
+            ? post.rating
+            : undefined
+      }
+    }
+  }
+
+  const onOpenDetail = (post: any) => {
+    setSelectedPost(mapPostToDetail(post))
+    setOpenModal(true)
+  }
+
+  // Punto 4: iniciar chat (ruta correcta: /chats)
+  const handleContact = (detail: PostDetailData) => {
+    const toId = detail.vendedor?.id ?? undefined
+    const toName = detail.vendedor?.nombre ?? ''
+    const toAvatar = detail.vendedor?.avatarUrl ?? ''
+    const qs = new URLSearchParams()
+    if (toId) qs.set('toId', String(toId))
+    if (toName) qs.set('toName', toName)
+    if (toAvatar) qs.set('toAvatar', toAvatar)
+
+    // IMPORTANTE: usar /chats (plural) tal como está en routes.tsx
+    navigate(`/chats${qs.toString() ? `?${qs}` : ''}`, {
+      state: { toUser: detail.vendedor }
+    })
+    setOpenModal(false)
+  }
 
   useEffect(() => {
     if (onStatsChange && !isLoading) onStatsChange(hasResults, totalResults)
@@ -190,7 +275,7 @@ const InfiniteFeed: React.FC<InfiniteFeedProps> = ({
                       />
                       {post.price && (
                         <div className="absolute top-3 right-3 bg-green-600 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg">
-                          {post.price}
+                          {formatCLP(parseFloat(String(post.price)) || 0)}
                         </div>
                       )}
                       {post.categoryName && (
@@ -248,13 +333,13 @@ const InfiniteFeed: React.FC<InfiniteFeedProps> = ({
                         )}
                       </div>
 
-                      {/* 👉 reemplazo del precio textual: botón/enlace Ver detalle */}
-                      <Link
-                        to={`/publicacion/${post.id}`}
+                      <button
+                        type="button"
+                        onClick={() => onOpenDetail(post)}
                         className="text-xs md:text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
                       >
                         Ver detalle
-                      </Link>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -274,6 +359,14 @@ const InfiniteFeed: React.FC<InfiniteFeedProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal de detalle con acción de contacto */}
+      <PostDetailModal
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        post={selectedPost}
+        onContact={handleContact}
+      />
     </div>
   )
 }

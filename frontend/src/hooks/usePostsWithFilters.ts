@@ -73,6 +73,9 @@ const generatePosts = (page: number, limit: number = 9, filters: PostFilters): P
     const product = productData[productIndex]
     const category = categories.find(cat => cat.id === product.category)!
     
+    // Generar precio como número entero sin decimales
+    const randomPrice = Math.floor(Math.random() * (product.priceRange[1] - product.priceRange[0]) + product.priceRange[0])
+    
     const post: Post = {
       id,
       title: `${product.title} ${Math.floor(id / productData.length) > 0 ? `(${Math.floor(id / productData.length) + 1})` : ''}`,
@@ -87,7 +90,7 @@ const generatePosts = (page: number, limit: number = 9, filters: PostFilters): P
       comments: Math.floor(Math.random() * 15),
       shares: Math.floor(Math.random() * 5),
       timeAgo: `${Math.floor(Math.random() * 48)}h`,
-      price: `$${(Math.random() * (product.priceRange[1] - product.priceRange[0]) + product.priceRange[0]).toLocaleString('es-CL')}`
+      price: randomPrice.toString()
     }
     
     posts.push(post)

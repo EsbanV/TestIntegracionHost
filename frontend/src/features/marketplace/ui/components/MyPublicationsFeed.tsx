@@ -1,9 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { RatingStars } from './RatingStars'
-import { formatInt } from '../../utils/format'
-// Reutiliza tu hook; si tu hook acepta authorId/onlyMine, pásalo aquí.
-// Si no, puedes cambiar la import por tu hook real para “mis publicaciones”.
+import { formatInt, formatCLP } from '../../utils/format'
 import { usePostsWithFilters } from '../../../../hooks/usePostsWithFilters'
 
 type MyPublicationsFeedProps = {
@@ -196,7 +194,7 @@ const MyPublicationsFeed: React.FC<MyPublicationsFeedProps> = ({
                       />
                       {post.price && (
                         <div className="absolute top-3 right-3 bg-green-600 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg">
-                          {post.price}
+                          {formatCLP(parseFloat(String(post.price)) || 0)}
                         </div>
                       )}
                       {post.categoryName && (
