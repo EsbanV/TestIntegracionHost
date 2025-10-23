@@ -1,4 +1,4 @@
-import { Post, PostFilters } from '../Marketplace.Types/Post'
+import { Post, PostFilters } from '@/features/Marketplace/Marketplace.Types/Post'
 
 // Interface para el repositorio de posts
 export interface PostRepository {

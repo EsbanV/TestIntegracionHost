@@ -1,5 +1,5 @@
 import type { PostRepository, PostUseCases } from './PostInterfaces'
-import type { Post, PostFilters } from '@/features/Marketplac/Marketplace.Types/Post'
+import type { Post, PostFilters } from '@/features/Marketplace/Marketplace.Types/Post'
 
 export class PostUseCasesImpl implements PostUseCases {
   constructor(private postRepository: PostRepository) {}

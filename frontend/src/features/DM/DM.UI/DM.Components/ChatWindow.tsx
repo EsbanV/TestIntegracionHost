@@ -1,6 +1,6 @@
 // ChatWindow.tsx
 import { useEffect, useRef } from "react";
-import type { Mensaje } from "@/types/chat";
+import type { Mensaje } from "@/features/DM/DM.Types/chat";
 import { ChatBubble } from "./ChatBubble";
 
 export function ChatWindow({ mensajes }: { mensajes: Mensaje[] }) {

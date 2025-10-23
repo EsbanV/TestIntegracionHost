@@ -1,4 +1,4 @@
-import usePosts from '../../Marketplace.Hooks/UsePosts'
+import usePosts from '@/features/Marketplace/Marketplace.Hooks/UsePosts'
 import ItemCard from './ItemCard'
 
 export default function ItemList() {

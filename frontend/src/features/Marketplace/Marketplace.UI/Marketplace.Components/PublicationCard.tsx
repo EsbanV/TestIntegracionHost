@@ -1,4 +1,4 @@
-import type { Post as PostType } from "@/features/Marketplac/Marketplace.Types/Post";
+import type { Post as PostType } from "@/features/Marketplace/Marketplace.Types/Post";
 import React from "react";
 import Card from "../../../../../public/components/Card";
 import Button from "../../../../../public/components/Button";

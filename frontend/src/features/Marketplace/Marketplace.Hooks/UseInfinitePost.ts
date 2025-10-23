@@ -1,9 +1,9 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 // Asumimos que Post es el tipo que describe la tarjeta (con title, image, etc.)
-import type { Post, PostFilters } from '@/features/Marketplac/Marketplace.Types/Post' 
+import type { Post, PostFilters } from '@/features/Marketplace/Marketplace.Types/Post' 
 // [AJUSTE] Asumo que PostHttpRepository llama al método 'list' en lugar de 'findAll' 
 // y maneja los filtros como el tercer argumento (filters).
-import { PostHttpRepository } from '@/features/Marketplac/Marketplace.Repositories/PostHttpRepository'
+import { PostHttpRepository } from '@/features/Marketplace/Marketplace.Repositories/PostHttpRepository'
 
 // Definimos la estructura del objeto que devuelve el Repositorio de Frontend
 type PagedProductResult = {

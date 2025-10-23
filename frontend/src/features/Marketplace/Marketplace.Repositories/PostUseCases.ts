@@ -1,6 +1,6 @@
 // src/features/marketplace/application/use-cases/PostUseCases.ts
-import { Post } from '@/features/Marketplac/Marketplace.Types/Post'
-import { PostRepository } from '../../Marketplac/Marketplace.Repositories/PostRepository'
+import { Post } from '@/features/Marketplace/Marketplace.Types/Post'
+import { PostRepository } from '../../Marketplace/Marketplace.Repositories/PostRepository'
 
 export class PostUseCases {
   private repo: PostRepository

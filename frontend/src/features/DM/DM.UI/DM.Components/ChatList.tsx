@@ -1,5 +1,5 @@
 // ChatList.tsx
-import type { Chat } from "../../DM.Types/chat";
+import type { Chat } from "@/features/DM/DM.Types/chat";
 
 export function ChatList({
   chats,

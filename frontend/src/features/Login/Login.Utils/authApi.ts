@@ -1,5 +1,5 @@
-import type { Credentials } from '../Login.Types/LoginUser'
-import type { User } from '../../Perfil/Perfil.Types/User'
+import type { Credentials } from '@/features/Login/Login.Types/LoginUser'
+import type { User } from '@/features/Login/Login.Types/User'
 
 export async function login(credentials: Credentials): Promise<User> {
   await new Promise((r) => setTimeout(r, 500))

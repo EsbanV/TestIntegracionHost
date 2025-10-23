@@ -1,5 +1,5 @@
 import React from "react";
-import { formatCLP } from "../../Marketplace.Utils/format";
+import { formatCLP } from "@/features/Marketplace/Marketplace.Utils/format";
 
 interface Post {
   id: number;

@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { usePostsWithFilters } from '../../Marketplace.Hooks/usePostsWithFilters'
+import { usePostsWithFilters } from '@/features/Marketplace/Marketplace.Hooks/usePostsWithFilters'
+import { formatInt, formatCLP } from '@/features/Marketplace/Marketplace.Utils/format'
 import { RatingStars } from './RatingStars'
-import { formatInt, formatCLP } from '../../Marketplace.Utils/format'
 import { PostDetailModal, PostDetailData } from './PostDetailModal'
 
 interface InfiniteFeedProps {

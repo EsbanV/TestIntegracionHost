@@ -1,5 +1,5 @@
 // src/features/marketplace/repositories/PostRepository.ts
-import { Post } from '@/features/Marketplac/Marketplace.Types/Post'
+import { Post } from '@/features/Login/Login.Types/Post'
 
 export class PostRepository {
   private baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'

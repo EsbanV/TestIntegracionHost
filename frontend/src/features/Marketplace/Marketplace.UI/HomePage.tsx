@@ -1,9 +1,9 @@
 import React from "react";
 import { useCallback, useMemo, useState } from 'react'
-import { Sidebar } from '../../shared/ui/Sidebar'
-import SearchAndFilter from './Marketplace.Components/SearchAndFilter'
-import InfiniteFeed from '../../marketplace/ui/components/InfiniteFeed'
-import Header from '../../shared/ui/Header'
+import { Sidebar } from '@/features/shared/ui/Sidebar'
+import SearchAndFilter from '@/features/Marketplace/Marketplace.UI/Marketplace.Components/SearchAndFilter'
+import InfiniteFeed from '@/features/Marketplace/Marketplace.UI/Marketplace.Components/InfiniteFeed'
+import Header from '@/features/shared/ui/Header'
 
 export default function HomePage() {
   const [searchTerm, setSearchTerm] = useState<string>('')

@@ -10,10 +10,6 @@ const faqData = [
     answer: "La documentación está disponible en la sección de recursos o puedes pedirla por el chat."
   },
   {
-    question: "¿Puedo recuperar mi contraseña?",
-    answer: "Sí, haz clic en 'Olvidé mi contraseña' en la página de inicio de sesión y sigue las instrucciones."
-  },
-  {
     question: "¿Cómo actualizo mi información de perfil?",
     answer: "Puedes actualizar tu información desde la sección 'Perfil' en el menú principal."
   },
@@ -29,10 +25,6 @@ const faqData = [
     question: "¿Mis datos están seguros en esta plataforma?",
     answer: "Sí, utilizamos protocolos de seguridad y cifrado para proteger tu información personal."
   },
-  {
-    question: "¿Puedo utilizar la aplicación en mi teléfono móvil?",
-    answer: "Sí, la aplicación está optimizada para dispositivos móviles."
-  }
 ];
 
 export default function FAQ() {

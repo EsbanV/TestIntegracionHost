@@ -1,6 +1,6 @@
 // Se importa 'useEffect' y 'useState' para la animación
 import React, { useMemo, useState, useEffect } from 'react';
-import { Sidebar } from '../../shared/ui/Sidebar';
+import { Sidebar } from '@/features/shared/ui/Sidebar';
 import { EditarPostForm } from './EditarPublicacion.Components/EditarPostForm';
 import logo from "../../../assets/img/logouct.png"; 
 

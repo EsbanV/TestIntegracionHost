@@ -1,6 +1,6 @@
 import React, { useId } from "react";
-import Input from "../../../../../../public/components/Input";
-import Textarea from "../../../../../../public/components/Textarea";
+import Input from "../../../../../public/components/Input";
+import Textarea from "../../../../../public/components/Textarea";
 
 /**
  * Wrappers compatibles con el formulario existente.

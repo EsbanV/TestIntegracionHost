@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import Input from "../../../../public/components/Input";
-import Button from "../../../../public/components/Button";
+import Input from "../../../../../public/components/Input";
+import Button from "../../../../../public/components/Button";
 
 type Props = {
   onSubmit: (email: string, password: string) => void;

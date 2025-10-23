@@ -1,8 +1,8 @@
 // src/pages/ProductDetailPage.tsx (Versión de Prueba)
 
 import React, { useState } from 'react';
-import { PostHttpRepository } from '@/features/Marketplac/Marketplace.Repositories/PostHttpRepository'; // Repositorio existente
-import SendMessageForm from './components/SendMessageForm'; // Componente que crearemos
+import { PostHttpRepository } from '@/features/Marketplace/Marketplace.Repositories/PostHttpRepository';
+import SendMessageForm from './Marketplace.Components/SendMessageForm';
 
 // Datos simulados para el producto y el vendedor
 const MOCK_PRODUCT = {

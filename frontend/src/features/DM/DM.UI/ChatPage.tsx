@@ -6,8 +6,8 @@ import { ChatInput } from './DM.Components/ChatInput'
 import { ChatList } from './DM.Components/ChatList' // ya presente
 import { MiniSidebar } from './DM.Components/MiniSidebar'
 import type { Chat, Mensaje } from '@/features/DM/DM.Types/chat'
-import { MockChatWS } from '../DM.Hooks/MockChatWS'
-import { mockChats } from '../../chat/mocks/mockChats'
+import { MockChatWS } from '@/features/DM/DM.Hooks/MockChatWS'
+import { mockChats } from '@/features/DM/DM.Hooks/mockChats'
 import React from 'react'
 import ChatRules from './DM.Components/ChatRules' // aseguro import presente
 

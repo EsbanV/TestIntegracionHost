@@ -1,4 +1,4 @@
-import type { User } from '@/features/Perfil/Perfil.Types/User'
+import type { User } from './User'
 
 export type Credentials = {
   email: string

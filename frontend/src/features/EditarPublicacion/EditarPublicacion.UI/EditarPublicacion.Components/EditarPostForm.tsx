@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from "react";
-import { formatCLP } from "../../../Marketplac/Marketplace.Utils/format";
+import { formatCLP } from "@/features/EditarPublicacion/EditarPublicacion.Utils/format";
 import { LabeledInput, LabeledNumber, LabeledSelect, LabeledTextArea } from "./fields";
-import { MultiImageUploader } from "../../../CrearPublicacion/CrearPublicacion.UI/CrearPublicacion.Components/MultiImageUploader";
-import { TagInput } from "../../../CrearPublicacion/CrearPublicacion.UI/CrearPublicacion.Components/TagInput";
+import { MultiImageUploader } from "@/features/EditarPublicacion/EditarPublicacion.UI/EditarPublicacion.Components/MultiImageUploader";
+import { TagInput } from "@/features/EditarPublicacion/EditarPublicacion.UI/EditarPublicacion.Components/TagInput";
 
 const CAMPUS = ["San Juan Pablo II", "San Francisco"] as const;
 const CATEGORIAS = ["Libros", "Electrónica", "Ropa", "Deportes", "Otros"] as const;

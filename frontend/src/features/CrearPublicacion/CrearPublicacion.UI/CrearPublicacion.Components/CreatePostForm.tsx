@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { formatCLP } from "../../CrearPublicacion.Utils/format";
+import { formatCLP } from "@/features/CrearPublicacion/CrearPublicacion.Utils/format";
 import { LabeledInput, LabeledNumber, LabeledSelect, LabeledTextArea } from "./fields";
 import { MultiImageUploader } from "./MultiImageUploader";
 import { TagInput } from "./TagInput";

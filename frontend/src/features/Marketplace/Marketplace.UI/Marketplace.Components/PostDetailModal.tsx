@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { ImageCarousel } from "./ImageCarousel";
-import { RatingStars } from "../../../../Marketplac/Marketplace.UI/Marketplace.Components/RatingStars";
+import { RatingStars } from "@/features/Marketplace/Marketplace.UI/Marketplace.Components/RatingStars";
 
 export type PostDetailData = {
   id: string;

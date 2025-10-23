@@ -1,4 +1,4 @@
-import type { Chat } from "../../DM/DM.Types/chat";
+import type { Chat } from "@/features/DM/DM.Types/chat";
 
 export const mockChats: Chat[] = [
   {

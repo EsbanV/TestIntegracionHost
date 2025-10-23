@@ -1,4 +1,4 @@
-import type { Post } from '@/features/Marketplac/Marketplace.Types/Post'
+import type { Post } from '@/features/Marketplace/Marketplace.Types/Post'
 
 function computeBase() {
   const raw = import.meta.env.VITE_API_URL ?? '/api'

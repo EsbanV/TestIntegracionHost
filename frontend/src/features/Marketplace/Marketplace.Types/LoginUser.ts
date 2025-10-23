@@ -1,4 +1,9 @@
-import type { User } from '../../features/auth/ui/entities/User'
+export type User = {
+  id: string
+  email: string
+  name?: string
+  token?: string
+}
 
 export type Credentials = {
   email: string

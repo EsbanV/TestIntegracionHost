@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import LoginInstitutional from './LoginInstitutional'
+import LoginInstitutional from './Login.Components/LoginInstitutional'
 
 export default function LoginPage() {
   const navigate = useNavigate()

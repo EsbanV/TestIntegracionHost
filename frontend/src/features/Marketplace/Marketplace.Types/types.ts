@@ -31,18 +31,6 @@ export interface ApiResponse<T> {
   error?: ApiError;
 }
 
-export type Item = {
-id: string;
-title: string;
-author: string;
-category: string;
-buyNow: number;
-sellerSales: number;
-sellerRating: number;
-stock: number;
-};
-
-
 export const CATEGORIES = [
 "Todo",
 "Electonica",
