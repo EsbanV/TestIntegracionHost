@@ -10,10 +10,6 @@ const faqData = [
     answer: "La documentación está disponible en la sección de recursos o puedes pedirla por el chat."
   },
   {
-    question: "¿Puedo recuperar mi contraseña?",
-    answer: "Sí, haz clic en 'Olvidé mi contraseña' en la página de inicio de sesión y sigue las instrucciones."
-  },
-  {
     question: "¿Cómo actualizo mi información de perfil?",
     answer: "Puedes actualizar tu información desde la sección 'Perfil' en el menú principal."
   },

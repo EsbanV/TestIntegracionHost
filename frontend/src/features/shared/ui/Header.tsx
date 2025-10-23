@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import styles from './Header.module.css'
 import LogoMUCT from '../../../assets/img/logoMUCT.png'
 import UserDefault from '../../../assets/img/user_default.png'
-import { LogoutUser } from '../../auth/use-cases/LogoutUser'
+import { LogoutUser } from '../../Login/Login.Types/LogoutUser'
 
 export const Header: React.FC = () => {
   const [open, setOpen] = useState(false)
