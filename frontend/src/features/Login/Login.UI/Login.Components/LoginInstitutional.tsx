@@ -1,4 +1,4 @@
-import img from "/favicon.png";
+import img from "@/assets/img/favicon.png";
 import styles from './Login.module.css';
 import { useEffect, useRef, useState } from 'react';
 import LoginFooter from './LoginFooter';

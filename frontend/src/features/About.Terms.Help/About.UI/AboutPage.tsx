@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import LoginFooter from '../../Login/Login.UI/Login.Components/LoginFooter';
+import LoginFooter from './About.Components/footer';
 import './AboutPage.css';
-import Header from '../../shared/ui/Header';
+import Header from '@/features/shared/ui/Header';
 
 export default function AboutPage() {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);

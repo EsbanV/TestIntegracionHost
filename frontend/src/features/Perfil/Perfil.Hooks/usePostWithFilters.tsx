@@ -1,5 +1,29 @@
-import type { PostRepository } from '@/features/Marketplace/Marketplace.Hooks/PostInterfaces'
-import type { Post, PostFilters } from '@/features/Marketplace/Marketplace.Types/Post'
+import { useState, useEffect, useMemo } from 'react'
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+
+// Interfaz para los filtros
+interface PostFilters {
+  searchTerm: string
+  categoryId: string
+}
+
+// Interfaz para Post (mantener consistencia)
+interface Post {
+  id: number
+  title: string
+  description: string
+  categoryId: string
+  categoryName: string
+  author: string
+  avatar: string
+  content: string
+  image?: string
+  likes: number
+  comments: number
+  shares: number
+  timeAgo: string
+  price?: string
+}
 
 // Datos de categorías
 const categories = [
@@ -12,7 +36,7 @@ const categories = [
   { id: 'services', name: 'Servicios' }
 ]
 
-// Datos de productos (migrado de tu hook original)
+// Datos de productos
 const productData = [
   { title: 'iPhone 14 Pro Max', desc: 'Excelente estado, incluye cargador y caja original', category: 'electronics', priceRange: [800000, 1200000] },
   { title: 'Laptop Gaming ASUS', desc: 'Perfect para gaming y diseño, RTX 4060, 16GB RAM', category: 'electronics', priceRange: [1500000, 2000000] },
@@ -37,134 +61,152 @@ const productData = [
   { title: 'Reparación de Computadores', desc: 'Servicio técnico especializado, domicilio', category: 'services', priceRange: [20000, 50000] }
 ]
 
-export class MockPostRepository implements PostRepository {
-  async findAll(filters: PostFilters, page: number = 1, limit: number = 9): Promise<{
-    posts: Post[]
-    hasMore: boolean
-    totalCount: number
-  }> {
-    // Simular delay de red
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
-    const posts = this.generatePosts(page, limit, filters)
-    const hasMore = posts.length > 0
-    
-    return {
-      posts,
-      hasMore,
-      totalCount: posts.length
-    }
-  }
-
-  async findById(id: number): Promise<Post | null> {
-    await new Promise(resolve => setTimeout(resolve, 200))
-    
-    // Generar un post específico basado en el ID
+// Función para generar posts con filtros - MEJORADA PARA INFINITE SCROLL REAL
+const generatePosts = (page: number, limit: number = 9, filters: PostFilters): Post[] => {
+  const posts: Post[] = []
+  const startId = (page - 1) * limit + 1
+  
+  for (let i = 0; i < limit; i++) {
+    const id = startId + i
+    // Usar modulo para reciclar datos pero con IDs únicos
     const productIndex = (id - 1) % productData.length
     const product = productData[productIndex]
     const category = categories.find(cat => cat.id === product.category)!
     
-    return {
+    // Generar precio como número entero sin decimales
+    const randomPrice = Math.floor(Math.random() * (product.priceRange[1] - product.priceRange[0]) + product.priceRange[0])
+    
+    const post: Post = {
       id,
       title: `${product.title} ${Math.floor(id / productData.length) > 0 ? `(${Math.floor(id / productData.length) + 1})` : ''}`,
       description: product.desc,
-      content: `${product.title} - ${product.desc}`,
       categoryId: product.category,
       categoryName: category.name,
       author: `${category.name === 'Servicios' ? 'Proveedor' : 'Usuario'} ${id}`,
       avatar: `https://avatar.iran.liara.run/public/${id}`,
+      content: `${product.title} - ${product.desc}`,
       image: `https://picsum.photos/400/300?random=${id}`,
       likes: Math.floor(Math.random() * 50),
       comments: Math.floor(Math.random() * 15),
       shares: Math.floor(Math.random() * 5),
       timeAgo: `${Math.floor(Math.random() * 48)}h`,
-      price: `$${(Math.random() * (product.priceRange[1] - product.priceRange[0]) + product.priceRange[0]).toLocaleString('es-CL')}`,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      price: randomPrice.toString()
     }
+    
+    posts.push(post)
+  }
+  
+  // Aplicar filtros
+  return posts.filter(post => {
+    // Filtro por categoría
+    if (filters.categoryId && post.categoryId !== filters.categoryId) {
+      return false
+    }
+    
+    // Filtro por texto (buscar en título y descripción)
+    if (filters.searchTerm) {
+      const searchLower = filters.searchTerm.toLowerCase()
+      const matchesTitle = post.title.toLowerCase().includes(searchLower)
+      const matchesDescription = post.description.toLowerCase().includes(searchLower)
+      return matchesTitle || matchesDescription
+    }
+    
+    return true
+  })
+}
+
+// Función para fetch de posts con simulación de API - SIN LÍMITE ARTIFICIAL
+const fetchPosts = async ({ 
+  pageParam = 1, 
+  filters 
+}: { 
+  pageParam?: number
+  filters: PostFilters 
+}): Promise<{ posts: Post[], nextPage: number | undefined, hasMore: boolean }> => {
+  console.log(`🔍 Fetching page ${pageParam} with filters:`, filters)
+  
+  // Simular delay de red
+  await new Promise(resolve => setTimeout(resolve, 300))
+  
+  const posts = generatePosts(pageParam, 9, filters)
+  
+  // SCROLL INFINITO REAL - Sin límite artificial de páginas
+  // Solo detener si no hay posts debido a filtros muy restrictivos
+  const hasMore = posts.length > 0
+  
+  return {
+    posts,
+    nextPage: hasMore ? pageParam + 1 : undefined,
+    hasMore
+  }
+}
+
+// Hook personalizado para el manejo de posts con filtros
+export const usePostsWithFilters = (filters: PostFilters) => {
+  const queryClient = useQueryClient()
+  
+  // Crear clave única para la query basada en los filtros
+  const queryKey = ['posts', filters.searchTerm, filters.categoryId]
+  
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error,
+    refetch
+  } = useInfiniteQuery({
+    queryKey,
+    queryFn: ({ pageParam }) => fetchPosts({ pageParam, filters }),
+    getNextPageParam: (lastPage) => lastPage.nextPage,
+    initialPageParam: 1,
+    enabled: true, // Siempre habilitado
+  })
+
+  // Limpiar cache cuando cambian los filtros significativamente
+  const clearCache = () => {
+    queryClient.removeQueries({ queryKey: ['posts'] })
   }
 
-  async create(post: Omit<Post, 'id' | 'createdAt' | 'updatedAt'>): Promise<Post> {
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    const newPost: Post = {
-      ...post,
-      id: Date.now(), // ID temporal
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-    
-    return newPost
-  }
+  // Aplanar todas las páginas en un solo array
+  const posts = useMemo(() => {
+    return data?.pages.flatMap(page => page.posts) ?? []
+  }, [data])
 
-  async update(id: number, postData: Partial<Post>): Promise<Post> {
-    await new Promise(resolve => setTimeout(resolve, 400))
-    
-    const existingPost = await this.findById(id)
-    if (!existingPost) {
-      throw new Error('Post not found')
-    }
-    
-    return {
-      ...existingPost,
-      ...postData,
-      updatedAt: new Date()
-    }
-  }
+  // Información de resultados
+  const hasResults = posts.length > 0
+  const totalResults = posts.length
 
-  async delete(id: number): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 300))
-    // En una implementación real, aquí se eliminaría de la base de datos
-    console.log(`Post ${id} deleted`)
+  return {
+    posts,
+    hasResults,
+    totalResults,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    clearCache
   }
+}
 
-  // Método privado para generar posts (migrado de tu hook)
-  private generatePosts(page: number, limit: number, filters: PostFilters): Post[] {
-    const posts: Post[] = []
-    const startId = (page - 1) * limit + 1
-    
-    for (let i = 0; i < limit; i++) {
-      const id = startId + i
-      const productIndex = (id - 1) % productData.length
-      const product = productData[productIndex]
-      const category = categories.find(cat => cat.id === product.category)!
-      
-      const post: Post = {
-        id,
-        title: `${product.title} ${Math.floor(id / productData.length) > 0 ? `(${Math.floor(id / productData.length) + 1})` : ''}`,
-        description: product.desc,
-        content: `${product.title} - ${product.desc}`,
-        categoryId: product.category,
-        categoryName: category.name,
-        author: `${category.name === 'Servicios' ? 'Proveedor' : 'Usuario'} ${id}`,
-        avatar: `https://avatar.iran.liara.run/public/${id}`,
-        image: `https://picsum.photos/400/300?random=${id}`,
-        likes: Math.floor(Math.random() * 50),
-        comments: Math.floor(Math.random() * 15),
-        shares: Math.floor(Math.random() * 5),
-        timeAgo: `${Math.floor(Math.random() * 48)}h`,
-        price: `$${(Math.random() * (product.priceRange[1] - product.priceRange[0]) + product.priceRange[0]).toLocaleString('es-CL')}`,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-      
-      posts.push(post)
+// Hook para debounce
+export const useDebounce = <T>(value: T, delay: number): T => {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value)
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value)
+    }, delay)
+
+    return () => {
+      clearTimeout(handler)
     }
-    
-    // Aplicar filtros (migrado de tu lógica)
-    return posts.filter(post => {
-      if (filters.categoryId && post.categoryId !== filters.categoryId) {
-        return false
-      }
-      
-      if (filters.searchTerm) {
-        const searchLower = filters.searchTerm.toLowerCase()
-        const matchesTitle = post.title.toLowerCase().includes(searchLower)
-        const matchesDescription = post.description.toLowerCase().includes(searchLower)
-        return matchesTitle || matchesDescription
-      }
-      
-      return true
-    })
-  }
+  }, [value, delay])
+
+  return debouncedValue
 }

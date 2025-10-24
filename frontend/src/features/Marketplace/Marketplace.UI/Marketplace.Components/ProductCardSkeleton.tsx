@@ -1,4 +1,4 @@
-export default function ItemCardSkeleton() {
+export default function ProductCardSkeleton() {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden animate-pulse">
       <div className="relative aspect-video w-full bg-gray-300" />

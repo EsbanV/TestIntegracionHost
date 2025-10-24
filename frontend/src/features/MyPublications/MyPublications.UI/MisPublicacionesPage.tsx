@@ -1,9 +1,9 @@
 import React from "react";
 import { useMemo, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Sidebar } from '../../shared/ui/Sidebar'
+import { Sidebar } from '@/features/shared/ui/Sidebar'
 import MyPublicationsFeed from './MyPublications.Components/MyPublicationsFeed'
-import Header from '../../shared/ui/Header'
+import Header from '@/features/shared/ui/Header'
 
 export default function MisPublicacionesPage() {
   const authorId = useMemo<string | undefined>(() => localStorage.getItem('userId') ?? undefined, []);

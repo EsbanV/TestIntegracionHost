@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { RatingStars } from './RatingStars'
-import { formatInt, formatCLP } from '@/features/MyPublications/MyPublications.Utils/format'
-import { usePostsWithFilters } from '@/features/MyPublications/MyPublications.Hooks/usePostWithFilters'
+import { formatInt, formatCLP } from '@/features/Perfil/Perfil.Utils/format'
+import { usePostsWithFilters } from '@/features/Perfil/Perfil.Hooks/usePostWithFilters'
 
 type MyPublicationsFeedProps = {
   searchTerm?: string

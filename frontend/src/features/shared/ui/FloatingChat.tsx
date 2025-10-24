@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from "react";
-import { mockChats as rawMockChats } from "../../chat/mocks/mockChats"; // Ajusta la ruta si es necesario
+import { mockChats as rawMockChats } from "@/features/shared/Shared.Repositories/mockChats"; // Ajusta la ruta si es necesario
 
 /* ===================== Tipos ===================== */
 type Estado = "enviando" | "enviado" | "recibido" | "leido";

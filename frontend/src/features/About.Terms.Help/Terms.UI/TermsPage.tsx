@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sidebar } from '../../shared/ui/Sidebar'
+import { Sidebar } from '@/features/shared/ui/Sidebar'
 
 const TermsPage = () => (
     <div className="min-h-screen bg-gray-50 grid grid-cols-1 lg:grid-cols-[260px_1fr]">

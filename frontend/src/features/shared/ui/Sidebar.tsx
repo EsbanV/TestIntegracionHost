@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import React from "react";
-import logo from "../../../../assets/img/logouct.png"; // Se mantiene tu logo
+import logo from "@/assets/img/logouct.png"; // Se mantiene tu logo
 
 export function Sidebar({
   active = "marketplace",

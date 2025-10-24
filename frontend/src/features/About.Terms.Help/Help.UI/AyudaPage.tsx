@@ -1,8 +1,8 @@
 import React from "react";
 import FAQ from "./Help.Components/FAQ";
 import ChatBox from "./Help.Components/ChatBox";
-import { Sidebar } from "../../shared/ui/Sidebar";
-import Header from '../../shared/ui/Header'
+import { Sidebar } from "@/features/shared/ui/Sidebar";
+import Header from '@/features/shared/ui/Header'
 
 export default function AyudaPage() {
   return (
