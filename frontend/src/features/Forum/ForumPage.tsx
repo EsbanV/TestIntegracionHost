@@ -52,9 +52,17 @@ interface NewPublicationData {
 
 const URL_BASE = import.meta.env.VITE_API_URL;
 
-// --- API ---
+// --- API REFACTORIZADA PARA CORS ---
+
 const fetchPublications = async (): Promise<Publication[]> => {
-  const res = await fetch(`${URL_BASE}/api/publications`,)
+  // Agregamos credentials: 'include' para asegurar que pasen las cookies/cors
+  const res = await fetch(`${URL_BASE}/api/publications`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    credentials: 'include' 
+  })
   
   if (!res.ok) throw new Error("No se pudieron cargar las publicaciones")
   return (await res.json()).publications
@@ -65,15 +73,17 @@ const createPublication = async (
   token: string | null
 ): Promise<Publication> => {
   if (!token) throw new Error("No estás autenticado")
+  
   const res = await fetch(`${URL_BASE}/api/publications`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    credentials: 'include'
+    credentials: 'include', // <--- COMA AÑADIDA AQUÍ (Error de sintaxis corregido)
     body: JSON.stringify(newData),
   })
+  
   const data = await res.json()
   if (!res.ok) throw new Error(data.message || "Error al crear la publicación")
   return data.publication
@@ -326,9 +336,6 @@ const PublicationCard = ({ post }: { post: Publication }) => {
             {post.cuerpo}
           </p>
         </CardContent>
-        
-        {/* Optional Footer for actions like Like/Comment in future */}
-        {/* <CardFooter className="pt-0 border-t bg-slate-50/50 p-3"> ... </CardFooter> */}
       </Card>
     </motion.div>
   )
