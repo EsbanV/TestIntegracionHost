@@ -58,11 +58,13 @@ interface UpdatePublicationData {
   cuerpo: string
 }
 
+const URL_BASE = import.meta.env.VITE_API_URL;
+
 // --- API ---
 const fetchMyPublications = async (token: string | null, userId: number | undefined): Promise<Publication[]> => {
   if (!token || !userId) return []
   // Se asume que el backend ya filtra por userId si se le pasa el parámetro
-  const res = await fetch(`/api/publications?userId=${userId}&limit=50`, {
+  const res = await fetch(`${URL_BASE}/api/publications?userId=${userId}&limit=50`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) throw new Error("Error al cargar publicaciones")
@@ -73,7 +75,7 @@ const fetchMyPublications = async (token: string | null, userId: number | undefi
 
 const deletePublication = async (id: number, token: string | null) => {
   if (!token) throw new Error("No autorizado")
-  const res = await fetch(`/api/publications/${id}`, {
+  const res = await fetch(`${URL_BASE}/api/publications/${id}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   })
@@ -83,7 +85,7 @@ const deletePublication = async (id: number, token: string | null) => {
 
 const updatePublication = async (data: UpdatePublicationData, token: string | null) => {
   if (!token) throw new Error("No autorizado")
-  const res = await fetch(`/api/publications/${data.id}`, {
+  const res = await fetch(`${URL_BASE}/api/publications/${data.id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",

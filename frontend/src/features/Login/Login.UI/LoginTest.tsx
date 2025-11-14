@@ -40,6 +40,8 @@ type ApiErrorResponse = {
   message: string
 }
 
+const URL_BASE = import.meta.env.VITE_API_URL;
+
 export default function LoginTest() {
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -68,7 +70,7 @@ export default function LoginTest() {
 
     try {
       // Usamos la nueva ruta POST /api/auth/login
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(`${URL_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

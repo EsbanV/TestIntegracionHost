@@ -32,6 +32,8 @@ interface Chat {
 }
 type ViewState = "list" | "chat"
 
+const URL_BASE = import.meta.env.VITE_API_URL;
+
 // --- COMPONENTE PRINCIPAL ---
 export default function FloatingChat() {
   const { user, token } = useAuth()
@@ -104,7 +106,7 @@ export default function FloatingChat() {
   const fetchChats = async () => {
     if (!token) return
     try {
-      const res = await fetch('/api/chat/conversaciones', {
+      const res = await fetch(`${URL_BASE}/api/chat/conversaciones`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -133,7 +135,7 @@ export default function FloatingChat() {
   const loadMessages = async (chatId: number) => {
     setIsLoading(true)
     try {
-      const res = await fetch(`/api/chat/conversacion/${chatId}`, {
+      const res = await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -187,7 +189,7 @@ export default function FloatingChat() {
     ))
 
     try {
-      const res = await fetch('/api/chat/send', {
+      const res = await fetch(`${URL_BASE}/api/chat/send`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

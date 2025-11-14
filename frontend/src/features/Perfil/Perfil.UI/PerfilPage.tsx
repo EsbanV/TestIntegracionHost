@@ -51,10 +51,12 @@ interface UpdateProfileData {
   direccion: string
 }
 
+const URL_BASE = import.meta.env.VITE_API_URL;
+
 // --- API ---
 const fetchProfile = async (token: string | null): Promise<UserProfile> => {
   if (!token) throw new Error("No token")
-  const res = await fetch("/api/users/profile", {
+  const res = await fetch(`${URL_BASE}/api/users/profile`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) throw new Error("Error al cargar perfil")
@@ -64,7 +66,7 @@ const fetchProfile = async (token: string | null): Promise<UserProfile> => {
 
 const updateProfile = async (data: UpdateProfileData, token: string | null) => {
   if (!token) throw new Error("No token")
-  const res = await fetch("/api/users/profile", {
+  const res = await fetch(`${URL_BASE}/api/users/profile`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -83,7 +85,7 @@ const uploadProfilePhoto = async (file: File, token: string | null) => {
   const formData = new FormData()
   formData.append('photo', file)
 
-  const res = await fetch("/api/upload/profile-photo", {
+  const res = await fetch(`${URL_BASE}/api/upload/profile-photo`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: formData,

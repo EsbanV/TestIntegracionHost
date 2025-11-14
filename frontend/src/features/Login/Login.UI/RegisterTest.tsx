@@ -42,6 +42,8 @@ type ApiSuccessResponse = {
   };
 };
 
+const URL_BASE = import.meta.env.VITE_API_URL;
+
 // --- Componente React ---
 
 function RegisterTest() {
@@ -77,7 +79,7 @@ function RegisterTest() {
 
     try {
       // (Asumiendo que tienes el proxy de Vite configurado para '/api')
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch(`${URL_BASE}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -50,9 +50,11 @@ interface NewPublicationData {
   cuerpo: string
 }
 
+const URL_BASE = import.meta.env.VITE_API_URL;
+
 // --- API ---
 const fetchPublications = async (): Promise<Publication[]> => {
-  const res = await fetch("/api/publications")
+  const res = await fetch(`${URL_BASE}/api/publications`)
   if (!res.ok) throw new Error("No se pudieron cargar las publicaciones")
   return (await res.json()).publications
 }
@@ -62,7 +64,7 @@ const createPublication = async (
   token: string | null
 ): Promise<Publication> => {
   if (!token) throw new Error("No estás autenticado")
-  const res = await fetch("/api/publications", {
+  const res = await fetch(`${URL_BASE}/api/publications`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
