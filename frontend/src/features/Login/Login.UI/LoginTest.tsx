@@ -73,6 +73,7 @@ export default function LoginTest() {
       const res = await fetch(`${URL_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(formData),
       })
 

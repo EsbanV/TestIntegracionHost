@@ -66,6 +66,7 @@ const fetchMyPublications = async (token: string | null, userId: number | undefi
   // Se asume que el backend ya filtra por userId si se le pasa el parámetro
   const res = await fetch(`${URL_BASE}/api/publications?userId=${userId}&limit=50`, {
     headers: { Authorization: `Bearer ${token}` },
+    credentials: 'include'
   })
   if (!res.ok) throw new Error("Error al cargar publicaciones")
   const data = await res.json()
@@ -78,6 +79,7 @@ const deletePublication = async (id: number, token: string | null) => {
   const res = await fetch(`${URL_BASE}/api/publications/${id}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
+    credentials: 'include'
   })
   if (!res.ok) throw new Error("Error al eliminar")
   return await res.json()
@@ -91,6 +93,7 @@ const updatePublication = async (data: UpdatePublicationData, token: string | nu
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
+    credentials: 'include'
     body: JSON.stringify({ titulo: data.titulo, cuerpo: data.cuerpo }),
   })
   if (!res.ok) throw new Error("Error al actualizar")

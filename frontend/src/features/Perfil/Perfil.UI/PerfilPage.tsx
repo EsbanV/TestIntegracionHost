@@ -58,6 +58,7 @@ const fetchProfile = async (token: string | null): Promise<UserProfile> => {
   if (!token) throw new Error("No token")
   const res = await fetch(`${URL_BASE}/api/users/profile`, {
     headers: { Authorization: `Bearer ${token}` },
+    credentials: 'include'
   })
   if (!res.ok) throw new Error("Error al cargar perfil")
   const data = await res.json()
@@ -72,6 +73,7 @@ const updateProfile = async (data: UpdateProfileData, token: string | null) => {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
+    credentials: 'include'
     body: JSON.stringify(data),
   })
   const result = await res.json()
@@ -88,6 +90,7 @@ const uploadProfilePhoto = async (file: File, token: string | null) => {
   const res = await fetch(`${URL_BASE}/api/upload/profile-photo`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
+    credentials: 'include'
     body: formData,
   })
   

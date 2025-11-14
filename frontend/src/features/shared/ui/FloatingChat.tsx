@@ -107,7 +107,8 @@ export default function FloatingChat() {
     if (!token) return
     try {
       const res = await fetch(`${URL_BASE}/api/chat/conversaciones`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include'
       })
       const data = await res.json()
       if (data.ok) {
@@ -136,7 +137,8 @@ export default function FloatingChat() {
     setIsLoading(true)
     try {
       const res = await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include'
       })
       const data = await res.json()
       
@@ -195,6 +197,7 @@ export default function FloatingChat() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}` 
         },
+        credentials: 'include',
         body: JSON.stringify({ destinatarioId: activeChatId, contenido: texto })
       })
       

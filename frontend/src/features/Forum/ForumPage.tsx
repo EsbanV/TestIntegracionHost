@@ -54,7 +54,8 @@ const URL_BASE = import.meta.env.VITE_API_URL;
 
 // --- API ---
 const fetchPublications = async (): Promise<Publication[]> => {
-  const res = await fetch(`${URL_BASE}/api/publications`)
+  const res = await fetch(`${URL_BASE}/api/publications`,)
+  
   if (!res.ok) throw new Error("No se pudieron cargar las publicaciones")
   return (await res.json()).publications
 }
@@ -70,6 +71,7 @@ const createPublication = async (
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
+    credentials: 'include'
     body: JSON.stringify(newData),
   })
   const data = await res.json()
