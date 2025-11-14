@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { NavLink, useNavigate, useLocation } from "react-router-dom"
 import { motion } from "framer-motion"
 import { useAuth } from "@/app/context/AuthContext"
+import { getImageUrl } from "@/app/imageHelper";
 
 // UI Components
 import { Button } from "@/components/ui/button"
@@ -93,7 +94,7 @@ export const Header: React.FC = () => {
                 <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-slate-100 bg-slate-50/50">
                   <div className="flex items-center gap-3 mb-4 cursor-pointer" onClick={() => { setIsOpen(false); navigate("/perfil") }}>
                     <Avatar className="h-10 w-10 border border-white shadow-sm">
-                      <AvatarImage src={user?.fotoPerfilUrl || UserDefault} />
+                      <AvatarImage src={getImageUrl(user.fotoPerfilUrl)} />
                       <AvatarFallback>{user?.usuario?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div>

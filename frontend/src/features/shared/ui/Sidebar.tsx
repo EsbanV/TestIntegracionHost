@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { NavLink, useNavigate, useLocation } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "@/app/context/AuthContext"
+import { getImageUrl } from "@/app/imageHelper";
 
 // UI Components (Shadcn)
 import { Button } from "@/components/ui/button"
@@ -173,7 +174,7 @@ export function Sidebar({ className }: SidebarProps) {
                   className="flex items-center gap-3 overflow-hidden"
                 >
                   <Avatar className="h-9 w-9 border border-slate-700">
-                    <AvatarImage src={user?.fotoPerfilUrl || UserDefault} />
+                    <AvatarImage src={getImageUrl(user.fotoPerfilUrl)} />
                     <AvatarFallback className="bg-slate-800 text-slate-400">
                       {user?.usuario?.charAt(0).toUpperCase()}
                     </AvatarFallback>
