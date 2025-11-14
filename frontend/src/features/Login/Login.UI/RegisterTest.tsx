@@ -1,11 +1,8 @@
-// src/components/RegisterTest.tsx
-
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
+import { Link } from 'react-router-dom'; // Agregado para mejor navegación
 
 // --- Tipos de TypeScript ---
-
-// 1. Define la estructura de los datos del formulario
 type FormData = {
   nombre: string;
   usuario: string;
@@ -13,7 +10,6 @@ type FormData = {
   password: string;
 };
 
-// 2. Define la estructura de un error de validación del backend
 type ValidationError = {
   type: string;
   value: string;
@@ -22,14 +18,12 @@ type ValidationError = {
   location: string;
 };
 
-// 3. Define la estructura de la respuesta de error de la API
 type ApiErrorResponse = {
   ok: false;
   message: string;
   errors?: ValidationError[];
 };
 
-// 4. Define la estructura de la respuesta exitosa de la API
 type ApiSuccessResponse = {
   ok: true;
   message: string;
@@ -38,7 +32,6 @@ type ApiSuccessResponse = {
     id: number;
     email: string;
     nombre: string;
-    // ...otros campos de usuario
   };
 };
 
@@ -48,11 +41,10 @@ const URL_BASE = import.meta.env.VITE_API_URL;
 
 function RegisterTest() {
   const [formData, setFormData] = useState<FormData>({
-    nombre: 'Usuario TS',
-    usuario: 'usuariots',
-    // ¡Recuerda! El email debe cumplir la regla del backend
-    email: 'prueba.ts@alu.uct.cl',
-    password: 'password123',
+    nombre: '',
+    usuario: '',
+    email: '',
+    password: '',
   });
 
   const [message, setMessage] = useState<string>('');
@@ -60,7 +52,6 @@ function RegisterTest() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
 
-  // Evento tipado para los inputs
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prevData) => ({
@@ -69,7 +60,6 @@ function RegisterTest() {
     }));
   };
 
-  // Evento tipado para el formulario
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -78,31 +68,26 @@ function RegisterTest() {
     setIsSuccess(false);
 
     try {
-      // (Asumiendo que tienes el proxy de Vite configurado para '/api')
       const res = await fetch(`${URL_BASE}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
+        credentials: 'include', // <--- IMPORTANTE PARA CORS
         body: JSON.stringify(formData),
       });
 
-      // Tipamos la respuesta de la API
       const data: ApiSuccessResponse | ApiErrorResponse = await res.json();
 
       if (data.ok) {
-        // Éxito (data es ApiSuccessResponse)
         setIsSuccess(true);
-        setMessage(`✅ ${data.message}. ¡Usuario creado!`);
-        console.log('Token recibido:', data.token);
-        console.log('Usuario:', data.user);
+        setMessage(`✅ ${(data as ApiSuccessResponse).message}. ¡Usuario creado!`);
+        setFormData({ nombre: '', usuario: '', email: '', password: '' }); // Limpiar form
       } else {
-        // Error (data es ApiErrorResponse)
         setIsSuccess(false);
         setMessage(`❌ ${data.message}`);
-        if (data.errors) {
-          setErrors(data.errors);
+        if ((data as ApiErrorResponse).errors) {
+          setErrors((data as ApiErrorResponse).errors || []);
         }
       }
     } catch (error) {
@@ -116,7 +101,7 @@ function RegisterTest() {
     }
   };
 
-  // Clases de Tailwind para los mensajes de alerta
+  // Clases de Tailwind
   const alertBaseClasses = 'mt-4 p-3 rounded-md border';
   const alertSuccessClasses = 'bg-green-100 text-green-800 border-green-200';
   const alertErrorClasses = 'bg-red-100 text-red-800 border-red-200';
@@ -124,18 +109,12 @@ function RegisterTest() {
   return (
     <div className="max-w-md mx-auto my-10 p-6 bg-white border border-gray-200 rounded-lg shadow-lg">
       <h2 className="text-2xl font-bold mb-5 text-center text-gray-800">
-        🚀 Formulario de Registro (TS + Tailwind)
+        🚀 Registro de Usuario
       </h2>
+      
       <form onSubmit={handleSubmit}>
-        
-        {/* Nombre */}
         <div className="mb-4">
-          <label
-            htmlFor="nombre"
-            className="block mb-1.5 font-medium text-gray-700"
-          >
-            Nombre:
-          </label>
+          <label htmlFor="nombre" className="block mb-1.5 font-medium text-gray-700">Nombre:</label>
           <input
             type="text"
             id="nombre"
@@ -147,14 +126,8 @@ function RegisterTest() {
           />
         </div>
 
-        {/* Usuario */}
         <div className="mb-4">
-          <label
-            htmlFor="usuario"
-            className="block mb-1.5 font-medium text-gray-700"
-          >
-            Usuario:
-          </label>
+          <label htmlFor="usuario" className="block mb-1.5 font-medium text-gray-700">Usuario:</label>
           <input
             type="text"
             id="usuario"
@@ -166,14 +139,8 @@ function RegisterTest() {
           />
         </div>
 
-        {/* Email */}
         <div className="mb-4">
-          <label
-            htmlFor="email"
-            className="block mb-1.5 font-medium text-gray-700"
-          >
-            Email:
-          </label>
+          <label htmlFor="email" className="block mb-1.5 font-medium text-gray-700">Email:</label>
           <input
             type="email"
             id="email"
@@ -186,14 +153,8 @@ function RegisterTest() {
           />
         </div>
 
-        {/* Contraseña */}
         <div className="mb-4">
-          <label
-            htmlFor="password"
-            className="block mb-1.5 font-medium text-gray-700"
-          >
-            Contraseña:
-          </label>
+          <label htmlFor="password" className="block mb-1.5 font-medium text-gray-700">Contraseña:</label>
           <input
             type="password"
             id="password"
@@ -206,7 +167,6 @@ function RegisterTest() {
           />
         </div>
 
-        {/* Botón de envío */}
         <button
           type="submit"
           className={`w-full py-2.5 px-4 font-semibold text-white rounded-md transition-colors ${
@@ -220,15 +180,14 @@ function RegisterTest() {
         </button>
       </form>
 
-      {/* Mensaje de éxito o error */}
       {message && (
-        <div
-          className={`${alertBaseClasses} ${
-            isSuccess ? alertSuccessClasses : alertErrorClasses
-          }`}
-        >
+        <div className={`${alertBaseClasses} ${isSuccess ? alertSuccessClasses : alertErrorClasses}`}>
           <p className="font-medium">{message}</p>
-          {/* Lista de errores específicos */}
+          {isSuccess && (
+             <div className="mt-2 text-sm text-green-700">
+               <Link to="/login" className="underline font-bold">Ir a Iniciar Sesión</Link>
+             </div>
+          )}
           {errors.length > 0 && (
             <ul className="list-disc list-inside mt-2 text-sm">
               {errors.map((err, index) => (
@@ -238,6 +197,10 @@ function RegisterTest() {
           )}
         </div>
       )}
+      
+      <div className="mt-4 text-center text-sm text-gray-500">
+        ¿Ya tienes cuenta? <Link to="/login" className="text-blue-600 hover:underline">Ingresa aquí</Link>
+      </div>
     </div>
   );
 }

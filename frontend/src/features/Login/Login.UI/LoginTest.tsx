@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 
 // Icons
 import { LuLoader, LuCircleAlert, LuLogIn } from "react-icons/lu"
-import logo from "@/assets/img/logoMUCT.png" // Asegúrate de tener el logo importado
+import logo from "@/assets/img/logoMUCT.png" 
 
 // --- TIPOS ---
 type FormData = {
@@ -31,7 +31,6 @@ type ApiSuccessResponse = {
     nombre: string
     role: string
     campus: string | null
-    // ...otros campos
   }
 }
 
@@ -60,7 +59,7 @@ export default function LoginTest() {
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
-    if (error) setError(null) // Limpiar error al escribir
+    if (error) setError(null)
   }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -69,30 +68,26 @@ export default function LoginTest() {
     setError(null)
 
     try {
-      // Usamos la nueva ruta POST /api/auth/login
       const res = await fetch(`${URL_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        credentials: 'include', // <--- IMPORTANTE PARA CORS
         body: JSON.stringify(formData),
       })
 
       const data: ApiSuccessResponse | ApiErrorResponse = await res.json()
 
       if (res.ok && data.ok) {
-        // Guardamos sesión usando el contexto (que maneja tokens)
-        // Nota: Asegúrate de que tu AuthContext acepte accessToken
+        // Login exitoso
         login((data as ApiSuccessResponse).accessToken, (data as ApiSuccessResponse).user)
-        
-        // Redirección suave
         navigate(from, { replace: true })
       } else {
-        // Mostrar error del backend
+        // Error del backend
         setError(data.message || 'Credenciales inválidas')
       }
     } catch (err) {
       console.error(err)
-      setError('Error de conexión. Intenta nuevamente.')
+      setError('Error de conexión con el servidor.')
     } finally {
       setIsLoading(false)
     }
