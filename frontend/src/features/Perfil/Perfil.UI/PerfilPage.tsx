@@ -53,11 +53,15 @@ interface UpdateProfileData {
 
 const URL_BASE = import.meta.env.VITE_API_URL;
 
-// --- API ---
+// --- API REFACTORIZADA ---
 const fetchProfile = async (token: string | null): Promise<UserProfile> => {
   if (!token) throw new Error("No token")
   const res = await fetch(`${URL_BASE}/api/users/profile`, {
-    headers: { Authorization: `Bearer ${token}` },
+    method: 'GET',
+    headers: { 
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}` 
+    },
     credentials: 'include'
   })
   if (!res.ok) throw new Error("Error al cargar perfil")
@@ -73,7 +77,7 @@ const updateProfile = async (data: UpdateProfileData, token: string | null) => {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    credentials: 'include'
+    credentials: 'include', // <--- COMA AÑADIDA (Corrección de sintaxis)
     body: JSON.stringify(data),
   })
   const result = await res.json()
@@ -89,8 +93,11 @@ const uploadProfilePhoto = async (file: File, token: string | null) => {
 
   const res = await fetch(`${URL_BASE}/api/upload/profile-photo`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    credentials: 'include'
+    headers: { 
+      Authorization: `Bearer ${token}` 
+      // Nota: No ponemos 'Content-Type' aquí para que el navegador ponga el multipart/form-data boundary automáticamente
+    },
+    credentials: 'include', // <--- COMA AÑADIDA (Corrección de sintaxis)
     body: formData,
   })
   
@@ -168,8 +175,6 @@ export default function PerfilPage() {
   ]
 
   // --- RENDERIZADO ---
-  // NOTA: Ya NO renderizamos Sidebar ni Header ni <div className="flex h-screen">
-  // Renderizamos directamente el contenido del perfil
   
   return (
     <div className="max-w-5xl mx-auto pb-8">
