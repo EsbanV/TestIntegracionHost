@@ -1,72 +1,69 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { Sidebar } from '@/features/shared/ui/Sidebar';
-import SearchAndFilter from '@/features/Marketplace/Marketplace.UI/Marketplace.Components/SearchAndFilter';
-import InfiniteFeed from '@/features/Marketplace/Marketplace.UI/Marketplace.Components/InfiniteFeed';
-import Header from '@/features/shared/ui/Header';
-// Importamos el hook de categorías
-import { useCategorias } from '@/features/Marketplace/Marketplace.Hooks/useCategorias';
+import React, { useCallback, useMemo, useState } from 'react'
+import SearchAndFilter from './Marketplace.Components/SearchAndFilter'
+import InfiniteFeed from './Marketplace.Components/InfiniteFeed'
 
 export default function HomePage() {
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [selectedCategoryName, setSelectedCategoryName] = useState<string>(''); // Ahora guardamos el *nombre*
-  const [feedStats, setFeedStats] = useState<{ hasResults: boolean; totalResults: number }>({ hasResults: true, totalResults: 0 });
+  // --- Estado ---
+  const [searchTerm, setSearchTerm] = useState<string>('')
+  const [selectedCategory, setSelectedCategory] = useState<string>('')
+  const [feedStats, setFeedStats] = useState({ hasResults: true, totalResults: 0 })
 
-  // 1. Obtenemos categorías dinámicamente
-  const { data: categoriesData, isLoading: isLoadingCategories } = useCategorias();
+  // --- Datos Estáticos ---
+  const categories = useMemo(() => [
+    'Electrónicos', 'Libros y Materiales', 'Ropa y Accesorios', 
+    'Deportes', 'Hogar y Jardín', 'Vehículos', 'Servicios',
+  ], [])
 
-  // 2. Creamos la lista de nombres y el mapa ID/Nombre
-  const { categories, categoryMap } = useMemo(() => {
-    if (!categoriesData) return { categories: [], categoryMap: {} };
-    
-    const catMap: Record<string, number> = {}; // Mapa de Nombre -> ID
-    const catNombres: string[] = [];
-    
-    categoriesData.forEach(cat => {
-      catNombres.push(cat.nombre);
-      catMap[cat.nombre] = cat.id;
-    });
-    
-    return { categories: catNombres, categoryMap: catMap };
-  }, [categoriesData]);
+  const categoryMap: Record<string, string> = {
+    'Electrónicos': 'electronics',
+    'Libros y Materiales': 'books',
+    'Ropa y Accesorios': 'clothing',
+    'Deportes': 'sports',
+    'Hogar y Jardín': 'home',
+    'Vehículos': 'vehicles',
+    'Servicios': 'services',
+  }
 
-  // 3. Obtenemos el ID de la categoría seleccionada
-  const selectedCategoryId = selectedCategoryName ? categoryMap[selectedCategoryName] : undefined;
+  const selectedCategoryId = selectedCategory ? categoryMap[selectedCategory] ?? '' : ''
 
-  const handleSearchChange = useCallback((v: string) => setSearchTerm(v), []);
-  const handleCategoryChange = useCallback((v: string) => setSelectedCategoryName(v), []);
-  const handleClearFilters = useCallback(() => { setSearchTerm(''); setSelectedCategoryName('') }, []);
-  const handleFeedStatsChange = useCallback((hasResults: boolean, totalResults: number) => setFeedStats({ hasResults, totalResults }), []);
+  // --- Manejadores ---
+  const handleSearchChange = useCallback((v: string) => setSearchTerm(v), [])
+  const handleCategoryChange = useCallback((v: string) => setSelectedCategory(v), [])
+  const handleClearFilters = useCallback(() => { setSearchTerm(''); setSelectedCategory('') }, [])
+  const handleFeedStatsChange = useCallback((hasResults: boolean, totalResults: number) => setFeedStats({ hasResults, totalResults }), [])
 
   return (
-    <div className="min-h-screen bg-gray-50 grid grid-cols-1 lg:grid-cols-[260px_1fr]">
-      <Sidebar active="marketplace" />
-      <div className="min-w-0">
-        <Header />
-        <div className="sticky top-0 z-10 bg-white/70 backdrop-blur border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-            <SearchAndFilter
-              searchTerm={searchTerm}
-              selectedCategory={selectedCategoryName} // Usamos el nombre
-              categories={categories} // Pasamos la lista de nombres
-              onSearchChange={handleSearchChange}
-              onCategoryChange={handleCategoryChange}
-              onClearFilters={handleClearFilters}
-              hasResults={feedStats.hasResults}
-              totalResults={feedStats.totalResults}
-              // Opcional: mostrar 'cargando' en el select
-              // isLoadingCategories={isLoadingCategories} 
-            />
-          </div>
-        </div>
-
-        <main className="py-6">
-          <InfiniteFeed
-            searchTerm={searchTerm.trim()}
-            selectedCategoryId={selectedCategoryId} // Pasamos el ID
-            onStatsChange={handleFeedStatsChange}
+    // Usamos 'w-full' para asegurar que use todo el espacio del Outlet
+    <div className="w-full space-y-6">
+      
+      {/* Barra de Búsqueda Sticky
+          - top-0: Se pega al borde superior del área de scroll (PageLayout main)
+          - z-30: Se mantiene sobre las tarjetas al hacer scroll
+          - mx y px negativos: Para compensar el padding del contenedor padre y que la barra llegue de borde a borde
+      */}
+      <div className="sticky top-0 z-30 -mx-4 px-4 md:-mx-6 md:px-6 py-3 bg-gray-100/90 backdrop-blur-md border-b border-gray-200 shadow-sm transition-all">
+        <div className="max-w-7xl mx-auto">
+          <SearchAndFilter
+            searchTerm={searchTerm}
+            selectedCategory={selectedCategory}
+            categories={categories}
+            onSearchChange={handleSearchChange}
+            onCategoryChange={handleCategoryChange}
+            onClearFilters={handleClearFilters}
+            hasResults={feedStats.hasResults}
+            totalResults={feedStats.totalResults}
           />
-        </main>
+        </div>
+      </div>
+
+      {/* Área del Feed */}
+      <div className="w-full max-w-7xl mx-auto min-h-[500px]">
+        <InfiniteFeed
+          searchTerm={searchTerm.trim()}
+          selectedCategoryId={selectedCategoryId}
+          onStatsChange={handleFeedStatsChange}
+        />
       </div>
     </div>
-  );
+  )
 }

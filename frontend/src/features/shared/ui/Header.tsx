@@ -1,180 +1,185 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
-import styles from './Header.module.css'
-import LogoMUCT from '@/assets/img/logoMUCT.png'
-import UserDefault from '@/assets/img/user_default.png'
-import { LogoutUser } from '@/features/shared/Shared.Types/LogoutUser'
+import React, { useState } from "react"
+import { NavLink, useNavigate, useLocation } from "react-router-dom"
+import { motion } from "framer-motion"
+import { useAuth } from "@/app/context/AuthContext"
+
+// UI Components
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Input } from "@/components/ui/input"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet"
+
+// Icons
+import { 
+  Menu, Search, Home, PlusSquare, FileText, 
+  HelpCircle, Info, LogOut, User 
+} from "lucide-react"
+
+// Assets
+import LogoMUCT from "@/assets/img/logoMUCT.png"
+import UserDefault from "@/assets/img/user_default.png"
 
 export const Header: React.FC = () => {
-  const [open, setOpen] = useState(false)
-  const panelRef = useRef<HTMLDivElement | null>(null)
-  const searchInputRef = useRef<HTMLInputElement | null>(null)
+  const [isSearchFocused, setIsSearchFocused] = useState(false)
   const navigate = useNavigate()
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    if (open) window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open])
-
-  useEffect(() => {
-    const body = document.body
-    if (open) {
-      const prev = (body as any).style.overflow
-      body.setAttribute('data-prev-overflow', prev)
-      ;(body as any).style.overflow = 'hidden'
-      setTimeout(() => { searchInputRef.current?.focus() }, 0)
-    } else {
-      const prev = body.getAttribute('data-prev-overflow') || ''
-      ;(body as any).style.overflow = prev
-      body.removeAttribute('data-prev-overflow')
-    }
-    return () => {
-      ;(body as any).style.overflow = body.getAttribute('data-prev-overflow') || ''
-      body.removeAttribute('data-prev-overflow')
-    }
-  }, [open])
-
-  useEffect(() => {
-    function onClick(e: MouseEvent) {
-      if (!open) return
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        const toggle = document.getElementById('menu-toggle-btn')
-        if (toggle && toggle.contains(e.target as Node)) return
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', onClick)
-    return () => document.removeEventListener('mousedown', onClick)
-  }, [open])
+  const location = useLocation()
+  const { user, logout } = useAuth()
+  const [isOpen, setIsOpen] = useState(false)
 
   const handleLogout = () => {
-    try {
-      const logoutUseCase = new LogoutUser()
-      logoutUseCase.execute()
-      
-      // Cerrar menú móvil si está abierto
-      setOpen(false)
-      
-      // Redireccionar al login
-      navigate('/login', { replace: true })
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error)
-      alert('Hubo un error al cerrar sesión. Por favor, intenta nuevamente.')
+    logout()
+    setIsOpen(false)
+    navigate("/login", { replace: true })
+  }
+
+  const getPageTitle = () => {
+    switch(location.pathname) {
+      case '/home': return 'Marketplace';
+      case '/crear': return 'Crear Publicación';
+      case '/mis-publicaciones': return 'Mis Publicaciones';
+      case '/perfil': return 'Mi Perfil';
+      case '/chats': return 'Mensajes';
+      case '/ayuda': return 'Centro de Ayuda';
+      default: return '';
     }
   }
 
   return (
-    <header className={styles.headerRoot}>
-      <div className={styles.headerInner}>
-        <button
-          id="menu-toggle-btn"
-          type="button"
-          className={styles.menuToggle}
-          aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
-          aria-expanded={open}
-          aria-controls="mobile-menu-panel"
-          data-open={open}
-          onClick={() => setOpen(o => !o)}
-        >
-          <span className={styles.burger} />
-        </button>
-
-        <div className={styles.logoArea}>      
-          <div className={styles.logoPlaceholder} aria-hidden="true">
-            <img
-              src={LogoMUCT}
-              alt="Marketplace UCT"
-              className={styles.logoImg}
-              decoding="async"
-              fetchPriority="high"
-            />
-          </div>
-          <span>Marketplace UCT</span>
-        </div>
-
-        <nav className={styles.nav} aria-label="Principal">
-          <ul className={styles.navList}>
-            <li><NavLink className={styles.navLink} to="/home">Inicio</NavLink></li>
-            <li><NavLink className={styles.navLink} to="/crear">Crear Publicación</NavLink></li>
-            <li><NavLink className={styles.navLink} to="/mis-publicaciones">Mis Publicaciones</NavLink></li>
-            <li><NavLink className={styles.navLink} to='/Ayuda'>Ayuda</NavLink></li>
-            <li><NavLink className={styles.navLink} to="/about">Acerca de</NavLink></li>
-          </ul>
-        </nav>
-
-        <div className={styles.actions}>
-          <NavLink to="/perfil" className={styles.profileLink} aria-label="Perfil usuario">
-            <img 
-              src={UserDefault} 
-              alt="Usuario" 
-              className={styles.profileAvatar}
-            />
-            <span>Perfil</span>
-          </NavLink>
+    // CAMBIO CLAVE: Quitamos 'bg-white/80 backdrop-blur' de aquí si queremos que sea sólido
+    // y aseguramos w-full
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white">
+      
+      {/* CAMBIO CLAVE: Quitamos 'container mx-auto'. Usamos 'w-full' y padding fluido */}
+      <div className="flex h-16 w-full items-center justify-between px-4 md:px-6 lg:px-8">
+        
+        {/* --- IZQUIERDA --- */}
+        <div className="flex items-center gap-4">
           
-          <button
-            onClick={handleLogout}
-            className={styles.logoutButton}
-            aria-label="Cerrar sesión"
-            title="Cerrar sesión"
-          >
-            <span className={styles.logoutAvatar} aria-hidden="true" />
-            <span>Salir</span>
-          </button>
-        </div>
-      </div>
+          {/* Mobile Menu Trigger */}
+          <div className="lg:hidden">
+            <Sheet open={isOpen} onOpenChange={setIsOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="-ml-2 text-slate-700">
+                  <Menu className="h-6 w-6" />
+                </Button>
+              </SheetTrigger>
+              
+              <SheetContent side="left" className="w-[300px] pr-0">
+                <div className="px-2 mb-6">
+                  <SheetTitle className="flex items-center gap-2 mb-2">
+                    <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                      <img src={LogoMUCT} alt="Logo" className="h-5 w-auto brightness-0 invert" />
+                    </div>
+                    <span className="font-bold text-lg">MarketUCT</span>
+                  </SheetTitle>
+                  <SheetDescription>Menú principal</SheetDescription>
+                </div>
 
-      <div
-        id="mobile-menu-panel"
-        ref={panelRef}
-        className={`${styles.mobilePanel} ${open ? styles.panelOpen : ''}`}
-      >
-        <div className={styles.mobilePanelInner}>
-          <nav aria-label="Menú móvil principal">
-            <ul className={styles.mobileNavList}>
-              <li><NavLink to="/home" onClick={() => setOpen(false)}>Inicio</NavLink></li>
-              <li><NavLink to="/crear" onClick={() => setOpen(false)}>Crear Publicación</NavLink></li>
-              <li><NavLink to="/mis-publicaciones" onClick={() => setOpen(false)}>Mis Publicaciones</NavLink></li>
-              <li><NavLink to="/ayuda" onClick={() => setOpen(false)}>Ayuda</NavLink></li>
-              <li><NavLink to="/about" onClick={() => setOpen(false)}>Acerca de</NavLink></li>
-            </ul>
-          </nav>
-          <div className="mobileSearch">
-            <form className={styles.searchBar} role="search" onSubmit={(e) => { e.preventDefault(); setOpen(false) }}>
-              <span className={styles.searchIcon} aria-hidden="true">🔍</span>
-              <input
-                type="search"
-                className={styles.searchInput}
-                placeholder="Buscar publicaciones..."
-                aria-label="Buscar"
-                name="q"
-                autoComplete="off"
-                ref={searchInputRef}
-              />
-            </form>
+                <div className="flex flex-col space-y-1 px-2">
+                  <MobileNavLink to="/home" icon={<Home className="h-5 w-5" />} label="Inicio" onClick={() => setIsOpen(false)} />
+                  <MobileNavLink to="/crear" icon={<PlusSquare className="h-5 w-5" />} label="Crear" onClick={() => setIsOpen(false)} />
+                  <MobileNavLink to="/mis-publicaciones" icon={<FileText className="h-5 w-5" />} label="Mis Posts" onClick={() => setIsOpen(false)} />
+                  <MobileNavLink to="/ayuda" icon={<HelpCircle className="h-5 w-5" />} label="Ayuda" onClick={() => setIsOpen(false)} />
+                </div>
+
+                <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center gap-3 mb-4 cursor-pointer" onClick={() => { setIsOpen(false); navigate("/perfil") }}>
+                    <Avatar className="h-10 w-10 border border-white shadow-sm">
+                      <AvatarImage src={user?.fotoPerfilUrl || UserDefault} />
+                      <AvatarFallback>{user?.usuario?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{user?.usuario}</p>
+                      <p className="text-xs text-slate-500 truncate max-w-[180px]">{user?.email}</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" className="w-full justify-start text-red-600 hover:bg-red-50" onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
-          <div className={styles.mobilePanelFooter}>
-            <NavLink to="/perfil" className={styles.profileLink} aria-label="Perfil usuario" onClick={() => setOpen(false)}>
-              <img 
-                src={UserDefault} 
-                alt="Usuario" 
-                className={styles.profileAvatar}
-              />
-              <span>Perfil</span>
-            </NavLink>
-            
-            <button
-              onClick={handleLogout}
-              className={styles.logoutButtonMobile}
-              aria-label="Cerrar sesión"
-            >
-              <span className={styles.logoutAvatar} aria-hidden="true" />
-              <span>Salir</span>
-            </button>
+
+          {/* Mobile Logo */}
+          <div className="lg:hidden flex items-center gap-2" onClick={() => navigate("/home")}>
+            <img src={LogoMUCT} alt="Logo" className="h-8 w-auto" />
+            <span className="font-bold text-lg text-slate-900">MarketUCT</span>
           </div>
+
+          {/* Desktop Page Title */}
+          <div className="hidden lg:block">
+            <h2 className="text-xl font-semibold text-slate-800 tracking-tight">
+              {getPageTitle()}
+            </h2>
+          </div>
+        </div>
+
+        {/* --- DERECHA --- */}
+        <div className="flex items-center gap-3 md:gap-4">
+          
+          {/* Barra de búsqueda */}
+          <div className={`relative hidden md:block transition-all duration-300 ${isSearchFocused ? 'w-72 lg:w-96' : 'w-64'}`}>
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Input
+              type="search"
+              placeholder="Buscar..."
+              className="pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-all rounded-full h-10"
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+            />
+          </div>
+
+          <Button variant="ghost" size="icon" className="md:hidden text-slate-600">
+            <Search className="h-5 w-5" />
+          </Button>
+
+          {/* User Menu */}
+          <div className="hidden md:block">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-slate-100 p-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+                  <Avatar className="h-9 w-9 border border-slate-200 transition-transform hover:scale-105">
+                    <AvatarImage src={user?.fotoPerfilUrl || UserDefault} className="object-cover" />
+                    <AvatarFallback className="bg-blue-100 text-blue-700 font-bold">
+                      {user?.usuario?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{user?.usuario}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/perfil")} className="cursor-pointer">
+                  <User className="mr-2 h-4 w-4" /> Perfil
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/mis-publicaciones")} className="cursor-pointer">
+                  <FileText className="mr-2 h-4 w-4" /> Mis Publicaciones
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/ayuda")} className="cursor-pointer">
+                  <HelpCircle className="mr-2 h-4 w-4" /> Ayuda
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50">
+                  <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
         </div>
       </div>
     </header>
@@ -182,3 +187,18 @@ export const Header: React.FC = () => {
 }
 
 export default Header
+
+const MobileNavLink = ({ to, icon, label, onClick }: any) => {
+  const location = useLocation()
+  const isActive = location.pathname === to
+  return (
+    <NavLink
+      to={to}
+      onClick={onClick}
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${isActive ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"}`}
+    >
+      <span className={isActive ? "text-blue-600" : "text-slate-400"}>{icon}</span>
+      {label}
+    </NavLink>
+  )
+}

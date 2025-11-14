@@ -1,7 +1,7 @@
 // src/components/MiniSidebar.tsx (VERSION REFRACTORIZADA CON NUEVOS COLORES)
 
 import { Link } from "react-router-dom";
-import logo from "../../../../assets/img/logouct.png";
+import logo from "@/assets/img/logouct.png"; // Mantén tu logo aquí
 
 type SidebarProps = {
   active?: "marketplace" | "chats";

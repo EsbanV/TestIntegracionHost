@@ -1,396 +1,413 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
-import { ChatHeader } from './DM.Components/ChatHeader'
-import { ChatWindow } from './DM.Components/ChatWindow'
-import { ChatInput } from './DM.Components/ChatInput'
-import { ChatList } from './DM.Components/ChatList' // ya presente
-import { MiniSidebar } from './DM.Components/MiniSidebar'
-import type { Chat, Mensaje } from '@/features/DM/DM.Types/chat'
-import { MockChatWS } from '@/features/DM/DM.Hooks/MockChatWS'
-import { mockChats } from '@/features/DM/DM.Hooks/mockChats'
-import React from 'react'
-import ChatRules from './DM.Components/ChatRules' // aseguro import presente
+import { motion, AnimatePresence } from 'framer-motion'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
 
+// Icons
+import { 
+  LuSend, LuPaperclip, LuSmile, LuSearch, LuEllipsisVertical , 
+  LuCheck, LuCheckCheck, LuClock, LuX, LuMessageSquare, LuImage 
+} from 'react-icons/lu'
+
+// Hooks & Context (Ajusta las rutas según tu proyecto)
+import { useAuth } from '@/app/context/AuthContext'
+import { MockChatWS } from '@/features/DM/DM.Hooks/MockChatWS'
+import { mockChats as rawMockChats } from '@/features/shared/Shared.Repositories/mockChats'
+
+// --- TIPOS ---
+type EstadoMensaje = 'enviando' | 'enviado' | 'recibido' | 'leido' | 'error'
+
+interface Mensaje {
+  id: string
+  texto: string
+  autor: 'yo' | 'otro'
+  hora: string
+  estado?: EstadoMensaje
+  imagenUrl?: string
+  clientTempId?: string
+}
+
+interface Chat {
+  id: number
+  nombre: string
+  avatar?: string
+  ultimoMensaje?: string
+  mensajes: Mensaje[]
+  noLeidos?: number
+  online?: boolean
+}
+
+// --- HELPERS ---
+const horaActual = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+// --- COMPONENTE PRINCIPAL ---
+export default function ChatPage() {
+  const { API, WS_URL } = useEnv()
+  const location = useLocation()
+  const { user } = useAuth()
+  
+  // Estado
+  const [chats, setChats] = useState<Chat[]>([])
+  const [activeChatId, setActiveChatId] = useState<number | null>(null)
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list')
+  
+  // Refs
+  const ws = useRef<WebSocket | MockChatWS | null>(null)
+  const isMockWS = !WS_URL || WS_URL === "mock"
+
+  // 1. Cargar Chats (Inicial)
+  useEffect(() => {
+    // Mock Data inicial
+    const formattedMockChats: Chat[] = rawMockChats.map((c: any) => ({
+      ...c,
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.id}`,
+      mensajes: c.mensajes.map((m: any) => ({ ...m, id: String(m.id) })),
+      online: Math.random() > 0.5,
+      noLeidos: Math.floor(Math.random() * 3)
+    }))
+    setChats(formattedMockChats)
+    
+    // Si es desktop, seleccionar el primero por defecto
+    if (window.innerWidth >= 768 && formattedMockChats.length > 0) {
+      setActiveChatId(formattedMockChats[0].id)
+    }
+  }, [])
+
+  // 2. WebSocket Logic (Simplificada para el ejemplo unificado)
+  useEffect(() => {
+    const socket = isMockWS ? new MockChatWS() : new WebSocket(`${WS_URL}`)
+    ws.current = socket
+
+    socket.onmessage = (evt: { data: string }) => {
+      const data = JSON.parse(evt.data)
+      if (data.tipo === 'mensaje') {
+        setChats(prev => prev.map(c => {
+          if (c.id === data.chatId) {
+            return {
+              ...c,
+              ultimoMensaje: data.mensaje.texto,
+              mensajes: [...c.mensajes, { ...data.mensaje, estado: 'recibido' }]
+            }
+          }
+          return c
+        }))
+      }
+    }
+    return () => socket.close()
+  }, [])
+
+  // 3. Manejar Envío
+  const handleSend = useCallback((texto: string, file?: File | null) => {
+    if (!activeChatId) return
+
+    const tempId = `temp-${Date.now()}`
+    const nuevoMensaje: Mensaje = {
+      id: tempId,
+      texto,
+      autor: 'yo',
+      hora: horaActual(),
+      estado: 'enviando',
+      imagenUrl: file ? URL.createObjectURL(file) : undefined
+    }
+
+    // Actualización Optimista
+    setChats(prev => prev.map(c => {
+      if (c.id === activeChatId) {
+        return {
+          ...c,
+          ultimoMensaje: texto || (file ? '📷 Imagen' : ''),
+          mensajes: [...c.mensajes, nuevoMensaje]
+        }
+      }
+      return c
+    }))
+
+    // Simular respuesta del servidor
+    setTimeout(() => {
+      setChats(prev => prev.map(c => {
+        if (c.id === activeChatId) {
+          return {
+            ...c,
+            mensajes: c.mensajes.map(m => 
+              m.id === tempId ? { ...m, estado: 'enviado' } : m
+            )
+          }
+        }
+        return c
+      }))
+    }, 1000)
+  }, [activeChatId])
+
+  const activeChat = chats.find(c => c.id === activeChatId)
+
+  return (
+    <div className="flex h-[calc(100vh-4rem)] bg-slate-50 overflow-hidden rounded-xl border border-slate-200 shadow-sm m-4 md:m-6">
+      
+      {/* --- PANEL IZQUIERDO: LISTA DE CHATS --- */}
+      <div className={`${
+        mobileView === 'list' ? 'flex' : 'hidden md:flex'
+      } w-full md:w-80 lg:w-96 flex-col border-r border-slate-200 bg-white`}>
+        
+        {/* Header Lista */}
+        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+          <h2 className="text-xl font-bold text-slate-800">Mensajes</h2>
+          <div className="p-2 bg-blue-50 text-blue-600 rounded-full">
+            <LuMessageSquare size={20} />
+          </div>
+        </div>
+
+        {/* Buscador */}
+        <div className="px-4 py-3">
+          <div className="relative">
+            <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <input 
+              placeholder="Buscar chat..." 
+              className="w-full bg-slate-100 text-sm pl-9 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Lista Scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          {chats.map(chat => (
+            <div
+              key={chat.id}
+              onClick={() => {
+                setActiveChatId(chat.id)
+                setMobileView('chat')
+              }}
+              className={`group flex items-center gap-3 p-4 cursor-pointer transition-all duration-200 hover:bg-slate-50 border-l-4 ${
+                activeChatId === chat.id 
+                  ? 'border-blue-500 bg-blue-50/50' 
+                  : 'border-transparent'
+              }`}
+            >
+              <div className="relative">
+                <div className="w-12 h-12 rounded-full bg-slate-200 overflow-hidden">
+                  <img src={chat.avatar} alt={chat.nombre} className="w-full h-full object-cover" />
+                </div>
+                {chat.online && (
+                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full shadow-sm"></span>
+                )}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-baseline mb-1">
+                  <h3 className={`text-sm font-semibold truncate ${activeChatId === chat.id ? 'text-blue-700' : 'text-slate-700'}`}>
+                    {chat.nombre}
+                  </h3>
+                  <span className="text-[10px] text-slate-400">10:42 AM</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <p className="text-xs text-slate-500 truncate max-w-[140px]">
+                    {chat.ultimoMensaje}
+                  </p>
+                  {chat.noLeidos ? (
+                    <span className="flex items-center justify-center w-5 h-5 bg-blue-600 text-white text-[10px] font-bold rounded-full shadow-sm">
+                      {chat.noLeidos}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* --- PANEL DERECHO: CONVERSACIÓN --- */}
+      <div className={`${
+        mobileView === 'chat' ? 'flex' : 'hidden md:flex'
+      } flex-1 flex-col bg-slate-50/50`}>
+        
+        {activeChat ? (
+          <>
+            {/* Header Chat */}
+            <div className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm z-10">
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setMobileView('list')}
+                  className="md:hidden p-2 -ml-2 hover:bg-slate-100 rounded-full text-slate-600"
+                >
+                  <LuX size={20} />
+                </button>
+                
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">
+                    <img src={activeChat.avatar} alt={activeChat.nombre} className="w-full h-full object-cover" />
+                  </div>
+                  {activeChat.online && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>}
+                </div>
+                
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm">{activeChat.nombre}</h3>
+                  <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                    {activeChat.online ? '● En línea' : 'Desconectado'}
+                  </span>
+                </div>
+              </div>
+              
+              <button className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+                <LuEllipsisVertical  size={20} />
+              </button>
+            </div>
+
+            {/* Área de Mensajes */}
+            <ChatMessages mensajes={activeChat.mensajes} />
+
+            {/* Input Area */}
+            <ChatInputBox onSend={handleSend} />
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 text-center">
+            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+              <LuMessageSquare size={40} />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-600">¡Comienza a chatear!</h3>
+            <p className="text-sm max-w-xs mt-2">Selecciona un contacto de la izquierda para iniciar una conversación.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// --- SUBCOMPONENTE: LISTA DE MENSAJES ---
+const ChatMessages = ({ mensajes }: { mensajes: Mensaje[] }) => {
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [mensajes])
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4" ref={scrollRef}>
+      {mensajes.map((msg, idx) => {
+        const esPropio = msg.autor === 'yo'
+        const mostrarAvatar = !esPropio && (idx === 0 || mensajes[idx - 1].autor === 'yo')
+        
+        return (
+          <motion.div 
+            key={msg.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`flex w-full ${esPropio ? 'justify-end' : 'justify-start'}`}
+          >
+            <div className={`flex max-w-[80%] md:max-w-[70%] gap-2 ${esPropio ? 'flex-row-reverse' : 'flex-row'}`}>
+              
+              {/* Burbuja */}
+              <div className={`
+                relative px-4 py-2.5 rounded-2xl text-sm shadow-sm
+                ${esPropio 
+                  ? 'bg-blue-600 text-white rounded-br-none' 
+                  : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
+                }
+              `}>
+                {msg.imagenUrl && (
+                  <div className="mb-2 -mx-2 -mt-2 rounded-t-xl overflow-hidden">
+                    <img src={msg.imagenUrl} alt="adjunto" className="max-w-full h-auto object-cover" />
+                  </div>
+                )}
+                
+                <p className="leading-relaxed whitespace-pre-wrap">{msg.texto}</p>
+                
+                {/* Metadata (Hora y Estado) */}
+                <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${esPropio ? 'text-blue-100' : 'text-slate-400'}`}>
+                  <span>{msg.hora}</span>
+                  {esPropio && (
+                    <span>
+                      {msg.estado === 'enviando' && <LuClock size={12} />}
+                      {msg.estado === 'enviado' && <LuCheck size={12} />}
+                      {msg.estado === 'recibido' && <LuCheckCheck size={12} />}
+                      {msg.estado === 'leido' && <LuCheckCheck size={12} className="text-blue-200" />}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )
+      })}
+    </div>
+  )
+}
+
+// --- SUBCOMPONENTE: INPUT ---
+const ChatInputBox = ({ onSend }: { onSend: (t: string, f?: File) => void }) => {
+  const [text, setText] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!text.trim()) return
+    onSend(text)
+    setText('')
+  }
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      onSend('', e.target.files[0])
+    }
+  }
+
+  return (
+    <div className="p-4 bg-white border-t border-slate-200">
+      <form onSubmit={handleSubmit} className="flex items-end gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-50 transition-all">
+        
+        <button 
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+        >
+          <LuPaperclip size={20} />
+        </button>
+        <input 
+          type="file" 
+          hidden 
+          ref={fileInputRef} 
+          accept="image/*"
+          onChange={handleFile}
+        />
+
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              handleSubmit(e)
+            }
+          }}
+          placeholder="Escribe un mensaje..."
+          className="flex-1 bg-transparent border-none focus:ring-0 resize-none py-2 text-sm max-h-32 text-slate-800 placeholder:text-slate-400"
+          rows={1}
+          style={{ minHeight: '40px' }}
+        />
+
+        <button 
+          type="button"
+          className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors"
+        >
+          <LuSmile size={20} />
+        </button>
+
+        <button 
+          type="submit"
+          disabled={!text.trim()}
+          className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
+        >
+          <LuSend size={18} />
+        </button>
+      </form>
+    </div>
+  )
+}
+
+// --- HOOK DE ENTORNO ---
 const useEnv = () => {
   const API = useMemo(() => import.meta.env.VITE_API_URL as string, [])
   const WS_URL = useMemo(() => import.meta.env.VITE_WS_URL as string, [])
   return { API, WS_URL }
-}
-const horaActual = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-
-export default function ChatPage() {
-  const { API, WS_URL } = useEnv()
-  const location = useLocation()
-  const [chats, setChats] = useState<Chat[]>([])
-  const [chatActivo, setChatActivo] = useState<number | null>(null)
-  const userIdActual = useMemo(() => 'u1', [])
-  const ws = useRef<WebSocket | MockChatWS | null>(null)
-  const isMockWS = !WS_URL || WS_URL === "mock"
-  const previewsRef = useRef<Record<string,string>>({})
-
-  // 0) Target opcional para iniciar/abrir chat (desde /chat?toId=...&toName=...&toAvatar=... o location.state.toUser)
-  const startTarget = useMemo(() => {
-    const params = new URLSearchParams(location.search)
-    const toId = params.get('toId') || params.get('to') || undefined
-    const toName = params.get('toName') || undefined
-    const toAvatar = params.get('toAvatar') || undefined
-    const fromState = (location.state as any)?.toUser
-    const merged = {
-      id: String(fromState?.id ?? toId ?? ''),
-      nombre: fromState?.nombre ?? toName ?? '',
-      avatarUrl: fromState?.avatarUrl ?? toAvatar ?? ''
-    }
-    if (!merged.id && !merged.nombre) return null
-    return merged
-  }, [location.search, location.state])
-
-  /* 1) Cargar lista de chats */
-  useEffect(() => {
-    if (isMockWS) {
-      setChats(mockChats)
-      setChatActivo(mockChats[0]?.id ?? null)
-      return
-    }
-    (async () => {
-      try {
-        const res = await fetch(`${API}/chats`, { credentials: 'include' })
-        if (!res.ok) throw new Error(String(res.status))
-        const data: Chat[] = await res.json()
-        setChats(data)
-        // Si no viene target desde la URL/state, selecciona el primero
-        if (!startTarget && data.length) setChatActivo((data[0] as any).id)
-      } catch (e) {
-        console.error('[ChatPage] Error cargando chats:', e)
-      }
-    })()
-  }, [API, startTarget])
-
-  /* 1.1) Si viene un target (?toId / state), buscar chat y si no existe, crearlo (o stub local) */
-  const usedStartRef = useRef(false)
-  useEffect(() => {
-    if (!startTarget) return
-    if (usedStartRef.current) return
-    if (!chats) return
-
-    const findExisting = (list: Chat[]) =>
-      list.find((c: any) => {
-        // Intenta por id del partner o por nombre
-        const byId =
-          String(c.partnerId ?? '') === String(startTarget.id ?? '') ||
-          (Array.isArray(c.participantes) &&
-            c.participantes.some((p: any) => String(p?.id ?? '') === String(startTarget.id ?? '')))
-        const byName =
-          String(c.partnerName ?? '').toLowerCase() === String(startTarget.nombre ?? '').toLowerCase() ||
-          String(c.nombre ?? '').toLowerCase() === String(startTarget.nombre ?? '').toLowerCase() ||
-          String(c.titulo ?? '').toLowerCase() === String(startTarget.nombre ?? '').toLowerCase()
-        return byId || byName
-      })
-
-    const ensureChat = async () => {
-      usedStartRef.current = true
-
-      // 1) Si ya existe, selecciona
-      const existing = findExisting(chats)
-      if (existing) {
-        setChatActivo((existing as any).id)
-        return
-      }
-
-      // 2) Intentar crearlo en backend (ajusta endpoint si tu API usa otro)
-      try {
-        const res = await fetch(`${API}/chats`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            toUserId: startTarget.id || undefined,
-            toName: startTarget.nombre || undefined,
-            toAvatar: startTarget.avatarUrl || undefined
-          })
-        })
-        if (res.ok) {
-          const created: Chat = await res.json()
-          setChats(prev => [created, ...prev])
-          setChatActivo((created as any).id)
-          return
-        }
-      } catch (e) {
-        console.warn('[ChatPage] No se pudo crear chat en backend, usando stub local:', e)
-      }
-
-      // 3) Fallback local (stub) para permitir conversación inmediata
-      const tempId = Number(Date.now())
-      const stub: any = {
-        id: tempId,
-        // Campos comunes usados por tus componentes de UI (ajusta si hace falta)
-        partnerId: startTarget.id ?? undefined,
-        partnerName: startTarget.nombre || 'Usuario',
-        partnerAvatar: startTarget.avatarUrl || undefined,
-        ultimoMensaje: '',
-        mensajes: [],
-        participantes: startTarget.id
-          ? [{ id: startTarget.id, nombre: startTarget.nombre, avatarUrl: startTarget.avatarUrl }]
-          : [{ id: 'desconocido', nombre: startTarget.nombre || 'Usuario', avatarUrl: startTarget.avatarUrl }]
-      }
-      setChats(prev => [stub as Chat, ...prev])
-      setChatActivo(tempId)
-    }
-
-    ensureChat()
-  }, [API, chats, startTarget])
-
-  /* 2) Conectar WebSocket una vez */
-  useEffect(() => {
-    const socket = isMockWS
-      ? new MockChatWS()
-      : new WebSocket(`${WS_URL}?userId=${encodeURIComponent(userIdActual)}`)
-    ws.current = socket
-
-    socket.onopen = () => console.log('[ChatPage] WS conectado')
-    socket.onclose = () => console.log('[ChatPage] WS cerrado')
-    socket.onerror = (e: any) => console.error('[ChatPage] WS error:', e)
-    socket.onmessage = (evt: { data: string }) => {
-      const data = JSON.parse(evt.data)
-
-      // mensaje entrante
-      if (data.tipo === 'nuevo' || data.tipo === 'mensaje') {
-        const incoming: any = {
-          id: data.id,
-          texto: data.texto,
-          autor: data.autor,
-          hora: data.hora ?? horaActual(),
-          estado: data.estado ?? 'recibido',
-          // campo opcional que usamos para deduplicación optimista
-          clientTempId: data.clientTempId ?? undefined,
-          imagenUrl: data.imagenUrl ?? undefined
-        }
-
-        // si servidor no devuelve imagen pero tenemos preview optimista, usarla
-        if (!incoming.imagenUrl && incoming.clientTempId && previewsRef.current[incoming.clientTempId]) {
-          incoming.imagenUrl = previewsRef.current[incoming.clientTempId]
-          // no revocamos todavía: esperar a que servidor devuelva URL real o al desmontar
-        }
-
-        setChats(prev =>
-          (prev as any).map((c: any) => {
-            if (String(c.id) !== String(data.chatId ?? data.chat?.id ?? data.toChatId)) return c
-
-            const mensajes = Array.isArray(c.mensajes) ? [...c.mensajes] : []
-
-            const idx = mensajes.findIndex((m: any) =>
-              m.id === incoming.id ||
-              (incoming.clientTempId && m.clientTempId === incoming.clientTempId) ||
-              (m.texto === incoming.texto && m.autor === incoming.autor && m.estado === 'enviando')
-            )
-
-            if (idx > -1) {
-              // reemplazar temporal por confirmado (mantener imagen si incoming tiene y temporal tenía preview)
-              mensajes[idx] = { ...mensajes[idx], ...incoming, estado: incoming.estado ?? 'recibido' }
-            } else {
-              mensajes.push(incoming)
-            }
-
-            return { ...c, mensajes, ultimoMensaje: incoming.texto }
-          })
-        )
-      }
-
-      // actualización de estado
-      if (data.tipo === 'estado') {
-        setChats(prev =>
-          (prev as any).map((c: any) => {
-            if (String(c.id) !== String(data.chatId)) return c
-            const mensajes = (c.mensajes || []).map((m: any) =>
-              m.id === data.mensajeId || m.clientTempId === data.clientTempId
-                ? { ...m, estado: data.estado }
-                : m
-            )
-            return { ...c, mensajes }
-          })
-        )
-      }
-    }
-
-    return () => socket.close()
-  }, [WS_URL, userIdActual, isMockWS])
-
-  // 3) Unirse al chat cuando cambie
-  useEffect(() => {
-    if (!chatActivo || !ws.current) return
-    if (!isMockWS && ws.current.readyState !== WebSocket.OPEN) return
-    ws.current.send(JSON.stringify({ tipo: 'join', chatId: chatActivo, userId: userIdActual }))
-  }, [chatActivo, userIdActual, isMockWS])
-
-  // 4) Enviar mensaje
-  const handleSend = useCallback(
-    async (texto: string, file?: File|null) => {
-      if (!chatActivo) return
-
-      const tempId = 'temp-' + Date.now()
-      const clientTempId = tempId
-      const nuevo: Mensaje & { clientTempId?: string; imagenUrl?: string } = {
-        id: tempId,
-        texto,
-        autor: 'yo',
-        estado: 'enviando',
-        hora: horaActual(),
-        clientTempId
-      }
-
-      // si hay archivo, crear preview optimista (se revocará cuando se confirme)
-      if (file) {
-        try {
-          const url = URL.createObjectURL(file)
-          nuevo.imagenUrl = url
-          previewsRef.current[clientTempId] = url
-        } catch (e) { /* noop */ }
-      }
-
-      // añadir optimista
-      setChats(prev =>
-        prev.map((c: any) =>
-          c.id === chatActivo ? { ...c, mensajes: [...(c.mensajes || []), nuevo], ultimoMensaje: texto || (file ? "📷 Imagen" : "") } : c
-        )
-      )
-
-      // mock WS: simular confirmación
-      if (isMockWS) {
-        // simula confirmación: marcar como enviado y mantener la imagen optimista (imagenUrl)
-        setTimeout(() => {
-          setChats(prev =>
-            prev.map((c: any) =>
-              c.id === chatActivo
-                ? {
-                    ...c,
-                    mensajes: (c.mensajes || []).map((m: any) =>
-                      m.clientTempId === clientTempId
-                        ? {
-                            ...m,
-                            id: 'm-' + Date.now(),
-                            estado: 'enviado',
-                            // conservar imagen optimista si la tenía
-                            imagenUrl: m.imagenUrl ?? previewsRef.current[clientTempId]
-                          }
-                        : m
-                    )
-                  }
-                : c
-            )
-          )
-          // EN MODO MOCK NO REVOCAR la objectURL: la dejamos en previewsRef hasta que haya una URL real
-        }, 400)
-        return
-      }
-
-      // enviar al backend (si hay file usar FormData)
-      try {
-        if (file) {
-          const fd = new FormData()
-          fd.append('texto', texto)
-          fd.append('clientTempId', clientTempId)
-          fd.append('file', file)
-          await fetch(`${API}/chats/${chatActivo}/mensajes`, {
-            method: 'POST',
-            credentials: 'include',
-            body: fd
-          })
-        } else {
-          await fetch(`${API}/chats/${chatActivo}/mensajes`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ texto, clientTempId })
-          })
-        }
-        // esperamos WS para confirmar/actualizar estado
-      } catch (e) {
-        console.error('[ChatPage] Error enviando mensaje:', e)
-        // marcar como error localmente y revocar preview
-        setChats(prev =>
-          prev.map((c: any) =>
-            c.id === chatActivo
-              ? {
-                  ...c,
-                  mensajes: (c.mensajes || []).map((m: any) =>
-                    m.clientTempId === clientTempId ? { ...m, estado: 'error' } : m
-                  )
-                }
-              : c
-          )
-        )
-        if (nuevo.imagenUrl) URL.revokeObjectURL(nuevo.imagenUrl)
-      }
-    },
-    [API, chatActivo, isMockWS]
-  )
-
-  // 5) Marcar leído al entrar/actualizar chat
-  useEffect(() => {
-    if (!chatActivo || !ws.current) return
-    const chat: any = chats.find((c: any) => c.id === chatActivo)
-    const last = chat?.mensajes?.[chat.mensajes.length - 1]
-    if (last?.id) {
-      ws.current.send(JSON.stringify({ tipo: 'estado', chatId: chatActivo, estado: 'leido', mensajeId: last.id }))
-    }
-  }, [chatActivo, chats])
-
-  const chatSeleccionado = (chats as any).find((c: any) => c.id === chatActivo) ?? null
-
-  useEffect(() => {
-    return () => {
-      // revocar todas las objectURLs creadas al desmontar
-      Object.values(previewsRef.current).forEach((u) => {
-        try { URL.revokeObjectURL(u) } catch {}
-      })
-      previewsRef.current = {}
-    }
-  }, [])
-
-  return (
-    // CAMBIO: Fondo principal con un patrón y un color base (simulando la imagen)
-    // Nota: El patrón de fondo visible en la imagen debe ser implementado con CSS externo.
-    // Usaremos un color de fondo base y una clase de placeholder 'bg-pattern-chat'
-    // También ajustamos la rejilla para que ocupe toda la pantalla visible
-    <div className="grid h-screen overflow-hidden max-h-screen grid-cols-[64px_320px_1fr] bg-gray-100 bg-pattern-chat">
-
-      {/* COLUMNA 1: MiniSidebar (Fondo Amarillo Fuerte) */}
-      <aside className="border-r border-yellow-600 bg-yellow-600 max-h-screen">
-        <MiniSidebar active="chats" />
-      </aside>
-
-      {/* COLUMNA 2: Lista de Chats (Fondo Amarillo) */}
-      <div className="border-r border-yellow-500 min-w-0 min-h-0 max-h-screen flex flex-col bg-yellow-400">
-        {/* CABECERA "Mis Chats" - Azul Oscuro */}
-        <div className="shrink-0 px-4 py-3 border-b border-blue-900 bg-blue-900">
-          <h2 className="text-sm font-semibold text-white">Chats</h2> {/* Cambio de texto y color */}
-        </div>
-
-        {/* Inserto ChatRules inline para que el botón sea visible en la columna de chats */}
-        <div className="shrink-0 px-3 py-2">
-          <ChatRules inline />
-        </div>
-
-        <div className="flex-1 min-h-0 max-h-screen overflow-y-auto overflow-x-hidden">
-          {/* ChatList tiene su propio fondo amarillo, aquí el contenedor es redundante pero se mantiene el flujo */}
-          <ChatList chats={chats} onSelectChat={setChatActivo} chatActivo={chatActivo} />
-        </div>
-      </div>
-
-{/* COLUMNA 3: Conversación (Header fijo + Ventana scrolleable + Input fijo) */}
-      <div className="min-w-0 min-h-0 max-h-screen flex flex-col">
-        {/* Header - Ya tiene el fondo azul oscuro */}
-        <div className="shrink-0">
-          <ChatHeader chatActivo={chatSeleccionado as any} />
-        </div>
-        {/* ChatWindow - Ya tiene el efecto frosted glass */}
-        <div className="flex-1 min-h-0 max-h-screen">
-          <ChatWindow mensajes={(chatSeleccionado as any)?.mensajes ?? []} />
-        </div>
-        {/* ChatInput - Ya tiene el fondo claro/transparente */}
-        <div className="shrink-0">
-          <ChatInput onSend={handleSend} /> {/* AQUÍ ESTÁ EL INPUT */}
-        </div>
-      </div>
-    </div>
-  )
 }

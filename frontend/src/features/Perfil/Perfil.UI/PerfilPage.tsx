@@ -1,141 +1,375 @@
-import React, { useState, useRef } from "react";
-import { useMemo } from "react";
-import { Sidebar } from "@/features/shared/ui/Sidebar";
-import MyPublicationsFeed from "./Perfil.Components/PublicationsFeed";
-import UserDefault from "@/assets/img/user_default.png";
-// CAMBIO: Añadido el import para el logo (ajusta la ruta si es necesario)
-import logo from "@/assets/img/logouct.png"; 
+import { useState, useEffect, useRef } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useAuth } from "@/app/context/AuthContext"
+import { motion, AnimatePresence } from "framer-motion"
 
-const MyPublicationsFeedAny = MyPublicationsFeed as any;
+// UI Components (Shadcn)
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
 
-type Review = {
-  id: string;
-  author: string;
-  rating: number;
-};
+// Icons
+import { 
+  LuPencil, LuSave, LuX, LuMapPin, LuPhone, LuMail, 
+  LuUser, LuCalendar, LuStar, LuShieldCheck, LuLayoutGrid,
+  LuCamera, LuLoader
+} from "react-icons/lu"
 
-type Publication = {
-  id: string;
-  title: string;
-  price: number;
-  status: "Disponible" | "Agotado";
-  imageUrl?: string;
-};
+// Subcomponents
+import MyPublicationsFeed from "./Perfil.Components/PublicationsFeed"
+import UserDefault from "@/assets/img/user_default.png"
 
-// --- Componente StarRating (sin cambios) ---
-function StarRating({ value = 0, size = 18 }: { value?: number; size?: number }) {
-  const full = Math.floor(value);
-  const half = value - full >= 0.5;
-  const total = 5;
-
-  return (
-    <div className="inline-flex items-center gap-1" aria-hidden>
-      {Array.from({ length: total }).map((_, i) => {
-        const fill = i < full ? "currentColor" : i === full && half ? "url(#half)" : "none";
-        return (
-          <svg key={i} width={size} height={size} viewBox="0 0 24 24" className="text-amber-500 flex-shrink-0">
-            <defs>
-              <linearGradient id="half">
-                <stop offset="50%" stopColor="currentColor" />
-                <stop offset="50%" stopColor="transparent" />
-              </linearGradient>
-            </defs>
-            <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21 12 17.27z" fill={fill} stroke="currentColor" strokeWidth="1" />
-          </svg>
-        );
-      })}
-    </div>
-  );
+// --- TIPOS (Sin cambios) ---
+interface UserProfile {
+  id: number
+  correo: string
+  usuario: string
+  nombre: string
+  role: string
+  campus: string | null
+  reputacion: string | number
+  telefono?: string
+  direccion?: string
+  fechaRegistro?: string
+  fotoPerfilUrl?: string
+  resumen?: {
+    totalVentas: number
+    totalProductos: number
+  }
 }
 
-// --- Componente Principal PerfilPage ---
+interface UpdateProfileData {
+  usuario: string
+  campus: string
+  telefono: string
+  direccion: string
+}
+
+// --- API ---
+const fetchProfile = async (token: string | null): Promise<UserProfile> => {
+  if (!token) throw new Error("No token")
+  const res = await fetch("/api/users/profile", {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error("Error al cargar perfil")
+  const data = await res.json()
+  return data.data
+}
+
+const updateProfile = async (data: UpdateProfileData, token: string | null) => {
+  if (!token) throw new Error("No token")
+  const res = await fetch("/api/users/profile", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  })
+  const result = await res.json()
+  if (!res.ok) throw new Error(result.message || "Error al actualizar")
+  return result.user
+}
+
+const uploadProfilePhoto = async (file: File, token: string | null) => {
+  if (!token) throw new Error("No token")
+  
+  const formData = new FormData()
+  formData.append('photo', file)
+
+  const res = await fetch("/api/upload/profile-photo", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  })
+  
+  const result = await res.json()
+  if (!res.ok) throw new Error(result.message || "Error al subir imagen")
+  return result
+}
+
+// --- VARIANTS DE ANIMACIÓN ---
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.2 } }
+}
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } }
+}
+
+// --- COMPONENTE PRINCIPAL ---
 export default function PerfilPage() {
-  const user = {
-    name: "Nombre",
-    email: "nombre@alu.uct.cl",
-    campus: "Campus San Juan Pablo II",
-    rating: 4.5,
-  };
+  const { token } = useAuth()
+  const queryClient = useQueryClient()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  const [isEditing, setIsEditing] = useState(false)
+  const [formData, setFormData] = useState<UpdateProfileData>({
+    usuario: "",
+    campus: "",
+    telefono: "",
+    direccion: "",
+  })
 
-  const reviews: Review[] = [
-    { id: "r1", author: "Usuario", rating: 4.5 },
-    { id: "r2", author: "Usuario", rating: 5 },
-    { id: "r3", author: "Usuario", rating: 4 },
-    { id: "r4", author: "Usuario", rating: 4.5 },
-    { id: "r5", author: "Usuario", rating: 5 },
-    { id: "r6", author: "Usuario", rating: 3.5 },
-  ];
+  const { data: user, isLoading } = useQuery({
+    queryKey: ["userProfile"],
+    queryFn: () => fetchProfile(token),
+    enabled: !!token,
+  })
 
-  const publications: Publication[] = [
-    { id: "p1", title: "Publicación", price: 8900, status: "Disponible" },
-    { id: "p2", title: "Publicación", price: 5900, status: "Disponible" },
-    { id: "p3", title: "Publicación", price: 12900, status: "Agotado" },
-  ];
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        usuario: user.usuario || "",
+        campus: user.campus || "Campus San Juan Pablo II",
+        telefono: user.telefono || "",
+        direccion: user.direccion || "",
+      })
+    }
+  }, [user])
 
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { mutate: saveProfile, isPending: isSaving } = useMutation({
+    mutationFn: (data: UpdateProfileData) => updateProfile(data, token),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["userProfile"] })
+      setIsEditing(false)
+    },
+    onError: (err) => alert(err.message),
+  })
+
+  const { mutate: uploadPhoto, isPending: isUploadingPhoto } = useMutation({
+    mutationFn: (file: File) => uploadProfilePhoto(file, token),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["userProfile"] })
+    },
+    onError: (err) => alert(err.message),
+  })
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) uploadPhoto(file)
+  }
+
+  const reviews = [
+    { id: 1, user: "Ana García", rating: 5, comment: "Excelente vendedor, muy rápido.", date: "Hace 2 días" },
+    { id: 2, user: "Carlos M.", rating: 4, comment: "El producto estaba bien, pero demoró un poco.", date: "Hace 1 semana" },
+  ]
+
+  // --- RENDERIZADO ---
+  // NOTA: Ya NO renderizamos Sidebar ni Header ni <div className="flex h-screen">
+  // Renderizamos directamente el contenido del perfil
   
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-[240px_1fr]">
-      <Sidebar />
-
-      <div className="min-w-0 flex flex-col h-screen">
-        
-        {/* <main> (Todo el contenido de abajo es idéntico al de la respuesta anterior) */}
-        <main 
-          ref={scrollContainerRef as any} // Reutilizamos el ref o definimos uno nuevo para el main
-          className="flex-1 overflow-y-auto max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10 w-full bg-gradient-to-br from-blue-100 to-white scrollbar-hide scroll-smooth"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} // Soluciones para Firefox y IE/Edge
+    <div className="max-w-5xl mx-auto pb-8">
+      {isLoading ? (
+        <ProfileSkeleton />
+      ) : user ? (
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="space-y-6"
         >
-          <section className="flex flex-col items-center gap-4 pt-4 pb-8">
-            <img 
-              src={UserDefault} 
-              alt={user.name} 
-              className="h-24 w-24 rounded-full object-cover border-4 border-white shadow-lg"
-            />
-            <div className="text-center">
-              <h1 className="text-3xl font-bold text-gray-900">{user.name}</h1>
-              <div className="flex items-center justify-center gap-2 mt-2">
-                <StarRating value={user.rating} />
-                <span className="text-sm text-gray-700 font-medium">{user.rating.toFixed(1)}</span>
-              </div>
-              <p className="text-base text-gray-600 mt-2">{user.email}</p>
-              <p className="text-base text-gray-600">{user.campus}</p>
-            </div>
-          </section>
+          {/* --- HERO SECTION --- */}
+          <motion.div variants={itemVariants} className="relative">
+            <div className="h-48 w-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-2xl shadow-sm"></div>
+            
+            <Card className="relative -mt-16 mx-4 md:mx-0 border-none shadow-lg overflow-visible">
+              <CardContent className="pt-0 pb-6 px-6">
+                <div className="flex flex-col md:flex-row gap-6 items-start">
+                  
+                  {/* Avatar */}
+                  <div className="relative -mt-12 group">
+                    <div className="p-1.5 bg-white rounded-full shadow-sm relative">
+                      <Avatar className="h-32 w-32 border-4 border-white shadow-inner">
+                        <AvatarImage 
+                          src={user.fotoPerfilUrl ? `${user.fotoPerfilUrl}` : UserDefault} 
+                          alt={user.usuario} 
+                          className="object-cover" 
+                        />
+                        <AvatarFallback className="text-4xl bg-slate-100 text-slate-400">
+                          {user.usuario.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
 
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Valoraciones</h2>
-            <div className="relative">
-              <div
-                ref={scrollContainerRef}
-                className="grid auto-cols-[calc(33.333%-0.67rem)] grid-flow-col gap-4 overflow-x-auto scrollbar-hide scroll-smooth pb-2"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
-                {reviews.map((r, index) => (
-                  <div
-                    key={r.id}
-                    className="bg-amber-100 border border-amber-300 rounded-xl p-4 flex items-center gap-3 hover:shadow-lg hover:border-amber-400 hover:-translate-y-1 transition-all duration-300 ease-out"
-                    style={{
-                      animationDelay: `${index * 0.05}s`
-                    }}
-                  >
-                    <div className="h-10 w-10 rounded-full bg-gray-200 flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900 truncate">{r.author}</p>
-                      <StarRating value={r.rating} size={16} />
+                      <div 
+                        className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        {isUploadingPhoto ? (
+                          <LuLoader className="text-white w-8 h-8 animate-spin" />
+                        ) : (
+                          <LuCamera className="text-white w-8 h-8" />
+                        )}
+                      </div>
+                      
+                      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+                    </div>
+                    <div className="absolute bottom-2 right-2 bg-green-500 h-5 w-5 rounded-full border-4 border-white" title="Online"></div>
+                  </div>
+
+                  {/* User Info */}
+                  <div className="flex-1 mt-4 md:mt-2 w-full">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div>
+                        <div className="flex items-center gap-3 mb-1">
+                          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{user.usuario}</h1>
+                          <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100">{user.role}</Badge>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
+                          <span className="flex items-center gap-1.5"><LuMail className="w-4 h-4" /> {user.correo}</span>
+                          <span className="flex items-center gap-1.5"><LuCalendar className="w-4 h-4" /> Miembro desde {user.fechaRegistro ? new Date(user.fechaRegistro).getFullYear() : '2024'}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 w-full md:w-auto">
+                        {!isEditing ? (
+                          <Button onClick={() => setIsEditing(true)} variant="outline" className="gap-2 w-full md:w-auto border-blue-200 text-blue-700 hover:bg-blue-50">
+                            <LuPencil className="w-4 h-4" /> Editar Perfil
+                          </Button>
+                        ) : (
+                          <div className="flex gap-2 w-full md:w-auto">
+                            <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSaving}>Cancelar</Button>
+                            <Button onClick={() => saveProfile(formData)} disabled={isSaving} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                              {isSaving ? "Guardando..." : <><LuSave className="w-4 h-4" /> Guardar</>}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          </section>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Tus Publicaciones</h2>
-            <MyPublicationsFeedAny publications={publications} />
-          </section>
-        </main>
+          {/* --- GRID CONTENT --- */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* LEFT COLUMN */}
+            <motion.div variants={itemVariants} className="space-y-6">
+              <Card className="shadow-sm border-slate-200">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2"><LuUser className="text-blue-500" /> Información Personal</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ProfileField label="Nombre" value={user.nombre} isEditing={false} editComponent={<Input value={user.nombre} disabled className="bg-slate-50" />} />
+                  <Separator />
+                  <ProfileField label="Campus" icon={<LuMapPin className="w-4 h-4 text-slate-400" />} value={formData.campus} isEditing={isEditing} editComponent={
+                    <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm" value={formData.campus} onChange={(e) => setFormData({...formData, campus: e.target.value})}>
+                      <option>Campus San Francisco</option>
+                      <option>Campus San Juan Pablo II</option>
+                      <option>Campus Menchaca Lira</option>
+                    </select>
+                  } />
+                  <Separator />
+                  <ProfileField label="Teléfono" icon={<LuPhone className="w-4 h-4 text-slate-400" />} value={formData.telefono || "No registrado"} isEditing={isEditing} editComponent={<Input value={formData.telefono} onChange={(e) => setFormData({...formData, telefono: e.target.value})} placeholder="+56 9..." />} />
+                  <Separator />
+                  <ProfileField label="Dirección" icon={<LuMapPin className="w-4 h-4 text-slate-400" />} value={formData.direccion || "No registrada"} isEditing={isEditing} editComponent={<Input value={formData.direccion} onChange={(e) => setFormData({...formData, direccion: e.target.value})} placeholder="Ej: Av. Alemania 123" />} />
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-slate-900 to-slate-800 text-white border-none shadow-lg">
+                <CardContent className="p-6">
+                  <h3 className="text-sm font-medium text-slate-300 mb-4 uppercase tracking-wider">Estadísticas</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 rounded-lg bg-white/5 backdrop-blur-sm">
+                      <p className="text-2xl font-bold">{Number(user.reputacion).toFixed(1)}</p>
+                      <div className="flex items-center gap-1 text-amber-400 text-sm"><LuStar className="fill-current" /> Reputación</div>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5 backdrop-blur-sm">
+                      <p className="text-2xl font-bold">{user.resumen?.totalVentas || 0}</p>
+                      <div className="flex items-center gap-1 text-blue-300 text-sm"><LuShieldCheck /> Ventas</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* RIGHT COLUMN */}
+            <motion.div variants={itemVariants} className="lg:col-span-2">
+              <Tabs defaultValue="publications" className="w-full">
+                <div className="flex items-center justify-between mb-4">
+                  <TabsList className="bg-white border border-slate-200 shadow-sm">
+                    <TabsTrigger value="publications" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700"><LuLayoutGrid className="w-4 h-4 mr-2" /> Mis Publicaciones</TabsTrigger>
+                    <TabsTrigger value="reviews" className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700"><LuStar className="w-4 h-4 mr-2" /> Valoraciones</TabsTrigger>
+                  </TabsList>
+                </div>
+
+                <TabsContent value="publications" className="mt-0">
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 min-h-[400px]">
+                    <MyPublicationsFeed />
+                  </motion.div>
+                </TabsContent>
+
+                <TabsContent value="reviews" className="mt-0">
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+                    <h3 className="text-lg font-semibold text-slate-800">Lo que dicen de ti</h3>
+                    <div className="grid gap-4">
+                      {reviews.map((review) => (
+                        <div key={review.id} className="flex gap-4 p-4 rounded-lg bg-slate-50 border border-slate-100">
+                          <Avatar className="h-10 w-10"><AvatarFallback className="bg-indigo-100 text-indigo-600">{review.user.charAt(0)}</AvatarFallback></Avatar>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-slate-900">{review.user}</span>
+                              <div className="flex text-amber-400">
+                                {[...Array(5)].map((_, i) => (<LuStar key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-current' : 'text-slate-300'}`} />))}
+                              </div>
+                            </div>
+                            <p className="text-slate-600 mt-1 text-sm">{review.comment}</p>
+                            <span className="text-xs text-slate-400 mt-2 block">{review.date}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                </TabsContent>
+              </Tabs>
+            </motion.div>
+          </div>
+        </motion.div>
+      ) : null}
+    </div>
+  )
+}
+
+// --- SUBCOMPONENTES ---
+function ProfileField({ label, value, isEditing, editComponent, icon }: any) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide flex items-center gap-1.5">{icon} {label}</Label>
+      <div className="h-9 flex items-center">
+        <AnimatePresence mode="wait">
+          {isEditing ? (
+            <motion.div key="editing" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="w-full">{editComponent}</motion.div>
+          ) : (
+            <motion.p key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm font-medium text-slate-900 truncate w-full">{value}</motion.p>
+          )}
+        </AnimatePresence>
       </div>
     </div>
-  );
+  )
+}
+
+function ProfileSkeleton() {
+  return (
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <Skeleton className="h-48 w-full rounded-t-2xl" />
+      <div className="px-6 -mt-16 flex gap-6">
+        <Skeleton className="h-32 w-32 rounded-full border-4 border-white" />
+        <div className="pt-16 space-y-2"><Skeleton className="h-8 w-64" /><Skeleton className="h-4 w-40" /></div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+        <Skeleton className="h-64 w-full rounded-xl" />
+        <Skeleton className="h-96 w-full lg:col-span-2 rounded-xl" />
+      </div>
+    </div>
+  )
 }

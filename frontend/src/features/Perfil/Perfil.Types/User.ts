@@ -1,6 +1,2 @@
-export type User = {
-  id: string
-  email: string
-  name?: string
-  token?: string
-}
+// Re-exportar User desde el archivo central de tipos
+export type { User } from '../../../types/entities';
