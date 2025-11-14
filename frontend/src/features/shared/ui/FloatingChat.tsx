@@ -1,27 +1,30 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
+import React, { useState, useEffect, useRef, useCallback } from "react"
 import { motion, AnimatePresence, useDragControls } from "framer-motion"
-import { useAuth } from "@/app/context/AuthContext" // Tu contexto de auth
+import { useAuth } from "@/app/context/AuthContext"
+import { io, Socket } from "socket.io-client" // 👈 IMPORTANTE: npm install socket.io-client
 
 // Icons
 import { 
   LuMessageCircle, LuX, LuSend, LuSearch, LuChevronLeft, 
-  LuGripHorizontal, LuPlus, LuLoader 
+  LuGripHorizontal, LuLoader 
 } from "react-icons/lu"
 
-// UI Components (Shadcn)
+// UI Components
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
-// --- TIPOS (Iguales a tu ChatPage) ---
+// --- TIPOS ---
 type Estado = "enviando" | "enviado" | "recibido" | "leido"
+
 interface Mensaje { 
   id: number | string; 
-  texto: string; // en tu DB es 'contenido'
+  texto: string; 
   autor: "yo" | "otro"; 
   hora: string; 
   estado?: Estado 
 }
+
 interface Chat { 
   id: number; 
   nombre: string; 
@@ -29,10 +32,13 @@ interface Chat {
   mensajes: Mensaje[]; 
   avatar?: string;
   noLeidos?: number;
+  online?: boolean; // Para saber si está conectado
 }
+
 type ViewState = "list" | "chat"
 
-const URL_BASE = import.meta.env.VITE_API_URL;
+// Usamos la misma URL que definiste en Vite, pero socket.io suele encargarse de puertos
+const URL_BASE = import.meta.env.VITE_API_URL; 
 
 // --- COMPONENTE PRINCIPAL ---
 export default function FloatingChat() {
@@ -40,69 +46,84 @@ export default function FloatingChat() {
   const [isOpen, setIsOpen] = useState(false)
   const [view, setView] = useState<ViewState>("list")
   
-  // Estado de datos reales
+  // Estado de datos
   const [chats, setChats] = useState<Chat[]>([])
   const [activeChatId, setActiveChatId] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   
-  // WebSocket ref
-  const ws = useRef<WebSocket | null>(null)
-  const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:3001" // Ajusta según tu env
+  // Referencia al Socket
+  const socketRef = useRef<Socket | null>(null)
 
-  // 1. Conexión WebSocket Global (Solo si hay token)
+  // 1. CONEXIÓN SOCKET.IO (REAL-TIME)
   useEffect(() => {
     if (!token) return
 
-    const socket = new WebSocket(WS_URL)
-    ws.current = socket
+    // Conectar usando la librería cliente
+    const newSocket = io(URL_BASE, {
+      auth: { token }, // Esto coincide con socket.handshake.auth.token del backend
+      transports: ['websocket', 'polling']
+    })
 
-    socket.onopen = () => {
-      // Autenticar socket
-      socket.send(JSON.stringify({ type: 'auth', token }))
-    }
+    socketRef.current = newSocket
 
-    socket.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      
-      // Si llega un mensaje nuevo
-      if (data.tipo === 'new_message') {
-        const nuevoMsg = data.mensaje // Ajustar estructura según tu backend
-        
-        setChats(prev => {
-          // Buscar si el chat existe
-          const chatExists = prev.find(c => c.id === nuevoMsg.remitenteId)
-          
-          if (chatExists) {
-            return prev.map(c => {
-              if (c.id === nuevoMsg.remitenteId) {
-                return {
-                  ...c,
-                  ultimoMensaje: nuevoMsg.contenido,
-                  noLeidos: (c.noLeidos || 0) + 1,
-                  mensajes: [...c.mensajes, {
-                    id: nuevoMsg.id,
-                    texto: nuevoMsg.contenido,
-                    autor: 'otro',
-                    hora: new Date(nuevoMsg.fechaEnvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-                    estado: 'recibido'
-                  }]
-                }
-              }
-              return c
-            })
-          } else {
-            // Si es chat nuevo, recargar lista (o agregarlo manualmente si tienes los datos del usuario)
-            fetchChats()
-            return prev
+    // Evento: Conectado exitosamente
+    newSocket.on("connect", () => {
+      console.log("🟢 Chat conectado:", newSocket.id)
+    })
+
+    // Evento: Recibir Mensaje Nuevo
+    newSocket.on("new_message", (mensajeBackend: any) => {
+      console.log("📩 Nuevo mensaje recibido:", mensajeBackend)
+
+      const remitenteId = mensajeBackend.remitente.id
+      const contenido = mensajeBackend.contenido
+      const hora = new Date(mensajeBackend.fechaEnvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+
+      setChats(prevChats => {
+        // Buscamos si ya existe el chat en la lista
+        const chatIndex = prevChats.findIndex(c => c.id === remitenteId)
+
+        if (chatIndex !== -1) {
+          // EL CHAT EXISTE: Actualizamos
+          const updatedChats = [...prevChats]
+          const chat = updatedChats[chatIndex]
+
+          // Agregamos el mensaje a la lista
+          const nuevoMensaje: Mensaje = {
+            id: mensajeBackend.id,
+            texto: contenido,
+            autor: "otro",
+            hora: hora,
+            estado: "recibido"
           }
-        })
-      }
+
+          // Actualizamos datos del chat
+          updatedChats[chatIndex] = {
+            ...chat,
+            ultimoMensaje: contenido,
+            mensajes: [...chat.mensajes, nuevoMensaje],
+            // Solo incrementamos 'noLeidos' si NO tenemos este chat abierto
+            noLeidos: (activeChatId === remitenteId && isOpen) ? 0 : (chat.noLeidos || 0) + 1
+          }
+
+          // Movemos este chat al principio de la lista (como WhatsApp)
+          updatedChats.sort((a, b) => (a.id === remitenteId ? -1 : 1))
+          
+          return updatedChats
+        } else {
+          // EL CHAT NO EXISTE: Hay que cargarlo (o crearlo temporalmente)
+          fetchChats() // La forma más segura es recargar la lista
+          return prevChats
+        }
+      })
+    })
+
+    return () => {
+      newSocket.disconnect()
     }
+  }, [token, activeChatId, isOpen]) // Dependencias para saber si marcar leído o no
 
-    return () => socket.close()
-  }, [token, WS_URL])
-
-  // 2. Cargar lista de conversaciones
+  // 2. Cargar lista de conversaciones (API REST)
   const fetchChats = async () => {
     if (!token) return
     try {
@@ -112,29 +133,38 @@ export default function FloatingChat() {
       })
       const data = await res.json()
       if (data.ok) {
-        // Transformar respuesta del backend a nuestro formato UI
         const formattedChats: Chat[] = data.conversaciones.map((c: any) => ({
           id: c.usuario.id,
           nombre: c.usuario.nombre || c.usuario.usuario,
-          ultimoMensaje: c.ultimoMensaje.contenido,
-          avatar: c.usuario.fotoPerfilUrl, // Asegúrate de que tu backend envíe esto
+          ultimoMensaje: c.ultimoMensaje?.contenido || "Imagen o archivo",
+          avatar: c.usuario.fotoPerfilUrl,
           noLeidos: c.unreadCount || 0,
-          mensajes: [] // Se cargan al abrir
+          mensajes: [] // Inicialmente vacío, se llena al hacer clic
         }))
         setChats(formattedChats)
       }
     } catch (error) {
-      console.error("Error cargando chats flotantes:", error)
+      console.error("Error cargando chats:", error)
     }
   }
 
+  // Cargar inicial al abrir
   useEffect(() => {
-    if (isOpen) fetchChats()
+    if (isOpen) {
+      fetchChats()
+    }
   }, [isOpen])
 
-  // 3. Cargar mensajes de un chat específico
+  // 3. Cargar historial de mensajes de un chat
   const loadMessages = async (chatId: number) => {
     setIsLoading(true)
+    // Buscamos si ya tenemos mensajes en memoria para no recargar siempre
+    const currentChat = chats.find(c => c.id === chatId)
+    if (currentChat && currentChat.mensajes.length > 0) {
+      setIsLoading(false)
+      return
+    }
+
     try {
       const res = await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -148,7 +178,7 @@ export default function FloatingChat() {
           texto: m.contenido,
           autor: m.remitenteId === user?.id ? 'yo' : 'otro',
           hora: new Date(m.fechaEnvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-          estado: m.leido ? 'leido' : 'enviado'
+          estado: 'leido'
         }))
 
         setChats(prev => prev.map(c => 
@@ -156,30 +186,28 @@ export default function FloatingChat() {
         ))
       }
     } catch (error) {
-      console.error("Error cargando conversación:", error)
+      console.error("Error cargando mensajes:", error)
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Manejar selección de chat
   const handleSelectChat = (id: number) => {
     setActiveChatId(id)
     setView("chat")
+    // Marcar como leídos localmente
+    setChats(prev => prev.map(c => c.id === id ? { ...c, noLeidos: 0 } : c))
     loadMessages(id)
   }
 
-  const activeChat = chats.find((c) => c.id === activeChatId)
-  const totalUnread = chats.reduce((acc, c) => acc + (c.noLeidos || 0), 0)
-
-  // 4. Enviar Mensaje
+  // 4. ENVIAR MENSAJE (Socket + Fetch)
   const handleSend = useCallback(async (texto: string) => {
     if (!activeChatId || !token) return
     
-    // Optimistic Update
     const tempId = "tmp-" + Date.now()
     const hora = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     
+    // 4.1 Optimistic Update (Mostrar inmediatamente)
     setChats(prev => prev.map(c => 
       c.id === activeChatId 
         ? { 
@@ -190,37 +218,29 @@ export default function FloatingChat() {
         : c
     ))
 
-    try {
-      const res = await fetch(`${URL_BASE}/api/chat/send`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` 
-        },
-        credentials: 'include',
-        body: JSON.stringify({ destinatarioId: activeChatId, contenido: texto })
+    // 4.2 Emitir evento de Socket (Para que el servidor lo procese y guarde)
+    if (socketRef.current) {
+      socketRef.current.emit("send_message", {
+        destinatarioId: activeChatId,
+        contenido: texto,
+        tipo: "texto"
       })
       
-      if (res.ok) {
-        // Actualizar estado a enviado
+      // Escuchar confirmación (opcional, o asumir que llegó)
+      // Aquí simulamos que llegó bien cambiando el estado a 'enviado'
+      setTimeout(() => {
         setChats(prev => prev.map(c => 
           c.id === activeChatId 
-            ? { 
-                ...c, 
-                mensajes: c.mensajes.map(m => m.id === tempId ? { ...m, estado: 'enviado' } : m) 
-              } 
+            ? { ...c, mensajes: c.mensajes.map(m => m.id === tempId ? { ...m, estado: 'enviado' } : m) } 
             : c
         ))
-        // Emitir por socket para que el otro lo reciba instantáneamente
-        ws.current?.send(JSON.stringify({
-          event: 'send_message',
-          data: { destinatarioId: activeChatId, contenido: texto }
-        }))
-      }
-    } catch (error) {
-      console.error("Error enviando mensaje:", error)
+      }, 500)
     }
+
   }, [activeChatId, token])
+
+  const activeChat = chats.find((c) => c.id === activeChatId)
+  const totalUnread = chats.reduce((acc, c) => acc + (c.noLeidos || 0), 0)
 
   return (
     <div className="fixed inset-0 pointer-events-none z-[9999] overflow-hidden">
@@ -261,8 +281,8 @@ export default function FloatingChat() {
   )
 }
 
-/* ===================== VENTANA CHAT (UI) ===================== */
-// Este componente se encarga solo de la presentación y el arrastre
+/* ===================== SUBCOMPONENTES (Igual que antes) ===================== */
+
 const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, onClose, isLoading }: any) => {
   const dragControls = useDragControls()
 
@@ -301,7 +321,6 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
         </div>
       </div>
 
-      {/* Contenido */}
       <div className="flex-1 overflow-hidden bg-white relative">
         <AnimatePresence mode="wait">
           {view === "list" ? (
@@ -315,7 +334,6 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
   )
 }
 
-/* ===================== LISTA DE CHATS ===================== */
 const ChatListView = ({ chats, onSelect }: any) => (
   <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="h-full flex flex-col">
     <div className="p-2 border-b border-slate-100">
@@ -348,7 +366,6 @@ const ChatListView = ({ chats, onSelect }: any) => (
   </motion.div>
 )
 
-/* ===================== CONVERSACIÓN ===================== */
 const ChatConversationView = ({ chat, onSend, isLoading }: any) => {
   const [text, setText] = useState("")
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -377,6 +394,7 @@ const ChatConversationView = ({ chat, onSend, isLoading }: any) => {
               <p className="leading-snug">{msg.texto}</p>
               <div className={`text-[9px] mt-0.5 flex justify-end gap-1 ${msg.autor === "yo" ? "text-blue-200" : "text-slate-400"}`}>
                 {msg.hora}
+                {/* Aquí podrías poner iconos de ticks según msg.estado */}
               </div>
             </div>
           </div>
