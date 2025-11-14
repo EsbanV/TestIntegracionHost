@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useAuth } from "@/app/context/AuthContext"
 import { motion, AnimatePresence } from "framer-motion"
+import { getImageUrl } from "@/app/imageHelper";
 
 // UI Components (Shadcn)
 import { Button } from "@/components/ui/button"
@@ -200,7 +201,7 @@ export default function PerfilPage() {
                     <div className="p-1.5 bg-white rounded-full shadow-sm relative">
                       <Avatar className="h-32 w-32 border-4 border-white shadow-inner">
                         <AvatarImage 
-                          src={user.fotoPerfilUrl ? `${user.fotoPerfilUrl}` : UserDefault} 
+                          src={getImageUrl(user.fotoPerfilUrl)}
                           alt={user.usuario} 
                           className="object-cover" 
                         />
