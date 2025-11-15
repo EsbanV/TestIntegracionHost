@@ -9,9 +9,9 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 // --- Imports Externos ---
-import { usePostsWithFilters } from '@/features/marketplace/Marketplace.Hooks/usePostsWithFilters';
-import type { Post } from '@/features/marketplace/Marketplace.Types/ProductInterfaces';
-import { formatInt, formatCLP } from '@/features/marketplace/Marketplace.Utils/format';
+import { usePostsWithFilters } from '@/features/Marketplace/Marketplace.Hooks/usePostsWithFilters';
+import type { Post } from '@/features/Marketplace/Marketplace.Types/ProductInterfaces';
+import { formatInt, formatCLP } from '@/features/Marketplace/Marketplace.Utils/format';
 import { useAuth } from '@/app/context/AuthContext';
 
 // --- Configuración ---
