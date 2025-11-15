@@ -62,36 +62,54 @@ export default function LoginTest() {
     if (error) setError(null)
   }
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError(null)
+// En LoginTest.tsx
 
-    try {
-      const res = await fetch(`${URL_BASE}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // <--- IMPORTANTE PARA CORS
-        body: JSON.stringify(formData),
-      })
+const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  e.preventDefault()
+  setIsLoading(true)
+  setError(null)
 
-      const data: ApiSuccessResponse | ApiErrorResponse = await res.json()
+  try {
+    const res = await fetch(`${URL_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(formData),
+    })
 
-      if (res.ok && data.ok) {
-        // Login exitoso
-        login((data as ApiSuccessResponse).accessToken, (data as ApiSuccessResponse).user)
-        navigate(from, { replace: true })
-      } else {
-        // Error del backend
-        setError(data.message || 'Credenciales inválidas')
+    const data: ApiSuccessResponse | ApiErrorResponse = await res.json()
+
+    // 🔍 AGREGA ESTO PARA VER QUÉ LLEGA
+    console.log("📡 Estatus HTTP:", res.status); 
+    console.log("📦 Datos del Backend:", data);
+
+    if (res.ok && data.ok) {
+      // Validación defensiva: ¿Realmente llegó el token?
+      const token = (data as ApiSuccessResponse).accessToken;
+      
+      if (!token) {
+        console.error("❌ ERROR FATAL: El backend dijo OK pero no envió token.");
+        setError("Error interno: El servidor no generó el token.");
+        return;
       }
-    } catch (err) {
-      console.error(err)
-      setError('Error de conexión con el servidor.')
-    } finally {
-      setIsLoading(false)
+
+      const safeUser = {
+    ...data.user,
+    campus: data.user.campus ?? undefined // Convierte null a undefined
+  };
+      // Login exitoso
+      login(token, safeUser); 
+      navigate(from, { replace: true })
+    } else {
+      setError(data.message || 'Credenciales inválidas')
     }
+  } catch (err) {
+    console.error(err)
+    setError('Error de conexión con el servidor.')
+  } finally {
+    setIsLoading(false)
   }
+}
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50/50 p-4">
