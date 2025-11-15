@@ -2,19 +2,17 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Search, X, ChevronLeft, ChevronRight, MapPin, 
+  Search, X, ChevronLeft, ChevronRight, 
   ShoppingBag, MessageCircle, Star, Filter, Send, Check
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 // --- Imports Externos ---
-import { usePostsWithFilters } from '@/features/Marketplace/Marketplace.Hooks/usePostsWithFilters';
-import type { Post } from '@/features/Marketplace/Marketplace.Types/ProductInterfaces';
-import { formatInt, formatCLP } from '@/features/Marketplace/Marketplace.Utils/format';
-import { Sidebar } from '@/features/shared/ui/Sidebar'; 
-import Header from '@/features/shared/ui/Header'; 
-import { useAuth } from '@/app/context/AuthContext'; // 👈 Importante: Para obtener el token
+import { usePostsWithFilters } from '@/features/marketplace/Marketplace.Hooks/usePostsWithFilters';
+import type { Post } from '@/features/marketplace/Marketplace.Types/ProductInterfaces';
+import { formatInt, formatCLP } from '@/features/marketplace/Marketplace.Utils/format';
+import { useAuth } from '@/app/context/AuthContext';
 
 // --- Configuración ---
 const API_URL = import.meta.env.VITE_API_URL;
@@ -38,7 +36,9 @@ const getInitials = (name?: string) => {
   return name.substring(0, 2).toUpperCase();
 };
 
-// --- Componentes UI ---
+// ---------------------------------------------------------------------------
+// 2. COMPONENTES UI (Estilo Shadcn - Tailwind Puro)
+// ---------------------------------------------------------------------------
 
 const Badge = ({ children, className, variant = 'default', onClick }: { children: React.ReactNode, className?: string, variant?: 'default'|'secondary'|'outline'|'price'|'category'|'suggestion', onClick?: () => void }) => {
   const variants = {
@@ -85,7 +85,9 @@ const LoadingSpinner = () => (
   </div>
 );
 
-// --- Carrusel ---
+// ---------------------------------------------------------------------------
+// 3. CARRUSEL DE IMÁGENES
+// ---------------------------------------------------------------------------
 function ImageCarousel({ images, altPrefix }: { images: string[], altPrefix?: string }) {
   const [index, setIndex] = useState(0);
   const validImages = images?.length ? images : ["/img/placeholder-product.png"];
@@ -144,18 +146,16 @@ function ImageCarousel({ images, altPrefix }: { images: string[], altPrefix?: st
 }
 
 // ---------------------------------------------------------------------------
-// 4. MODAL DE DETALLE (REFACTORIZADO CON CHAT)
+// 4. MODAL DE DETALLE (Con Conexión Real al Chat)
 // ---------------------------------------------------------------------------
 function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: () => void, post: Post | null }) {
   const { token, user } = useAuth();
   const navigate = useNavigate();
   
-  // Estado del formulario de contacto
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
 
-  // Mensajes predefinidos
   const quickReplies = [
     "¡Hola! ¿Sigue disponible?",
     `Me interesa tu ${post?.nombre || 'producto'}, ¿dónde entregas?`,
@@ -163,7 +163,6 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
     "¿Tienes más fotos?"
   ];
 
-  // Resetear estado al abrir un nuevo post
   useEffect(() => {
     if (open) {
       setMessage('');
@@ -174,7 +173,6 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
 
   if (!post) return null;
 
-  // Detalles para el sidebar
   const details = [
     { label: "Precio", value: formatCLP(post.precioActual || 0), highlight: true },
     { label: "Stock", value: post.cantidad || 1 },
@@ -186,7 +184,6 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
 
   const isOwnProduct = user?.id === post.vendedor?.id;
 
-  // Lógica de Envío Real
   const handleSendMessage = async () => {
     if (!message.trim() || !token || !post.vendedor) return;
 
@@ -207,10 +204,6 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
 
       if (res.ok) {
         setSentSuccess(true);
-        setTimeout(() => {
-           // Opcional: Cerrar modal o navegar al chat
-           // onClose(); 
-        }, 1500);
       } else {
         alert("Error al enviar mensaje");
       }
@@ -240,7 +233,7 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="relative flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl md:flex-row max-h-[90vh] z-10"
           >
-            {/* --- COLUMNA IZQUIERDA (Info Producto) --- */}
+            {/* IZQUIERDA */}
             <div className="flex-1 overflow-y-auto p-6 bg-white">
               <div className="hidden md:flex items-start justify-between mb-6">
                 <h1 className="text-2xl font-extrabold text-slate-900 leading-tight">{post.nombre}</h1>
@@ -264,7 +257,7 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
               </div>
             </div>
 
-            {/* --- COLUMNA DERECHA (Sidebar Interactivo) --- */}
+            {/* DERECHA */}
             <div className="w-full md:w-[380px] bg-slate-50 border-l border-slate-100 p-6 flex flex-col overflow-y-auto shrink-0">
               
               {/* Card Vendedor */}
@@ -286,7 +279,7 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
                 </div>
               </div>
 
-              {/* Lista de Datos (Precio, Stock, etc) */}
+              {/* Detalles */}
               <div className="space-y-3 mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 {details.map((item, idx) => (
                     <div key={idx} className="flex justify-between items-baseline border-b border-slate-50 pb-2 last:border-0 last:pb-0">
@@ -298,31 +291,19 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
                 ))}
               </div>
 
-              {/* --- ZONA DE CONTACTO / MENSAJE --- */}
+              {/* Formulario de Contacto */}
               <div className="mt-auto pt-4 border-t border-slate-200">
                 {isOwnProduct ? (
-                   <div className="text-center p-4 bg-yellow-50 text-yellow-700 rounded-xl text-sm font-medium">
-                     Este es tu producto
-                   </div>
+                   <div className="text-center p-4 bg-yellow-50 text-yellow-700 rounded-xl text-sm font-medium">Este es tu producto</div>
                 ) : sentSuccess ? (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                    className="bg-green-50 border border-green-100 rounded-xl p-6 text-center"
-                  >
-                    <div className="mx-auto w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3">
-                      <Check size={24} />
-                    </div>
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-green-50 border border-green-100 rounded-xl p-6 text-center">
+                    <div className="mx-auto w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3"><Check size={24} /></div>
                     <h3 className="font-bold text-green-800 mb-1">¡Mensaje Enviado!</h3>
-                    <p className="text-xs text-green-600 mb-4">El vendedor ha recibido tu mensaje.</p>
-                    <Button onClick={goToChat} className="w-full bg-green-600 hover:bg-green-700 text-white">
-                       Ir al chat
-                    </Button>
+                    <Button onClick={goToChat} className="w-full bg-green-600 hover:bg-green-700 text-white mt-2">Ir al chat</Button>
                   </motion.div>
                 ) : (
                   <div className="space-y-3">
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Enviar mensaje al vendedor</label>
-                    
-                    {/* Text Area Estilizado */}
                     <div className="relative">
                       <textarea 
                         value={message}
@@ -331,27 +312,14 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
                         className="w-full p-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none h-24 bg-white"
                       />
                       <div className="absolute bottom-2 right-2">
-                         <Button 
-                           size="icon" 
-                           className={cn("h-8 w-8 rounded-lg transition-all", message ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-200 text-slate-400")}
-                           disabled={!message || isSending}
-                           onClick={handleSendMessage}
-                         >
+                         <Button size="icon" className={cn("h-8 w-8 rounded-lg transition-all", message ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-200 text-slate-400")} disabled={!message || isSending} onClick={handleSendMessage}>
                            {isSending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Send size={14} />}
                          </Button>
                       </div>
                     </div>
-
-                    {/* Mensajes Predefinidos (Chips) */}
                     <div className="flex flex-wrap gap-2">
                       {quickReplies.map((reply, i) => (
-                        <Badge 
-                          key={i} 
-                          variant="suggestion" 
-                          onClick={() => setMessage(reply)}
-                        >
-                          {reply}
-                        </Badge>
+                        <Badge key={i} variant="suggestion" onClick={() => setMessage(reply)}>{reply}</Badge>
                       ))}
                     </div>
                   </div>
@@ -412,22 +380,21 @@ function ItemCard({ post, onClick }: { post: Post, onClick: (p: Post) => void })
 }
 
 // ---------------------------------------------------------------------------
-// 6. PÁGINA PRINCIPAL
+// 6. PÁGINA PRINCIPAL (CONTENIDO DEL LAYOUT)
 // ---------------------------------------------------------------------------
 export default function MarketplacePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  const navigate = useNavigate();
-
-  const categories = useMemo(() => ['Electrónicos', 'Libros y Materiales', 'Ropa y Accesorios', 'Deportes', 'Hogar y Jardín', 'Vehículos', 'Servicios'], []);
   
+  const categories = useMemo(() => ['Electrónicos', 'Libros y Materiales', 'Ropa y Accesorios', 'Deportes', 'Hogar y Jardín', 'Vehículos', 'Servicios'], []);
   const categoryMap: Record<string, string> = {
     'Electrónicos': 'electronics', 'Libros y Materiales': 'books', 'Ropa y Accesorios': 'clothing', 
     'Deportes': 'sports', 'Hogar y Jardín': 'home', 'Vehículos': 'vehicles', 'Servicios': 'services',
   };
   const selectedCategoryId = selectedCategory ? (categoryMap[selectedCategory] ?? '') : '';
 
+  // --- USANDO DATOS REALES ---
   const { posts, hasNextPage, fetchNextPage, isLoading, isError } = usePostsWithFilters({
     searchTerm, categoryId: selectedCategoryId
   });
@@ -444,55 +411,53 @@ export default function MarketplacePage() {
   }, [isLoading, hasNextPage, fetchNextPage]);
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAFC]">
-      <div className="hidden lg:block w-[260px] shrink-0 border-r bg-white"><Sidebar active="marketplace" /></div>
-      <div className="flex flex-1 flex-col h-screen overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto scroll-smooth p-4 md:p-8">
-          <div className="max-w-7xl mx-auto space-y-8 pb-20">
-            
-            {/* Buscador */}
-            <div className="sticky top-0 z-20 -mx-4 px-4 py-2 bg-[#F8FAFC]/90 backdrop-blur-md md:static md:mx-0 md:px-0 md:bg-transparent">
-              <div className="flex flex-col md:flex-row gap-3 rounded-xl bg-white p-2 shadow-sm border border-slate-200">
-                <div className="relative flex-1">
-                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                   <input type="text" placeholder="Buscar por título o descripción..." className="h-10 w-full rounded-md bg-transparent px-9 text-sm outline-none placeholder:text-slate-400" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                </div>
-                <div className="h-px w-full bg-slate-100 md:h-auto md:w-px" />
-                <div className="relative md:w-64">
-                   <select className="h-10 w-full appearance-none rounded-md bg-transparent px-3 text-sm font-medium text-slate-600 outline-none cursor-pointer hover:bg-slate-50" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
-                      <option value="">Todas las categorías</option>
-                      {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                   </select>
-                   <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                </div>
-              </div>
-              {!isLoading && <div className="mt-2 text-xs text-slate-500 font-medium px-1">Mostrando {posts.length} publicaciones</div>}
+    <div className="w-full h-full p-4 md:p-8 overflow-y-auto scroll-smooth">
+      <div className="max-w-7xl mx-auto space-y-8 pb-20">
+        
+        {/* Buscador */}
+        <div className="sticky top-0 z-20 bg-[#F8FAFC]/95 backdrop-blur-md py-2 -mx-4 px-4 md:mx-0 md:px-0 md:bg-transparent">
+          <div className="flex flex-col md:flex-row gap-3 rounded-xl bg-white p-2 shadow-sm border border-slate-200">
+            <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input type="text" placeholder="Buscar por título o descripción..." className="h-10 w-full rounded-md bg-transparent px-9 text-sm outline-none placeholder:text-slate-400" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
-
-            {/* Grid de Productos */}
-            {isLoading && posts.length === 0 ? (
-              <LoadingSpinner />
-            ) : isError ? (
-              <div className="text-center py-10 text-red-500">Error al cargar datos. Revisa tu conexión.</div>
-            ) : posts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                <ShoppingBag size={64} strokeWidth={1} className="mb-4 opacity-50"/>
-                <p>No se encontraron publicaciones.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {posts.map((post, i) => (
-                  <div key={post.id} ref={i === posts.length - 1 ? lastPostRef : null}>
-                    <ItemCard post={post} onClick={setSelectedPost} />
-                  </div>
-                ))}
-              </div>
-            )}
-            {isLoading && posts.length > 0 && <LoadingSpinner />}
+            <div className="h-px w-full bg-slate-100 md:h-auto md:w-px" />
+            <div className="relative md:w-64">
+                <select className="h-10 w-full appearance-none rounded-md bg-transparent px-3 text-sm font-medium text-slate-600 outline-none cursor-pointer hover:bg-slate-50" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+                  <option value="">Todas las categorías</option>
+                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            </div>
           </div>
-        </main>
+          {!isLoading && <div className="mt-2 text-xs text-slate-500 font-medium px-1">Mostrando {posts.length} publicaciones</div>}
+        </div>
+
+        {/* Grid de Productos */}
+        {isLoading && posts.length === 0 ? (
+          <LoadingSpinner />
+        ) : isError ? (
+          <div className="text-center py-10 text-red-500 bg-red-50 rounded-xl border border-red-100">
+             Error al cargar datos. Revisa tu conexión.
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+            <ShoppingBag size={64} strokeWidth={1} className="mb-4 opacity-50"/>
+            <p>No se encontraron publicaciones.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {posts.map((post, i) => (
+              <div key={post.id} ref={i === posts.length - 1 ? lastPostRef : null}>
+                <ItemCard post={post} onClick={setSelectedPost} />
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {isLoading && posts.length > 0 && <LoadingSpinner />}
       </div>
+
       <ProductDetailModal open={!!selectedPost} onClose={() => setSelectedPost(null)} post={selectedPost} />
     </div>
   );
