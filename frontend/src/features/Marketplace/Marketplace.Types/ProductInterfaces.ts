@@ -9,6 +9,7 @@ export interface ImagenProducto {
 export interface Vendedor {
   id: number;
   nombre: string;
+  usuario?: string;
   fotoPerfilUrl?: string | null;
   reputacion?: number | null; // Calificación promedio (0-5)
   campus?: string | null;

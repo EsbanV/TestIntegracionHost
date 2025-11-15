@@ -158,7 +158,7 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
 
   const quickReplies = [
     "¡Hola! ¿Sigue disponible?",
-    `Me interesa tu ${post?.nombre || 'producto'}, ¿dónde entregas?`,
+    `Me interesa tu ${post?.usuario || 'producto'}, ¿dónde entregas?`,
     "¿El precio es conversable?",
     "¿Tienes más fotos?"
   ];
@@ -236,7 +236,7 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
             {/* IZQUIERDA */}
             <div className="flex-1 overflow-y-auto p-6 bg-white">
               <div className="hidden md:flex items-start justify-between mb-6">
-                <h1 className="text-2xl font-extrabold text-slate-900 leading-tight">{post.nombre}</h1>
+                <h1 className="text-2xl font-extrabold text-slate-900 leading-tight">{post.usuario}</h1>
                 <Button variant="outline" size="icon" className="rounded-full" onClick={onClose}><X size={18} /></Button>
               </div>
 
@@ -267,10 +267,10 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
                    <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg shrink-0 overflow-hidden">
                      {post.vendedor?.fotoPerfilUrl ? (
                         <img src={post.vendedor.fotoPerfilUrl} className="w-full h-full object-cover"/>
-                     ) : getInitials(post.vendedor?.nombre)}
+                     ) : getInitials(post.vendedor?.usuario)}
                    </div>
                    <div>
-                      <div className="font-semibold text-slate-900">{post.vendedor?.nombre || "Usuario"}</div>
+                      <div className="font-semibold text-slate-900">{post.vendedor?.usuario || "Usuario"}</div>
                       <div className="flex items-center gap-1 text-xs text-slate-500">
                         <Star size={12} className="fill-yellow-400 text-yellow-400" /> 
                         {post.vendedor?.reputacion ? Number(post.vendedor.reputacion).toFixed(1) : "5.0"}
@@ -338,7 +338,7 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
 // 5. TARJETA DEL FEED
 // ---------------------------------------------------------------------------
 function ItemCard({ post, onClick }: { post: Post, onClick: (p: Post) => void }) {
-  const { nombre, precioActual, categoria, imagenes, vendedor, fechaAgregado } = post;
+  const { usuario, precioActual, categoria, imagenes, vendedor, fechaAgregado } = post;
   const image = imagenes?.[0]?.url;
 
   return (
@@ -348,7 +348,7 @@ function ItemCard({ post, onClick }: { post: Post, onClick: (p: Post) => void })
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
         {image ? (
-          <img src={image} alt={nombre} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+          <img src={image} alt={usuario} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
         ) : (
           <div className="flex h-full items-center justify-center text-slate-300"><ShoppingBag size={48} strokeWidth={1} /></div>
         )}
@@ -360,15 +360,15 @@ function ItemCard({ post, onClick }: { post: Post, onClick: (p: Post) => void })
         <div className="flex items-center gap-2 mb-2">
            <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0 overflow-hidden">
              {vendedor?.fotoPerfilUrl ? (
-                 <img src={vendedor.fotoPerfilUrl} alt={vendedor.nombre} className="w-full h-full object-cover" />
-             ) : getInitials(vendedor?.nombre)}
+                 <img src={vendedor.fotoPerfilUrl} alt={vendedor.usuario} className="w-full h-full object-cover" />
+             ) : getInitials(vendedor?.usuario)}
            </div>
            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-slate-700">{vendedor?.nombre}</span>
+              <span className="text-xs font-semibold text-slate-700">{vendedor?.usuario}</span>
               <span className="text-[10px] text-slate-400 leading-none">{formatDate(fechaAgregado)}</span>
            </div>
         </div>
-        <h3 className="font-bold text-slate-900 line-clamp-1 mb-1 text-base">{nombre}</h3>
+        <h3 className="font-bold text-slate-900 line-clamp-1 mb-1 text-base">{usuario}</h3>
         <p className="text-sm text-slate-500 line-clamp-2 mb-4 flex-1">{post.descripcion || "Sin descripción."}</p>
         <div className="mt-auto flex items-center justify-between border-t border-slate-50 pt-3">
            <div className="flex items-center gap-1 text-slate-400"><Star size={14} className="fill-slate-200 text-slate-200" /><span className="text-xs font-medium">5.0</span></div>
