@@ -56,22 +56,14 @@ const fetchPublicProfile = async (userId: string): Promise<ProfileUser> => {
 };
 
 const fetchUserProducts = async (userId: string): Promise<ProfileProduct[]> => {
-  // Filtramos productos específicamente de este vendedor
-  const res = await fetch(`${URL_BASE}/api/products?vendedorId=${userId}&limit=20`);
+  // ✅ Usar la nueva ruta específica
+  const res = await fetch(`${URL_BASE}/api/products/user/${userId}`);
   
   if (!res.ok) return [];
   const data = await res.json();
   
-  // Mapeo seguro a nuestro tipo local simplificado
-  return (data.products || []).map((p: any) => ({
-    id: p.id,
-    nombre: p.nombre,
-    precioActual: Number(p.precioActual),
-    categoria: p.categoria || 'Varios',
-    imagenUrl: p.imagenes?.[0]?.urlImagen || p.imagenes?.[0]?.url, // Soporte para ambas estructuras
-    estado: p.estadoProducto || 'Usado',
-    cantidad: p.cantidad
-  }));
+  // El backend ya devuelve los datos formateados, así que solo retornamos
+  return data.products; 
 };
 
 // --- 3. COMPONENTES LOCALES ---
