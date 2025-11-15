@@ -183,7 +183,7 @@ const MyPublicationsContent = () => {
         </div>
         
         {/* Botón Nueva Publicación (lleva al foro) */}
-        <Link to="/forum">
+        <Link to="/forums">
           <Button className="bg-blue-600 hover:bg-blue-700 gap-2 shadow-md hover:shadow-lg transition-all">
             <LuPlus className="w-4 h-4" /> Nueva Publicación
           </Button>
