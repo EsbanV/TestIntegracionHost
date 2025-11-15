@@ -30,6 +30,7 @@ import UserDefault from "@/assets/img/user_default.png"
 
 export const Header: React.FC = () => {
   const [isSearchFocused, setIsSearchFocused] = useState(false)
+  const [searchValue, setSearchValue] = useState("") // Estado para el input
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuth()
@@ -40,6 +41,22 @@ export const Header: React.FC = () => {
     setIsOpen(false)
     navigate("/login", { replace: true })
   }
+
+  // --- LÓGICA DEL BUSCADOR ---
+  const handleSearch = () => {
+    if (searchValue.trim()) {
+      // Navega al home con el parámetro ?search=valor
+      navigate(`/home?search=${encodeURIComponent(searchValue.trim())}`)
+      setIsSearchFocused(false)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch()
+    }
+  }
+  // ---------------------------
 
   const getPageTitle = () => {
     switch(location.pathname) {
@@ -54,17 +71,11 @@ export const Header: React.FC = () => {
   }
 
   return (
-    // CAMBIO CLAVE: Quitamos 'bg-white/80 backdrop-blur' de aquí si queremos que sea sólido
-    // y aseguramos w-full
     <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white">
-      
-      {/* CAMBIO CLAVE: Quitamos 'container mx-auto'. Usamos 'w-full' y padding fluido */}
       <div className="flex h-16 w-full items-center justify-between px-4 md:px-6 lg:px-8">
         
         {/* --- IZQUIERDA --- */}
         <div className="flex items-center gap-4">
-          
-          {/* Mobile Menu Trigger */}
           <div className="lg:hidden">
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
@@ -72,7 +83,6 @@ export const Header: React.FC = () => {
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
-              
               <SheetContent side="left" className="w-[300px] pr-0">
                 <div className="px-2 mb-6">
                   <SheetTitle className="flex items-center gap-2 mb-2">
@@ -83,14 +93,12 @@ export const Header: React.FC = () => {
                   </SheetTitle>
                   <SheetDescription>Menú principal</SheetDescription>
                 </div>
-
                 <div className="flex flex-col space-y-1 px-2">
                   <MobileNavLink to="/home" icon={<Home className="h-5 w-5" />} label="Inicio" onClick={() => setIsOpen(false)} />
                   <MobileNavLink to="/crear" icon={<PlusSquare className="h-5 w-5" />} label="Crear" onClick={() => setIsOpen(false)} />
                   <MobileNavLink to="/mis-publicaciones" icon={<FileText className="h-5 w-5" />} label="Mis Posts" onClick={() => setIsOpen(false)} />
                   <MobileNavLink to="/ayuda" icon={<HelpCircle className="h-5 w-5" />} label="Ayuda" onClick={() => setIsOpen(false)} />
                 </div>
-
                 <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-slate-100 bg-slate-50/50">
                   <div className="flex items-center gap-3 mb-4 cursor-pointer" onClick={() => { setIsOpen(false); navigate("/perfil") }}>
                     <Avatar className="h-10 w-10 border border-white shadow-sm">
@@ -110,13 +118,11 @@ export const Header: React.FC = () => {
             </Sheet>
           </div>
 
-          {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-2" onClick={() => navigate("/home")}>
+          <div className="lg:hidden flex items-center gap-2 cursor-pointer" onClick={() => navigate("/home")}>
             <img src={LogoMUCT} alt="Logo" className="h-8 w-auto" />
             <span className="font-bold text-lg text-slate-900">MarketUCT</span>
           </div>
 
-          {/* Desktop Page Title */}
           <div className="hidden lg:block">
             <h2 className="text-xl font-semibold text-slate-800 tracking-tight">
               {getPageTitle()}
@@ -127,19 +133,26 @@ export const Header: React.FC = () => {
         {/* --- DERECHA --- */}
         <div className="flex items-center gap-3 md:gap-4">
           
-          {/* Barra de búsqueda */}
+          {/* Barra de búsqueda Desktop */}
           <div className={`relative hidden md:block transition-all duration-300 ${isSearchFocused ? 'w-72 lg:w-96' : 'w-64'}`}>
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Search 
+              className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 cursor-pointer hover:text-blue-600" 
+              onClick={handleSearch}
+            />
             <Input
               type="search"
-              placeholder="Buscar..."
+              placeholder="Buscar productos..."
               className="pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-all rounded-full h-10"
               onFocus={() => setIsSearchFocused(true)}
               onBlur={() => setIsSearchFocused(false)}
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              onKeyDown={handleKeyDown}
             />
           </div>
 
-          <Button variant="ghost" size="icon" className="md:hidden text-slate-600">
+          {/* Botón de búsqueda Mobile */}
+          <Button variant="ghost" size="icon" className="md:hidden text-slate-600" onClick={handleSearch}>
             <Search className="h-5 w-5" />
           </Button>
 
