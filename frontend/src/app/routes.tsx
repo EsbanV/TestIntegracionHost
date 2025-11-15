@@ -11,7 +11,8 @@ import LoginTest from '@/features/Login/Login.UI/LoginTest'
 import HomePage from '@/features/Marketplace/Marketplace.UI/HomePage'
 import CreateProductPage from '@/features/CrearPublicacion/CrearPublicacion.UI/CrearPublicacionPage'
 import EditarPublicacionPage from '@/features/EditarPublicacion/EditarPublicacion.UI/EditarPublicacionPage'
-import MisPublicacionesPage from '@/features/MyPublications/MyPublications.UI/MisPublicacionesPage'
+import MyProductsPage from '@/features/MyPublications/MyPublications.UI/MisPublicacionesPage'
+import MyPublicationsPage from '@/features/Forum/MyPublications'
 import PerfilPage from '@/features/Perfil/Perfil.UI/PerfilPage'
 import ChatPage from '@/features/DM/DM.UI/ChatPage'
 import ForumPage from '@/features/Forum/ForumPage'
@@ -62,7 +63,8 @@ export function AppRoutes() {
           <Route path="/home" element={<HomePage />} />
           <Route path="/crear" element={<CreateProductPage />} />
           <Route path="/editar" element={<EditarPublicacionPage />} />
-          <Route path="/mis-publicaciones" element={<MisPublicacionesPage />} />
+          <Route path="/mis-publicaciones" element={<MyProductsPage />} />
+          <Route path="/mis-foros" element={<MyPublicationsPage />} />
           <Route path="/forums" element={<ForumPage />} />
           <Route path="/perfil" element={<PerfilPage />} />
           <Route path="/perfil/public/:id" element={<PublicProfilePage />} />

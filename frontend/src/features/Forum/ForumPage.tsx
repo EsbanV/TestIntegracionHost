@@ -159,7 +159,7 @@ const ForumContent = () => {
         </div>
         
         {/* Link rápido a Mis Publicaciones */}
-        <Link to="/my-publications">
+        <Link to="/mis-foros">
           <Button variant="outline" className="gap-2 border-slate-200 text-slate-700">
             <LuUser className="w-4 h-4" /> Mis Publicaciones
           </Button>
