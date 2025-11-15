@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/app/context/AuthContext";
 import { getImageUrl } from "@/app/imageHelper";
 
-// UI Components & Icons
+// UI Components
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,21 +15,16 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   LuMapPin, LuCalendar, LuStar, LuShieldCheck, 
-  LuLayoutGrid, LuMessageCircle, LuShoppingBag
+  LuLayoutGrid, LuMessageCircle, LuShoppingBag, LuGhost
 } from "react-icons/lu";
-
-// Importar ItemCard del Marketplace para mostrar sus productos
-// Asegúrate de ajustar la ruta a donde tengas tu ItemCard
-import ItemCard  from "@/features/Marketplace/Marketplace.UI/HomePage"; 
-import type { Post } from "@/features/Marketplace/Marketplace.Types/ProductInterfaces";
 
 const URL_BASE = import.meta.env.VITE_API_URL;
 
-// --- TIPOS ---
-interface PublicProfile {
+// --- 1. TIPOS LOCALES (Independientes del Marketplace) ---
+
+interface ProfileUser {
   id: number;
   nombre: string;
-  apellido?: string;
   usuario: string;
   fotoPerfilUrl?: string;
   campus?: string;
@@ -41,47 +36,98 @@ interface PublicProfile {
   };
 }
 
-// --- API FETCHERS ---
+interface ProfileProduct {
+  id: number;
+  nombre: string;
+  precioActual: number;
+  categoria: string;
+  imagenUrl?: string; // URL directa de la primera imagen
+  estado: string;     // 'Nuevo' | 'Usado'
+  cantidad: number;
+}
 
-const fetchPublicProfile = async (userId: string): Promise<PublicProfile> => {
+// --- 2. API FETCHERS ---
+
+const fetchPublicProfile = async (userId: string): Promise<ProfileUser> => {
   const res = await fetch(`${URL_BASE}/api/users/public/${userId}`);
   if (!res.ok) throw new Error("Usuario no encontrado");
   const data = await res.json();
   return data.data;
 };
 
-const fetchUserProducts = async (userId: string): Promise<Post[]> => {
-  // Usamos el endpoint de productos filtrando por vendedorId
-  // Nota: Asegúrate de que tu backend soporte ?vendedorId=... o ajusta esta llamada
-  // Si no tienes filtro directo, podrías necesitar un endpoint específico
-  // Por ahora asumiremos que /api/products acepta filtros o usamos uno simulado
-  const res = await fetch(`${URL_BASE}/api/products?vendedorId=${userId}&limit=10`); 
-  // OJO: Si tu backend 'products.js' no filtra por vendedorId en GET /, 
-  // necesitarás agregar esa lógica en el backend o usar un endpoint específico.
+const fetchUserProducts = async (userId: string): Promise<ProfileProduct[]> => {
+  // Filtramos productos específicamente de este vendedor
+  const res = await fetch(`${URL_BASE}/api/products?vendedorId=${userId}&limit=20`);
   
-  const data = await res.json();
   if (!res.ok) return [];
+  const data = await res.json();
   
-  // Mapeo rápido de datos (adaptar según tu respuesta real)
+  // Mapeo seguro a nuestro tipo local simplificado
   return (data.products || []).map((p: any) => ({
     id: p.id,
     nombre: p.nombre,
-    precioActual: p.precioActual,
-    categoria: p.categoria,
-    imagenes: p.imagenes?.map((img: any) => ({ url: img.urlImagen })),
-    vendedor: p.vendedor,
+    precioActual: Number(p.precioActual),
+    categoria: p.categoria || 'Varios',
+    imagenUrl: p.imagenes?.[0]?.urlImagen || p.imagenes?.[0]?.url, // Soporte para ambas estructuras
+    estado: p.estadoProducto || 'Usado',
     cantidad: p.cantidad
   }));
 };
 
-// --- COMPONENTE PRINCIPAL ---
+// --- 3. COMPONENTES LOCALES ---
+
+const ProfileProductCard = ({ product, onClick }: { product: ProfileProduct, onClick: (id: number) => void }) => {
+  const formattedPrice = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(product.precioActual);
+
+  return (
+    <motion.div 
+      whileHover={{ y: -4 }}
+      onClick={() => onClick(product.id)}
+      className="group bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md transition-all"
+    >
+      <div className="relative aspect-square bg-slate-100 overflow-hidden">
+        {product.imagenUrl ? (
+          <img 
+            src={getImageUrl(product.imagenUrl)} 
+            alt={product.nombre} 
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-slate-300">
+            <LuShoppingBag size={32} />
+          </div>
+        )}
+        <div className="absolute top-2 right-2">
+          <Badge className="bg-white/90 text-slate-900 font-bold shadow-sm hover:bg-white">
+            {formattedPrice}
+          </Badge>
+        </div>
+      </div>
+      <div className="p-3">
+        <div className="flex items-start justify-between gap-2 mb-1">
+           <Badge variant="outline" className="text-[10px] px-1.5 h-5 text-slate-500 border-slate-200 font-normal">
+             {product.categoria}
+           </Badge>
+           {product.estado === 'nuevo' && (
+             <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Nuevo</span>
+           )}
+        </div>
+        <h3 className="font-semibold text-slate-800 text-sm line-clamp-2 leading-snug group-hover:text-blue-600 transition-colors">
+          {product.nombre}
+        </h3>
+      </div>
+    </motion.div>
+  );
+};
+
+// --- 4. PÁGINA PRINCIPAL ---
 
 export default function PublicProfilePage() {
   const { id } = useParams<{ id: string }>();
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
 
-  // 1. Cargar Perfil
+  // Queries
   const { data: profile, isLoading, isError } = useQuery({
     queryKey: ["publicProfile", id],
     queryFn: () => fetchPublicProfile(id!),
@@ -89,7 +135,6 @@ export default function PublicProfilePage() {
     retry: 1
   });
 
-  // 2. Cargar Productos del Usuario
   const { data: products, isLoading: isLoadingProducts } = useQuery({
     queryKey: ["userProducts", id],
     queryFn: () => fetchUserProducts(id!),
@@ -98,7 +143,6 @@ export default function PublicProfilePage() {
 
   const isOwnProfile = currentUser?.id === Number(id);
 
-  // Acción: Contactar
   const handleContact = () => {
     if (!profile) return;
     navigate('/chats', { 
@@ -113,135 +157,135 @@ export default function PublicProfilePage() {
   };
 
   if (isLoading) return <ProfileSkeleton />;
+  
   if (isError || !profile) return (
     <div className="flex flex-col items-center justify-center h-[60vh] text-slate-500">
-      <div className="text-6xl mb-4">😕</div>
-      <h2 className="text-xl font-semibold">Usuario no encontrado</h2>
-      <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>Volver</Button>
+      <div className="p-4 bg-slate-50 rounded-full mb-4">
+         <LuGhost size={40} className="text-slate-300" />
+      </div>
+      <h2 className="text-xl font-semibold text-slate-700">Usuario no encontrado</h2>
+      <p className="text-sm text-slate-400 mb-6">Es posible que el perfil haya sido eliminado.</p>
+      <Button variant="outline" onClick={() => navigate(-1)}>Volver</Button>
     </div>
   );
 
   return (
-    <div className="max-w-5xl mx-auto pb-12 p-4 md:p-8">
+    <div className="max-w-6xl mx-auto pb-12 p-4 md:p-8">
       
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="space-y-6"
+        className="space-y-8"
       >
-        {/* --- HERO CARD --- */}
-        <div className="relative">
-          {/* Fondo Degradado */}
-          <div className="h-48 w-full bg-gradient-to-r from-slate-800 to-slate-900 rounded-t-2xl shadow-sm"></div>
+        {/* --- HERO HEADER --- */}
+        <div className="relative bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          {/* Banner */}
+          <div className="h-32 md:h-48 w-full bg-gradient-to-r from-slate-900 to-slate-800 relative">
+             <div className="absolute inset-0 bg-black/10" />
+          </div>
           
-          <Card className="relative -mt-16 border-none shadow-lg overflow-visible bg-white">
-            <CardContent className="pt-0 pb-6 px-6">
-              <div className="flex flex-col md:flex-row gap-6 items-start">
-                
-                {/* Avatar */}
-                <div className="relative -mt-12">
-                  <div className="p-1.5 bg-white rounded-full shadow-sm">
-                    <Avatar className="h-32 w-32 border-4 border-white shadow-inner bg-slate-100">
-                      <AvatarImage 
-                        src={getImageUrl(profile.fotoPerfilUrl)} 
-                        alt={profile.usuario} 
-                        className="object-cover" 
-                      />
-                      <AvatarFallback className="text-4xl bg-slate-200 text-slate-500 font-bold">
-                        {profile.nombre.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+          <div className="px-6 pb-6 md:px-8">
+            <div className="flex flex-col md:flex-row gap-4 items-start -mt-12 relative z-10">
+              
+              {/* Avatar */}
+              <div className="p-1 bg-white rounded-full shadow-sm">
+                <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-slate-50 bg-white">
+                  <AvatarImage 
+                    src={getImageUrl(profile.fotoPerfilUrl)} 
+                    className="object-cover"
+                  />
+                  <AvatarFallback className="text-3xl md:text-4xl bg-slate-100 text-slate-400 font-bold">
+                    {profile.nombre.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+
+              {/* Datos */}
+              <div className="flex-1 pt-2 md:pt-14 text-center md:text-left w-full">
+                <div className="flex flex-col md:flex-row justify-between items-center md:items-start gap-4">
+                  <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center justify-center md:justify-start gap-2">
+                      {profile.nombre}
+                    </h1>
+                    <p className="text-slate-500 font-medium">@{profile.usuario}</p>
+                    
+                    <div className="flex flex-wrap justify-center md:justify-start items-center gap-3 mt-3 text-sm text-slate-600">
+                       {profile.campus && (
+                         <div className="flex items-center gap-1.5">
+                           <LuMapPin className="text-blue-500" size={14} /> 
+                           <span>{profile.campus}</span>
+                         </div>
+                       )}
+                       <div className="w-1 h-1 rounded-full bg-slate-300 hidden md:block" />
+                       <div className="flex items-center gap-1.5">
+                         <LuCalendar className="text-slate-400" size={14} /> 
+                         <span>Miembro desde {new Date(profile.fechaRegistro).getFullYear()}</span>
+                       </div>
+                    </div>
                   </div>
-                </div>
 
-                {/* Info Principal */}
-                <div className="flex-1 mt-2 w-full pt-2">
-                  <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                    <div>
-                      <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
-                        {profile.nombre} {profile.apellido}
-                      </h1>
-                      <p className="text-slate-500 font-medium">@{profile.usuario}</p>
-                      
-                      <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-slate-600">
-                         {profile.campus && (
-                           <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                             <LuMapPin className="text-blue-500" /> {profile.campus}
-                           </span>
-                         )}
-                         <span className="flex items-center gap-1.5">
-                           <LuCalendar className="text-slate-400" /> 
-                           Miembro desde {new Date(profile.fechaRegistro).getFullYear()}
-                         </span>
-                      </div>
-                    </div>
-
-                    {/* Botón de Acción */}
-                    <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
-                      {isOwnProfile ? (
-                        <Button onClick={() => navigate('/perfil')} variant="outline" className="gap-2">
-                          <LuPencil className="w-4 h-4" /> Editar mi perfil
-                        </Button>
-                      ) : (
-                        <Button onClick={handleContact} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200">
-                          <LuMessageCircle className="w-4 h-4" /> Enviar Mensaje
-                        </Button>
-                      )}
-                    </div>
+                  {/* Acciones */}
+                  <div className="flex gap-3 w-full md:w-auto">
+                    {isOwnProfile ? (
+                      <Button onClick={() => navigate('/perfil')} variant="outline" className="flex-1 md:flex-none gap-2 border-slate-300">
+                         Editar Perfil
+                      </Button>
+                    ) : (
+                      <Button onClick={handleContact} className="flex-1 md:flex-none gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200">
+                        <LuMessageCircle size={16} /> Contactar
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
-        {/* --- CONTENIDO PRINCIPAL --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* --- GRID PRINCIPAL --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           
-          {/* Sidebar: Estadísticas */}
+          {/* COLUMNA IZQUIERDA: INFO */}
           <div className="space-y-6">
-             <Card className="border-slate-200 shadow-sm overflow-hidden">
-                <CardHeader className="bg-slate-50 border-b border-slate-100 py-4">
-                  <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                    Resumen
+             <Card className="border-slate-200 shadow-sm bg-slate-50/50">
+                <CardHeader className="border-b border-slate-100 py-3 px-4">
+                  <CardTitle className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Estadísticas
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-6 grid gap-6">
-                   {/* Reputación */}
+                <CardContent className="p-4 grid gap-4">
                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                         <div className="p-2 bg-amber-100 text-amber-600 rounded-lg">
-                           <LuStar size={20} />
+                         <div className="p-2 bg-white border border-slate-100 text-amber-500 rounded-lg shadow-sm">
+                           <LuStar size={16} />
                          </div>
-                         <span className="font-medium text-slate-700">Reputación</span>
+                         <span className="text-sm font-medium text-slate-600">Reputación</span>
                       </div>
-                      <span className="text-xl font-bold text-slate-900">
+                      <span className="text-lg font-bold text-slate-900">
                         {Number(profile.reputacion).toFixed(1)}
                       </span>
                    </div>
-                   <Separator />
-                   {/* Ventas */}
+                   
                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                         <div className="p-2 bg-green-100 text-green-600 rounded-lg">
-                           <LuShieldCheck size={20} />
+                         <div className="p-2 bg-white border border-slate-100 text-green-600 rounded-lg shadow-sm">
+                           <LuShieldCheck size={16} />
                          </div>
-                         <span className="font-medium text-slate-700">Ventas</span>
+                         <span className="text-sm font-medium text-slate-600">Ventas</span>
                       </div>
-                      <span className="text-xl font-bold text-slate-900">
+                      <span className="text-lg font-bold text-slate-900">
                         {profile.stats?.ventas || 0}
                       </span>
                    </div>
-                   <Separator />
-                   {/* Publicaciones */}
+
                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                         <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
-                           <LuShoppingBag size={20} />
+                         <div className="p-2 bg-white border border-slate-100 text-blue-600 rounded-lg shadow-sm">
+                           <LuLayoutGrid size={16} />
                          </div>
-                         <span className="font-medium text-slate-700">Publicados</span>
+                         <span className="text-sm font-medium text-slate-600">Productos</span>
                       </div>
-                      <span className="text-xl font-bold text-slate-900">
+                      <span className="text-lg font-bold text-slate-900">
                         {profile.stats?.publicaciones || 0}
                       </span>
                    </div>
@@ -249,48 +293,65 @@ export default function PublicProfilePage() {
              </Card>
           </div>
 
-          {/* Area Principal: Tabs */}
-          <div className="lg:col-span-2">
+          {/* CONTENIDO: PUBLICACIONES */}
+          <div className="lg:col-span-3">
             <Tabs defaultValue="products" className="w-full">
-              <TabsList className="bg-white border border-slate-200 p-1 w-full justify-start rounded-xl mb-6">
-                <TabsTrigger value="products" className="data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 flex-1 md:flex-none px-6">
-                  <LuLayoutGrid className="w-4 h-4 mr-2" /> Publicaciones
-                </TabsTrigger>
-                <TabsTrigger value="reviews" className="data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 flex-1 md:flex-none px-6">
-                  <LuStar className="w-4 h-4 mr-2" /> Valoraciones
-                </TabsTrigger>
-              </TabsList>
+              <div className="flex items-center justify-between mb-6">
+                <TabsList className="bg-slate-100/80 p-1 border border-slate-200 rounded-xl">
+                  <TabsTrigger value="products" className="rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
+                    Publicaciones ({products?.length || 0})
+                  </TabsTrigger>
+                  <TabsTrigger value="reviews" className="rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
+                    Valoraciones
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
               <TabsContent value="products" className="mt-0">
                 {isLoadingProducts ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Skeleton className="h-64 w-full rounded-xl" />
-                    <Skeleton className="h-64 w-full rounded-xl" />
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-64 w-full rounded-xl" />)}
                   </div>
                 ) : products && products.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {products.map((post) => (
-                       // Usamos ItemCard pero deshabilitamos el click para evitar navegar dentro de la misma página si no queremos
-                       // O permitimos navegar al detalle del producto
-                       <div key={post.id} onClick={() => navigate(`/producto/${post.id}`)} className="cursor-pointer">
-                          <ItemCard post={post} onClick={() => {}} />
-                       </div>
+                  <motion.div 
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6"
+                  >
+                    {products.map((product) => (
+                       <ProfileProductCard 
+                          key={product.id} 
+                          product={product} 
+                          onClick={(id) => navigate(`/producto/${id}`)} 
+                       />
                     ))}
-                  </div>
+                  </motion.div>
                 ) : (
-                  <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center">
-                    <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                  <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-dashed border-slate-200 text-center">
+                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                       <LuShoppingBag className="text-slate-300 h-8 w-8" />
                     </div>
                     <h3 className="text-lg font-medium text-slate-900">Sin publicaciones activas</h3>
-                    <p className="text-slate-500 mt-1">Este usuario no tiene productos en venta actualmente.</p>
+                    <p className="text-slate-500 mt-1 max-w-xs">
+                      {isOwnProfile 
+                        ? "Aún no has publicado nada. ¡Empieza a vender hoy!" 
+                        : "Este usuario no tiene productos en venta actualmente."}
+                    </p>
+                    {isOwnProfile && (
+                      <Button className="mt-4 bg-slate-900 text-white" onClick={() => navigate('/crear')}>
+                        Crear publicación
+                      </Button>
+                    )}
                   </div>
                 )}
               </TabsContent>
 
               <TabsContent value="reviews" className="mt-0">
-                <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
-                   <p>Las valoraciones estarán disponibles pronto.</p>
+                <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+                   <div className="inline-flex p-3 bg-amber-50 rounded-full mb-4">
+                     <LuStar className="text-amber-400 h-6 w-6" />
+                   </div>
+                   <h3 className="text-lg font-medium text-slate-900">Valoraciones</h3>
+                   <p className="text-slate-500">Las opiniones de otros usuarios aparecerán aquí.</p>
                 </div>
               </TabsContent>
             </Tabs>
@@ -306,23 +367,21 @@ export default function PublicProfilePage() {
 // --- SKELETON LOADER ---
 function ProfileSkeleton() {
   return (
-    <div className="max-w-5xl mx-auto p-8 space-y-8">
-      <Skeleton className="h-48 w-full rounded-t-2xl" />
-      <div className="px-6 -mt-16 flex gap-6">
-        <Skeleton className="h-32 w-32 rounded-full border-4 border-white" />
-        <div className="pt-16 space-y-2 w-full max-w-md">
-          <Skeleton className="h-8 w-3/4" />
-          <Skeleton className="h-4 w-1/2" />
+    <div className="max-w-6xl mx-auto p-8 space-y-8">
+      <Skeleton className="h-48 w-full rounded-t-2xl bg-slate-200" />
+      <div className="px-8 -mt-16 flex gap-6 items-end">
+        <Skeleton className="h-32 w-32 rounded-full border-4 border-white bg-slate-300" />
+        <div className="pb-2 space-y-2 w-full max-w-md">
+          <Skeleton className="h-8 w-1/2 bg-slate-200" />
+          <Skeleton className="h-4 w-1/3 bg-slate-200" />
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-8 mt-8">
-         <Skeleton className="h-64 w-full rounded-xl" />
-         <div className="col-span-2 space-y-4">
-            <Skeleton className="h-12 w-full rounded-xl" />
-            <div className="grid grid-cols-2 gap-4">
-              <Skeleton className="h-64 w-full rounded-xl" />
-              <Skeleton className="h-64 w-full rounded-xl" />
-            </div>
+      <div className="grid grid-cols-4 gap-8 mt-8">
+         <Skeleton className="h-64 w-full rounded-xl bg-slate-100" />
+         <div className="col-span-3 grid grid-cols-3 gap-4">
+            <Skeleton className="h-64 rounded-xl bg-slate-100" />
+            <Skeleton className="h-64 rounded-xl bg-slate-100" />
+            <Skeleton className="h-64 rounded-xl bg-slate-100" />
          </div>
       </div>
     </div>
