@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, X, ChevronLeft, ChevronRight, 
@@ -383,9 +383,7 @@ function ItemCard({ post, onClick }: { post: Post, onClick: (p: Post) => void })
 // 6. PÁGINA PRINCIPAL (CONTENIDO DEL LAYOUT)
 // ---------------------------------------------------------------------------
 export default function MarketplacePage() {
-  const [searchParams, setSearchParams] = useSearchParams(); // 1. Hook de URL
-  const urlSearch = searchParams.get('search') || '';
-  const [searchTerm, setSearchTerm] = useState(urlSearch)
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   
@@ -411,10 +409,6 @@ export default function MarketplacePage() {
     });
     if (node) observer.current.observe(node);
   }, [isLoading, hasNextPage, fetchNextPage]);
-
-  useEffect(() => {
-      setSearchTerm(urlSearch);
-    }, [urlSearch]);
 
   return (
     <div className="w-full h-full p-4 md:p-8 overflow-y-auto scroll-smooth">
