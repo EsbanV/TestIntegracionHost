@@ -64,10 +64,12 @@ export default function LoginTest() {
 
 // En LoginTest.tsx
 
+// En src/components/LoginTest.tsx
+
 const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-  e.preventDefault()
-  setIsLoading(true)
-  setError(null)
+  e.preventDefault();
+  setIsLoading(true);
+  setError(null);
 
   try {
     const res = await fetch(`${URL_BASE}/api/auth/login`, {
@@ -75,41 +77,47 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(formData),
-    })
+    });
 
-    const data: ApiSuccessResponse | ApiErrorResponse = await res.json()
+    const data = await res.json();
 
-    // 🔍 AGREGA ESTO PARA VER QUÉ LLEGA
-    console.log("📡 Estatus HTTP:", res.status); 
-    console.log("📦 Datos del Backend:", data);
+    console.log("📡 Login Respuesta:", data);
 
     if (res.ok && data.ok) {
-      // Validación defensiva: ¿Realmente llegó el token?
-      const token = (data as ApiSuccessResponse).accessToken;
-      
-      if (!token) {
-        console.error("❌ ERROR FATAL: El backend dijo OK pero no envió token.");
-        setError("Error interno: El servidor no generó el token.");
-        return;
+      // 1. Validar que llegue el token
+      if (!data.accessToken) {
+        throw new Error("El servidor no devolvió el token de acceso.");
       }
 
+      // 2. LIMPIEZA DE DATOS (El Fix Importante) 🛡️
+      // Convertimos 'null' a 'undefined' o cadena vacía para que React/TS no se quejen
       const safeUser = {
-    ...data.user,
-    campus: data.user.campus ?? undefined // Convierte null a undefined
-  };
-      // Login exitoso
-      login(token, safeUser); 
-      navigate(from, { replace: true })
+        ...data.user,
+        campus: data.user.campus || undefined, // Si es null, pon undefined
+        fotoPerfilUrl: data.user.fotoPerfilUrl || undefined
+      };
+
+      // 3. Guardar sesión
+      console.log("💾 Guardando sesión...", safeUser);
+      login(data.accessToken, safeUser);
+
+      // 4. Redirección Forzada
+      // Usamos un pequeño timeout para asegurar que el estado del Context se actualice primero
+      setTimeout(() => {
+        console.log("🚀 Redirigiendo al Home...");
+        navigate('/home', { replace: true });
+      }, 100);
+
     } else {
-      setError(data.message || 'Credenciales inválidas')
+      setError(data.message || 'Credenciales inválidas');
+      setIsLoading(false); // Solo quitamos carga si falló, si no esperamos la redirección
     }
   } catch (err) {
-    console.error(err)
-    setError('Error de conexión con el servidor.')
-  } finally {
-    setIsLoading(false)
+    console.error(err);
+    setError('Error de conexión o configuración.');
+    setIsLoading(false);
   }
-}
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50/50 p-4">
