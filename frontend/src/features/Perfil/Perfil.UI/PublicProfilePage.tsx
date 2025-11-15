@@ -20,8 +20,8 @@ import {
 
 // Importar ItemCard del Marketplace para mostrar sus productos
 // Asegúrate de ajustar la ruta a donde tengas tu ItemCard
-import { ItemCard } from "@/features/marketplace/Marketplace.UI/MarketplacePage"; 
-import type { Post } from "@/features/marketplace/Marketplace.Types/ProductInterfaces";
+import ItemCard  from "@/features/Marketplace/Marketplace.UI/HomePage"; 
+import type { Post } from "@/features/Marketplace/Marketplace.Types/ProductInterfaces";
 
 const URL_BASE = import.meta.env.VITE_API_URL;
 
