@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, X, ChevronLeft, ChevronRight, MapPin, 
-  ShoppingBag, MessageCircle, Star, Filter
+  ShoppingBag, MessageCircle, Star, Filter, Send, Check
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -14,9 +14,10 @@ import type { Post } from '@/features/Marketplace/Marketplace.Types/ProductInter
 import { formatInt, formatCLP } from '@/features/Marketplace/Marketplace.Utils/format';
 import { Sidebar } from '@/features/shared/ui/Sidebar'; 
 import Header from '@/features/shared/ui/Header'; 
+import { useAuth } from '@/app/context/AuthContext'; // 👈 Importante: Para obtener el token
 
-
-
+// --- Configuración ---
+const API_URL = import.meta.env.VITE_API_URL;
 
 // --- Utilidades ---
 function cn(...inputs: ClassValue[]) {
@@ -39,16 +40,20 @@ const getInitials = (name?: string) => {
 
 // --- Componentes UI ---
 
-const Badge = ({ children, className, variant = 'default' }: { children: React.ReactNode, className?: string, variant?: 'default'|'secondary'|'outline'|'price'|'category' }) => {
+const Badge = ({ children, className, variant = 'default', onClick }: { children: React.ReactNode, className?: string, variant?: 'default'|'secondary'|'outline'|'price'|'category'|'suggestion', onClick?: () => void }) => {
   const variants = {
     default: "bg-slate-900 text-white hover:bg-slate-800 border-transparent",
     secondary: "bg-slate-100 text-slate-900 hover:bg-slate-200 border-transparent",
     outline: "text-slate-950 border-slate-200",
     price: "bg-emerald-600 text-white font-bold shadow-sm border-transparent",
-    category: "bg-white/90 backdrop-blur text-slate-900 font-medium shadow-sm border-transparent"
+    category: "bg-white/90 backdrop-blur text-slate-900 font-medium shadow-sm border-transparent",
+    suggestion: "bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100 cursor-pointer transition-all active:scale-95"
   };
   return (
-    <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs transition-colors", variants[variant], className)}>
+    <div 
+      onClick={onClick}
+      className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2", variants[variant], className)}
+    >
       {children}
     </div>
   );
@@ -83,7 +88,7 @@ const LoadingSpinner = () => (
 // --- Carrusel ---
 function ImageCarousel({ images, altPrefix }: { images: string[], altPrefix?: string }) {
   const [index, setIndex] = useState(0);
-  const validImages = images?.length ? images : ["/img/placeholder-product.png"]; // Usa una imagen local o URL válida por defecto
+  const validImages = images?.length ? images : ["/img/placeholder-product.png"];
   const thumbRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -138,18 +143,88 @@ function ImageCarousel({ images, altPrefix }: { images: string[], altPrefix?: st
   );
 }
 
-// --- Modal Detalle ---
-function ProductDetailModal({ open, onClose, post, onContact }: { open: boolean, onClose: () => void, post: Post | null, onContact: (post: Post) => void }) {
+// ---------------------------------------------------------------------------
+// 4. MODAL DE DETALLE (REFACTORIZADO CON CHAT)
+// ---------------------------------------------------------------------------
+function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: () => void, post: Post | null }) {
+  const { token, user } = useAuth();
+  const navigate = useNavigate();
+  
+  // Estado del formulario de contacto
+  const [message, setMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [sentSuccess, setSentSuccess] = useState(false);
+
+  // Mensajes predefinidos
+  const quickReplies = [
+    "¡Hola! ¿Sigue disponible?",
+    `Me interesa tu ${post?.nombre || 'producto'}, ¿dónde entregas?`,
+    "¿El precio es conversable?",
+    "¿Tienes más fotos?"
+  ];
+
+  // Resetear estado al abrir un nuevo post
+  useEffect(() => {
+    if (open) {
+      setMessage('');
+      setSentSuccess(false);
+      setIsSending(false);
+    }
+  }, [open, post]);
+
   if (!post) return null;
 
+  // Detalles para el sidebar
   const details = [
     { label: "Precio", value: formatCLP(post.precioActual || 0), highlight: true },
     { label: "Stock", value: post.cantidad || 1 },
     { label: "Campus", value: post.vendedor?.campus || "No especificado" },
     { label: "Categoría", value: post.categoria },
-    { label: "Condición", value: post.estado || "Usado" }, // El backend envía "estado" como string
+    { label: "Condición", value: post.estado || "Usado" },
     { label: "Publicado", value: formatDate(post.fechaAgregado) },
   ];
+
+  const isOwnProduct = user?.id === post.vendedor?.id;
+
+  // Lógica de Envío Real
+  const handleSendMessage = async () => {
+    if (!message.trim() || !token || !post.vendedor) return;
+
+    setIsSending(true);
+    try {
+      const res = await fetch(`${API_URL}/api/chat/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          destinatarioId: post.vendedor.id,
+          contenido: message,
+          tipo: 'texto'
+        })
+      });
+
+      if (res.ok) {
+        setSentSuccess(true);
+        setTimeout(() => {
+           // Opcional: Cerrar modal o navegar al chat
+           // onClose(); 
+        }, 1500);
+      } else {
+        alert("Error al enviar mensaje");
+      }
+    } catch (error) {
+      console.error("Error enviando mensaje", error);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const goToChat = () => {
+     navigate('/chats', { state: { toUser: post.vendedor } });
+     onClose();
+  };
 
   return (
     <AnimatePresence>
@@ -165,13 +240,13 @@ function ProductDetailModal({ open, onClose, post, onContact }: { open: boolean,
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="relative flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl md:flex-row max-h-[90vh] z-10"
           >
+            {/* --- COLUMNA IZQUIERDA (Info Producto) --- */}
             <div className="flex-1 overflow-y-auto p-6 bg-white">
               <div className="hidden md:flex items-start justify-between mb-6">
                 <h1 className="text-2xl font-extrabold text-slate-900 leading-tight">{post.nombre}</h1>
                 <Button variant="outline" size="icon" className="rounded-full" onClick={onClose}><X size={18} /></Button>
               </div>
 
-              {/* Carrusel de imágenes reales */}
               <ImageCarousel images={post.imagenes?.map(i => i.url || "") || []} />
 
               <div className="mt-6 space-y-4">
@@ -189,7 +264,10 @@ function ProductDetailModal({ open, onClose, post, onContact }: { open: boolean,
               </div>
             </div>
 
+            {/* --- COLUMNA DERECHA (Sidebar Interactivo) --- */}
             <div className="w-full md:w-[380px] bg-slate-50 border-l border-slate-100 p-6 flex flex-col overflow-y-auto shrink-0">
+              
+              {/* Card Vendedor */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6">
                 <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Vendedor</div>
                 <div className="flex items-center gap-3">
@@ -208,21 +286,78 @@ function ProductDetailModal({ open, onClose, post, onContact }: { open: boolean,
                 </div>
               </div>
 
-              <div className="space-y-4 flex-1">
+              {/* Lista de Datos (Precio, Stock, etc) */}
+              <div className="space-y-3 mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 {details.map((item, idx) => (
-                    <div key={idx} className="grid grid-cols-[100px_1fr] items-baseline">
+                    <div key={idx} className="flex justify-between items-baseline border-b border-slate-50 pb-2 last:border-0 last:pb-0">
                         <span className="text-sm text-slate-500">{item.label}</span>
-                        <span className={cn("text-sm font-medium text-slate-900", item.highlight && "text-emerald-600 font-bold text-lg")}>
+                        <span className={cn("text-sm font-medium text-slate-900", item.highlight && "text-emerald-600 font-bold text-base")}>
                             {item.value}
                         </span>
                     </div>
                 ))}
               </div>
 
-              <div className="mt-8 pt-6 border-t border-slate-200 flex gap-3">
-                <Button variant="secondary" className="flex-1 font-semibold" onClick={onClose}>Cerrar</Button>
-                <Button className="flex-1 font-semibold bg-slate-900 text-white hover:bg-slate-800" onClick={() => onContact(post)}>Contactar</Button>
+              {/* --- ZONA DE CONTACTO / MENSAJE --- */}
+              <div className="mt-auto pt-4 border-t border-slate-200">
+                {isOwnProduct ? (
+                   <div className="text-center p-4 bg-yellow-50 text-yellow-700 rounded-xl text-sm font-medium">
+                     Este es tu producto
+                   </div>
+                ) : sentSuccess ? (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                    className="bg-green-50 border border-green-100 rounded-xl p-6 text-center"
+                  >
+                    <div className="mx-auto w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3">
+                      <Check size={24} />
+                    </div>
+                    <h3 className="font-bold text-green-800 mb-1">¡Mensaje Enviado!</h3>
+                    <p className="text-xs text-green-600 mb-4">El vendedor ha recibido tu mensaje.</p>
+                    <Button onClick={goToChat} className="w-full bg-green-600 hover:bg-green-700 text-white">
+                       Ir al chat
+                    </Button>
+                  </motion.div>
+                ) : (
+                  <div className="space-y-3">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Enviar mensaje al vendedor</label>
+                    
+                    {/* Text Area Estilizado */}
+                    <div className="relative">
+                      <textarea 
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        placeholder="Escribe tu mensaje aquí..."
+                        className="w-full p-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none h-24 bg-white"
+                      />
+                      <div className="absolute bottom-2 right-2">
+                         <Button 
+                           size="icon" 
+                           className={cn("h-8 w-8 rounded-lg transition-all", message ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-200 text-slate-400")}
+                           disabled={!message || isSending}
+                           onClick={handleSendMessage}
+                         >
+                           {isSending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Send size={14} />}
+                         </Button>
+                      </div>
+                    </div>
+
+                    {/* Mensajes Predefinidos (Chips) */}
+                    <div className="flex flex-wrap gap-2">
+                      {quickReplies.map((reply, i) => (
+                        <Badge 
+                          key={i} 
+                          variant="suggestion" 
+                          onClick={() => setMessage(reply)}
+                        >
+                          {reply}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+
             </div>
           </motion.div>
         </div>
@@ -231,7 +366,9 @@ function ProductDetailModal({ open, onClose, post, onContact }: { open: boolean,
   );
 }
 
-// --- Item Card ---
+// ---------------------------------------------------------------------------
+// 5. TARJETA DEL FEED
+// ---------------------------------------------------------------------------
 function ItemCard({ post, onClick }: { post: Post, onClick: (p: Post) => void }) {
   const { nombre, precioActual, categoria, imagenes, vendedor, fechaAgregado } = post;
   const image = imagenes?.[0]?.url;
@@ -266,7 +403,7 @@ function ItemCard({ post, onClick }: { post: Post, onClick: (p: Post) => void })
         <h3 className="font-bold text-slate-900 line-clamp-1 mb-1 text-base">{nombre}</h3>
         <p className="text-sm text-slate-500 line-clamp-2 mb-4 flex-1">{post.descripcion || "Sin descripción."}</p>
         <div className="mt-auto flex items-center justify-between border-t border-slate-50 pt-3">
-           <div className="flex items-center gap-1 text-slate-400"><Star size={14} className="fill-slate-200 text-slate-200" /><span className="text-xs font-medium">{vendedor?.reputacion ? Number(vendedor.reputacion).toFixed(1) : "5.0"}</span></div>
+           <div className="flex items-center gap-1 text-slate-400"><Star size={14} className="fill-slate-200 text-slate-200" /><span className="text-xs font-medium">5.0</span></div>
            <Button variant="secondary" size="sm" className="h-8 text-xs font-semibold">Ver detalle</Button>
         </div>
       </div>
@@ -274,7 +411,9 @@ function ItemCard({ post, onClick }: { post: Post, onClick: (p: Post) => void })
   );
 }
 
-// --- Página Principal Conectada ---
+// ---------------------------------------------------------------------------
+// 6. PÁGINA PRINCIPAL
+// ---------------------------------------------------------------------------
 export default function MarketplacePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -283,11 +422,12 @@ export default function MarketplacePage() {
 
   const categories = useMemo(() => ['Electrónicos', 'Libros y Materiales', 'Ropa y Accesorios', 'Deportes', 'Hogar y Jardín', 'Vehículos', 'Servicios'], []);
   
-  // Mapeo simple para coincidir con lo que el backend espera (string o ID)
-  // Ajusta estos valores según lo que tengas en tu base de datos (ej: "Electronics" vs "Electronica")
-  const selectedCategoryId = selectedCategory; 
+  const categoryMap: Record<string, string> = {
+    'Electrónicos': 'electronics', 'Libros y Materiales': 'books', 'Ropa y Accesorios': 'clothing', 
+    'Deportes': 'sports', 'Hogar y Jardín': 'home', 'Vehículos': 'vehicles', 'Servicios': 'services',
+  };
+  const selectedCategoryId = selectedCategory ? (categoryMap[selectedCategory] ?? '') : '';
 
-  // --- AHORA USAMOS EL HOOK REAL ---
   const { posts, hasNextPage, fetchNextPage, isLoading, isError } = usePostsWithFilters({
     searchTerm, categoryId: selectedCategoryId
   });
@@ -303,14 +443,11 @@ export default function MarketplacePage() {
     if (node) observer.current.observe(node);
   }, [isLoading, hasNextPage, fetchNextPage]);
 
-  const handleContact = (post: Post) => {
-    navigate('/chats', { state: { toUser: post.vendedor } });
-    setSelectedPost(null);
-  };
-
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
+      <div className="hidden lg:block w-[260px] shrink-0 border-r bg-white"><Sidebar active="marketplace" /></div>
       <div className="flex flex-1 flex-col h-screen overflow-hidden">
+        <Header />
         <main className="flex-1 overflow-y-auto scroll-smooth p-4 md:p-8">
           <div className="max-w-7xl mx-auto space-y-8 pb-20">
             
@@ -356,7 +493,7 @@ export default function MarketplacePage() {
           </div>
         </main>
       </div>
-      <ProductDetailModal open={!!selectedPost} onClose={() => setSelectedPost(null)} post={selectedPost} onContact={handleContact} />
+      <ProductDetailModal open={!!selectedPost} onClose={() => setSelectedPost(null)} post={selectedPost} />
     </div>
   );
 }
