@@ -9,7 +9,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 // --- Imports Externos ---
-import { usePostsWithFilters } from '@/features/marketplace/Marketplace.Hooks/usePostsWithFilters';
+import { usePostsWithFilters } from '@/features/marketplace/Marketplace.Hooks/usePostWithFilters';
 import type { Post } from '@/features/marketplace/Marketplace.Types/ProductInterfaces';
 import { formatInt, formatCLP } from '@/features/marketplace/Marketplace.Utils/format';
 import { Sidebar } from '@/features/shared/ui/Sidebar'; 
