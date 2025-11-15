@@ -273,7 +273,7 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
                       <div className="font-semibold text-slate-900">{post.vendedor?.usuario || "Usuario"}</div>
                       <div className="flex items-center gap-1 text-xs text-slate-500">
                         <Star size={12} className="fill-yellow-400 text-yellow-400" /> 
-                        {post.vendedor?.reputacion ? Number(post.vendedor.reputacion).toFixed(1) : "5.0"}
+                        {post.vendedor?.reputacion ? Number(post.vendedor.reputacion).toFixed(1) : "0.0"}
                       </div>
                    </div>
                 </div>
