@@ -105,7 +105,7 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
       // Usamos un pequeño timeout para asegurar que el estado del Context se actualice primero
       setTimeout(() => {
         console.log("🚀 Redirigiendo al Home...");
-        navigate('/home', { replace: true });
+        window.location.href = '/home';
       }, 100);
 
     } else {
