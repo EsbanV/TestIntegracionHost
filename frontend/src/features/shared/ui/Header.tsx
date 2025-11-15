@@ -149,7 +149,7 @@ export const Header: React.FC = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-slate-100 p-0 focus-visible:ring-0 focus-visible:ring-offset-0">
                   <Avatar className="h-9 w-9 border border-slate-200 transition-transform hover:scale-105">
-                    <AvatarImage src={user?.fotoPerfilUrl || UserDefault} className="object-cover" />
+                    <AvatarImage src={getImageUrl(user.fotoPerfilUrl)} className="object-cover" />
                     <AvatarFallback className="bg-blue-100 text-blue-700 font-bold">
                       {user?.usuario?.charAt(0).toUpperCase()}
                     </AvatarFallback>
