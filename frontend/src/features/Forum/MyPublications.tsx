@@ -93,7 +93,7 @@ const updatePublication = async (data: UpdatePublicationData, token: string | nu
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    credentials: 'include'
+    credentials: 'include',
     body: JSON.stringify({ titulo: data.titulo, cuerpo: data.cuerpo }),
   })
   if (!res.ok) throw new Error("Error al actualizar")
