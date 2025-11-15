@@ -18,6 +18,7 @@ import ForumPage from '@/features/Forum/ForumPage'
 import AyudaPage from '@/features/About.Terms.Help/Help.UI/AyudaPage'
 import TermsPage from '@/features/About.Terms.Help/Terms.UI/TermsPage'
 import AboutPage from '@/features/About.Terms.Help/About.UI/AboutPage'
+import PublicProfilePage from '@/features/Perfil/Perfil.UI/PublicProfilePage'
 
 export function AppRoutes() {
   return (
@@ -64,6 +65,7 @@ export function AppRoutes() {
           <Route path="/mis-publicaciones" element={<MisPublicacionesPage />} />
           <Route path="/forums" element={<ForumPage />} />
           <Route path="/perfil" element={<PerfilPage />} />
+          <Route path="/perfil/public/:id" element={<PublicProfilePage />} />
         </Route>
 
         {/* GRUPO B: Layout de Chat Completo
