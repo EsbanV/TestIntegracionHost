@@ -158,7 +158,7 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
 
   const quickReplies = [
     "¡Hola! ¿Sigue disponible?",
-    `Me interesa tu ${post?.usuario || 'producto'}, ¿dónde entregas?`,
+    `Me interesa tu ${post?.nombre || 'producto'}, ¿dónde entregas?`,
     "¿El precio es conversable?",
     "¿Tienes más fotos?"
   ];
@@ -236,7 +236,7 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
             {/* IZQUIERDA */}
             <div className="flex-1 overflow-y-auto p-6 bg-white">
               <div className="hidden md:flex items-start justify-between mb-6">
-                <h1 className="text-2xl font-extrabold text-slate-900 leading-tight">{post.usuario}</h1>
+                <h1 className="text-2xl font-extrabold text-slate-900 leading-tight">{post.nombre}</h1>
                 <Button variant="outline" size="icon" className="rounded-full" onClick={onClose}><X size={18} /></Button>
               </div>
 
@@ -338,7 +338,7 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
 // 5. TARJETA DEL FEED
 // ---------------------------------------------------------------------------
 function ItemCard({ post, onClick }: { post: Post, onClick: (p: Post) => void }) {
-  const { usuario, precioActual, categoria, imagenes, vendedor, fechaAgregado } = post;
+  const { nombre, precioActual, categoria, imagenes, vendedor, fechaAgregado } = post;
   const image = imagenes?.[0]?.url;
 
   return (
@@ -348,7 +348,7 @@ function ItemCard({ post, onClick }: { post: Post, onClick: (p: Post) => void })
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
         {image ? (
-          <img src={image} alt={usuario} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+          <img src={image} alt={nombre} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
         ) : (
           <div className="flex h-full items-center justify-center text-slate-300"><ShoppingBag size={48} strokeWidth={1} /></div>
         )}
@@ -368,7 +368,7 @@ function ItemCard({ post, onClick }: { post: Post, onClick: (p: Post) => void })
               <span className="text-[10px] text-slate-400 leading-none">{formatDate(fechaAgregado)}</span>
            </div>
         </div>
-        <h3 className="font-bold text-slate-900 line-clamp-1 mb-1 text-base">{usuario}</h3>
+        <h3 className="font-bold text-slate-900 line-clamp-1 mb-1 text-base">{nombre}</h3>
         <p className="text-sm text-slate-500 line-clamp-2 mb-4 flex-1">{post.descripcion || "Sin descripción."}</p>
         <div className="mt-auto flex items-center justify-between border-t border-slate-50 pt-3">
            <div className="flex items-center gap-1 text-slate-400"><Star size={14} className="fill-slate-200 text-slate-200" /><span className="text-xs font-medium">5.0</span></div>

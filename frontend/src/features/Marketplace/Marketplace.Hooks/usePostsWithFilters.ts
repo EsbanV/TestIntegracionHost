@@ -60,6 +60,7 @@ export function usePostsWithFilters({ searchTerm, categoryId }: UsePostsOptions)
           fechaAgregado: p.fechaAgregado,
           vendedor: {
             id: p.vendedor.id,
+            usuario: p.vendedor.usuario,
             nombre: p.vendedor.nombre,
             fotoPerfilUrl: p.vendedor.fotoPerfilUrl, // Asegúrate que el backend mande esto si existe
             reputacion: p.vendedor.reputacion,
