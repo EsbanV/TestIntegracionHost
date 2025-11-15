@@ -10,7 +10,7 @@ import { twMerge } from 'tailwind-merge';
 
 // --- Imports Externos ---
 import { usePostsWithFilters } from '@/features/Marketplace/Marketplace.Hooks/usePostsWithFilters';
-import type { Post } from '@/features/marketplace/Marketplace.Types/ProductInterfaces';
+import type { Post } from '@/features/Marketplace/Marketplace.Types/ProductInterfaces';
 import { formatInt, formatCLP } from '@/features/Marketplace/Marketplace.Utils/format';
 import { Sidebar } from '@/features/shared/ui/Sidebar'; 
 import Header from '@/features/shared/ui/Header'; 
@@ -310,9 +310,7 @@ export default function MarketplacePage() {
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
-      <div className="hidden lg:block w-[260px] shrink-0 border-r bg-white"><Sidebar active="marketplace" /></div>
       <div className="flex flex-1 flex-col h-screen overflow-hidden">
-        <Header />
         <main className="flex-1 overflow-y-auto scroll-smooth p-4 md:p-8">
           <div className="max-w-7xl mx-auto space-y-8 pb-20">
             
