@@ -9,7 +9,7 @@ import LoginPage from '@/features/Login/Login.UI/LoginPage'
 import RegisterTest from '@/features/Login/Login.UI/RegisterTest'
 import LoginTest from '@/features/Login/Login.UI/LoginTest'
 import HomePage from '@/features/Marketplace/Marketplace.UI/HomePage'
-import CrearPublicacionPage from '@/features/CrearPublicacion/CrearPublicacion.UI/CrearPublicacionPage'
+import CreateProductPage from '@/features/CrearPublicacion/CrearPublicacion.UI/CrearPublicacionPage'
 import EditarPublicacionPage from '@/features/EditarPublicacion/EditarPublicacion.UI/EditarPublicacionPage'
 import MisPublicacionesPage from '@/features/MyPublications/MyPublications.UI/MisPublicacionesPage'
 import PerfilPage from '@/features/Perfil/Perfil.UI/PerfilPage'
@@ -59,7 +59,7 @@ export function AppRoutes() {
           }
         >
           <Route path="/home" element={<HomePage />} />
-          <Route path="/crear" element={<CrearPublicacionPage />} />
+          <Route path="/crear" element={<CreateProductPage />} />
           <Route path="/editar" element={<EditarPublicacionPage />} />
           <Route path="/mis-publicaciones" element={<MisPublicacionesPage />} />
           <Route path="/forums" element={<ForumPage />} />
