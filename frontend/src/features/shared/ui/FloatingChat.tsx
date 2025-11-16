@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react"
 import { motion, AnimatePresence, useDragControls } from "framer-motion"
 import { useAuth } from "@/app/context/AuthContext"
-import { io, Socket } from "socket.io-client" // 👈 IMPORTANTE: npm install socket.io-client
+import { io, Socket } from "socket.io-client"
 
 // Icons
 import { 
@@ -32,13 +32,20 @@ interface Chat {
   mensajes: Mensaje[]; 
   avatar?: string;
   noLeidos?: number;
-  online?: boolean; // Para saber si está conectado
+  online?: boolean;
 }
 
 type ViewState = "list" | "chat"
 
-// Usamos la misma URL que definiste en Vite, pero socket.io suele encargarse de puertos
+// Configuración URL
 const URL_BASE = import.meta.env.VITE_API_URL; 
+
+// Helper para imágenes
+const getFullImgUrl = (url?: string) => {
+  if (!url) return undefined;
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
+  return `${URL_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
+}
 
 // --- COMPONENTE PRINCIPAL ---
 export default function FloatingChat() {
@@ -60,122 +67,124 @@ export default function FloatingChat() {
 
     // Conectar usando la librería cliente
     const newSocket = io(URL_BASE, {
-      auth: { token }, // Esto coincide con socket.handshake.auth.token del backend
+      auth: { token },
       transports: ['websocket', 'polling']
     })
 
     socketRef.current = newSocket
 
-    // Evento: Conectado exitosamente
+    // Eventos Socket
     newSocket.on("connect", () => {
-      console.log("🟢 Chat conectado:", newSocket.id)
+      console.log("🟢 MiniChat conectado:", newSocket.id)
     })
 
-    // Evento: Recibir Mensaje Nuevo
     newSocket.on("new_message", (mensajeBackend: any) => {
-      console.log("📩 Nuevo mensaje recibido:", mensajeBackend)
-
-      const remitenteId = mensajeBackend.remitente.id
-      const contenido = mensajeBackend.contenido
-      const hora = new Date(mensajeBackend.fechaEnvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-
-      setChats(prevChats => {
-        // Buscamos si ya existe el chat en la lista
-        const chatIndex = prevChats.findIndex(c => c.id === remitenteId)
-
-        if (chatIndex !== -1) {
-          // EL CHAT EXISTE: Actualizamos
-          const updatedChats = [...prevChats]
-          const chat = updatedChats[chatIndex]
-
-          // Agregamos el mensaje a la lista
-          const nuevoMensaje: Mensaje = {
-            id: mensajeBackend.id,
-            texto: contenido,
-            autor: "otro",
-            hora: hora,
-            estado: "recibido"
-          }
-
-          // Actualizamos datos del chat
-          updatedChats[chatIndex] = {
-            ...chat,
-            ultimoMensaje: contenido,
-            mensajes: [...chat.mensajes, nuevoMensaje],
-            // Solo incrementamos 'noLeidos' si NO tenemos este chat abierto
-            noLeidos: (activeChatId === remitenteId && isOpen) ? 0 : (chat.noLeidos || 0) + 1
-          }
-
-          // Movemos este chat al principio de la lista (como WhatsApp)
-          updatedChats.sort((a, b) => (a.id === remitenteId ? -1 : 1))
-          
-          return updatedChats
-        } else {
-          // EL CHAT NO EXISTE: Hay que cargarlo (o crearlo temporalmente)
-          fetchChats() // La forma más segura es recargar la lista
-          return prevChats
-        }
-      })
+      console.log("📩 MiniChat recibió:", mensajeBackend)
+      handleIncomingMessage(mensajeBackend)
     })
 
     return () => {
       newSocket.disconnect()
     }
-  }, [token, activeChatId, isOpen]) // Dependencias para saber si marcar leído o no
+  }, [token])
 
   // 2. Cargar lista de conversaciones (API REST)
   const fetchChats = async () => {
     if (!token) return
     try {
       const res = await fetch(`${URL_BASE}/api/chat/conversaciones`, {
-        headers: { Authorization: `Bearer ${token}` },
-        credentials: 'include'
+        headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
+      
       if (data.ok) {
         const formattedChats: Chat[] = data.conversaciones.map((c: any) => ({
           id: c.usuario.id,
           nombre: c.usuario.nombre || c.usuario.usuario,
-          ultimoMensaje: c.ultimoMensaje?.contenido || "Imagen o archivo",
-          avatar: c.usuario.fotoPerfilUrl,
+          ultimoMensaje: c.ultimoMensaje?.tipo === 'imagen' ? '📷 Imagen' : c.ultimoMensaje?.contenido,
+          avatar: getFullImgUrl(c.usuario.fotoPerfilUrl),
           noLeidos: c.unreadCount || 0,
-          mensajes: [] // Inicialmente vacío, se llena al hacer clic
+          mensajes: [], // Se llenará al abrir
+          online: false // Pendiente implementar estado online
         }))
         setChats(formattedChats)
       }
     } catch (error) {
-      console.error("Error cargando chats:", error)
+      console.error("Error cargando chats flotantes:", error)
     }
   }
 
   // Cargar inicial al abrir
   useEffect(() => {
-    if (isOpen) {
-      fetchChats()
-    }
-  }, [isOpen])
+    // Cargar chats al montar o al abrir si estaba vacío
+    if (token) fetchChats()
+  }, [token, isOpen])
 
-  // 3. Cargar historial de mensajes de un chat
+  // 3. Manejo de Mensajes Entrantes
+  const handleIncomingMessage = (msgData: any) => {
+    const remitenteId = msgData.remitente.id
+    const contenido = msgData.tipo === 'imagen' ? '📷 Imagen' : msgData.contenido
+    const hora = new Date(msgData.fechaEnvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+
+    const nuevoMensaje: Mensaje = {
+      id: msgData.id,
+      texto: contenido,
+      autor: "otro",
+      hora: hora,
+      estado: "recibido"
+    }
+
+    setChats(prevChats => {
+      const chatIndex = prevChats.findIndex(c => c.id === remitenteId)
+
+      if (chatIndex !== -1) {
+        // Actualizar chat existente
+        const updatedChats = [...prevChats]
+        const chat = updatedChats[chatIndex]
+        
+        // Si el chat está abierto y activo, no incrementamos no leídos
+        const isChatOpen = isOpen && view === 'chat' && activeChatId === remitenteId
+        
+        updatedChats[chatIndex] = {
+          ...chat,
+          ultimoMensaje: contenido,
+          mensajes: [...chat.mensajes, nuevoMensaje],
+          noLeidos: isChatOpen ? 0 : (chat.noLeidos || 0) + 1
+        }
+        
+        // Mover al principio
+        updatedChats.sort((a, b) => (a.id === remitenteId ? -1 : 1))
+        return updatedChats
+      } else {
+        // Si es nuevo chat, recargar lista
+        fetchChats()
+        return prevChats
+      }
+    })
+  }
+
+  // 4. Cargar historial de mensajes de un chat
   const loadMessages = async (chatId: number) => {
     setIsLoading(true)
-    // Buscamos si ya tenemos mensajes en memoria para no recargar siempre
+    // Verificar cache local simple
     const currentChat = chats.find(c => c.id === chatId)
     if (currentChat && currentChat.mensajes.length > 0) {
       setIsLoading(false)
+      // Aún así marcamos como leído en backend
+      markRead(chatId)
       return
     }
 
     try {
       const res = await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        credentials: 'include'
+        headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
       
       if (data.ok) {
         const formattedMessages: Mensaje[] = data.mensajes.map((m: any) => ({
           id: m.id,
-          texto: m.contenido,
+          texto: m.tipo === 'imagen' ? '📷 Imagen' : m.contenido,
           autor: m.remitenteId === user?.id ? 'yo' : 'otro',
           hora: new Date(m.fechaEnvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
           estado: 'leido'
@@ -184,6 +193,8 @@ export default function FloatingChat() {
         setChats(prev => prev.map(c => 
           c.id === chatId ? { ...c, mensajes: formattedMessages, noLeidos: 0 } : c
         ))
+        
+        markRead(chatId)
       }
     } catch (error) {
       console.error("Error cargando mensajes:", error)
@@ -191,23 +202,32 @@ export default function FloatingChat() {
       setIsLoading(false)
     }
   }
+  
+  const markRead = async (chatId: number) => {
+    try {
+      await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}/mark-read`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+      })
+    } catch (e) { console.error(e) }
+  }
 
   const handleSelectChat = (id: number) => {
     setActiveChatId(id)
     setView("chat")
-    // Marcar como leídos localmente
+    // Resetear contador localmente
     setChats(prev => prev.map(c => c.id === id ? { ...c, noLeidos: 0 } : c))
     loadMessages(id)
   }
 
-  // 4. ENVIAR MENSAJE (Socket + Fetch)
+  // 5. ENVIAR MENSAJE
   const handleSend = useCallback(async (texto: string) => {
-    if (!activeChatId || !token) return
+    if (!activeChatId || !token || !texto.trim()) return
     
     const tempId = "tmp-" + Date.now()
     const hora = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     
-    // 4.1 Optimistic Update (Mostrar inmediatamente)
+    // Optimistic Update
     setChats(prev => prev.map(c => 
       c.id === activeChatId 
         ? { 
@@ -218,7 +238,7 @@ export default function FloatingChat() {
         : c
     ))
 
-    // 4.2 Emitir evento de Socket (Para que el servidor lo procese y guarde)
+    // Emitir evento Socket
     if (socketRef.current) {
       socketRef.current.emit("send_message", {
         destinatarioId: activeChatId,
@@ -226,8 +246,7 @@ export default function FloatingChat() {
         tipo: "texto"
       })
       
-      // Escuchar confirmación (opcional, o asumir que llegó)
-      // Aquí simulamos que llegó bien cambiando el estado a 'enviado'
+      // Confirmación simulada
       setTimeout(() => {
         setChats(prev => prev.map(c => 
           c.id === activeChatId 
@@ -281,7 +300,7 @@ export default function FloatingChat() {
   )
 }
 
-/* ===================== SUBCOMPONENTES (Igual que antes) ===================== */
+/* ===================== SUBCOMPONENTES (Vista y UI) ===================== */
 
 const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, onClose, isLoading }: any) => {
   const dragControls = useDragControls()
@@ -296,7 +315,7 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
       initial={{ opacity: 0, scale: 0.8, y: window.innerHeight - 100, x: window.innerWidth - 400 }}
       animate={{ opacity: 1, scale: 1, y: window.innerHeight - 600 }}
       exit={{ opacity: 0, scale: 0.8, y: window.innerHeight - 100, x: window.innerWidth - 400 }}
-      className="pointer-events-auto absolute w-[360px] h-[500px] bg-white rounded-xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden"
+      className="pointer-events-auto absolute w-[360px] h-[500px] bg-white rounded-xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden right-6 bottom-24" // Posición ajustada
     >
       {/* Header */}
       <div 
@@ -348,7 +367,7 @@ const ChatListView = ({ chats, onSelect }: any) => (
       ) : (
         chats.map((chat: any) => (
           <div key={chat.id} onClick={() => onSelect(chat.id)} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0">
-            <Avatar className="h-9 w-9">
+            <Avatar className="h-9 w-9 border border-slate-100">
               <AvatarImage src={chat.avatar} />
               <AvatarFallback>{chat.nombre.charAt(0)}</AvatarFallback>
             </Avatar>
@@ -391,19 +410,23 @@ const ChatConversationView = ({ chat, onSend, isLoading }: any) => {
             <div className={`max-w-[85%] rounded-xl px-3 py-1.5 text-sm shadow-sm ${
               msg.autor === "yo" ? "bg-blue-600 text-white rounded-br-none" : "bg-white text-slate-800 border border-slate-200 rounded-bl-none"
             }`}>
-              <p className="leading-snug">{msg.texto}</p>
+              <p className="leading-snug break-words">{msg.texto}</p>
               <div className={`text-[9px] mt-0.5 flex justify-end gap-1 ${msg.autor === "yo" ? "text-blue-200" : "text-slate-400"}`}>
                 {msg.hora}
-                {/* Aquí podrías poner iconos de ticks según msg.estado */}
               </div>
             </div>
           </div>
         ))}
       </div>
       <form onSubmit={handleSend} className="p-2 bg-white border-t border-slate-200 flex items-center gap-2">
-        <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Escribe..." className="flex-1 h-8 rounded-full text-sm" />
-        <Button type="submit" size="icon" className="h-8 w-8 bg-blue-600 hover:bg-blue-700 rounded-full">
-          <LuSend size={14} />
+        <Input 
+           value={text} 
+           onChange={(e) => setText(e.target.value)} 
+           placeholder="Escribe..." 
+           className="flex-1 h-9 rounded-full text-sm border-slate-200 focus:ring-1 focus:ring-blue-500" 
+        />
+        <Button type="submit" size="icon" className="h-9 w-9 bg-blue-600 hover:bg-blue-700 rounded-full">
+          <LuSend size={16} />
         </Button>
       </form>
     </motion.div>
