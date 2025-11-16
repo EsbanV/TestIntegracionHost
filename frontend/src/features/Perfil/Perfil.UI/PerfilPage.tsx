@@ -19,14 +19,13 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { 
   LuPencil, LuSave, LuX, LuMapPin, LuPhone, LuMail, 
   LuUser, LuCalendar, LuStar, LuShieldCheck, LuLayoutGrid,
-  LuCamera, LuLoader
+  LuCamera, LuLoader, LuGhost, LuShoppingBag
 } from "react-icons/lu"
 
 // Subcomponents
 import MyPublicationsFeed from "./Perfil.Components/PublicationsFeed"
-import UserDefault from "@/assets/img/user_default.png"
 
-// --- TIPOS (Sin cambios) ---
+// --- TIPOS ---
 interface UserProfile {
   id: number
   correo: string
@@ -45,6 +44,23 @@ interface UserProfile {
   }
 }
 
+// Nueva interfaz para reseñas
+interface Review {
+  id: number;
+  puntuacion: number;
+  comentario: string;
+  fecha: string;
+  calificador: {
+    nombre: string;
+    fotoPerfilUrl?: string;
+  };
+  transaccion?: {
+    producto: {
+      nombre: string;
+    };
+  };
+}
+
 interface UpdateProfileData {
   usuario: string
   campus: string
@@ -54,7 +70,8 @@ interface UpdateProfileData {
 
 const URL_BASE = import.meta.env.VITE_API_URL;
 
-// --- API REFACTORIZADA ---
+// --- API FETCHERS ---
+
 const fetchProfile = async (token: string | null): Promise<UserProfile> => {
   if (!token) throw new Error("No token")
   const res = await fetch(`${URL_BASE}/api/users/profile`, {
@@ -70,6 +87,13 @@ const fetchProfile = async (token: string | null): Promise<UserProfile> => {
   return data.data
 }
 
+// Nuevo fetcher para mis reseñas
+const fetchMyReviews = async (userId: number): Promise<{ reviews: Review[], stats: { total: number, promedio: string } }> => {
+  const res = await fetch(`${URL_BASE}/api/users/reviews/user/${userId}`);
+  if (!res.ok) return { reviews: [], stats: { total: 0, promedio: "0" } };
+  return await res.json();
+}
+
 const updateProfile = async (data: UpdateProfileData, token: string | null) => {
   if (!token) throw new Error("No token")
   const res = await fetch(`${URL_BASE}/api/users/profile`, {
@@ -78,7 +102,7 @@ const updateProfile = async (data: UpdateProfileData, token: string | null) => {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    credentials: 'include', // <--- COMA AÑADIDA (Corrección de sintaxis)
+    credentials: 'include',
     body: JSON.stringify(data),
   })
   const result = await res.json()
@@ -94,11 +118,8 @@ const uploadProfilePhoto = async (file: File, token: string | null) => {
 
   const res = await fetch(`${URL_BASE}/api/upload/profile-photo`, {
     method: "POST",
-    headers: { 
-      Authorization: `Bearer ${token}` 
-      // Nota: No ponemos 'Content-Type' aquí para que el navegador ponga el multipart/form-data boundary automáticamente
-    },
-    credentials: 'include', // <--- COMA AÑADIDA (Corrección de sintaxis)
+    headers: { Authorization: `Bearer ${token}` },
+    credentials: 'include',
     body: formData,
   })
   
@@ -131,10 +152,18 @@ export default function PerfilPage() {
     direccion: "",
   })
 
+  // 1. Cargar Perfil
   const { data: user, isLoading } = useQuery({
     queryKey: ["userProfile"],
     queryFn: () => fetchProfile(token),
     enabled: !!token,
+  })
+
+  // 2. Cargar Reseñas (Depende de que user.id exista)
+  const { data: reviewData, isLoading: isLoadingReviews } = useQuery({
+    queryKey: ["myReviews", user?.id],
+    queryFn: () => fetchMyReviews(user!.id),
+    enabled: !!user?.id,
   })
 
   useEffect(() => {
@@ -169,11 +198,6 @@ export default function PerfilPage() {
     const file = e.target.files?.[0]
     if (file) uploadPhoto(file)
   }
-
-  const reviews = [
-    { id: 1, user: "Ana García", rating: 5, comment: "Excelente vendedor, muy rápido.", date: "Hace 2 días" },
-    { id: 2, user: "Carlos M.", rating: 4, comment: "El producto estaba bien, pero demoró un poco.", date: "Hace 1 semana" },
-  ]
 
   // --- RENDERIZADO ---
   
@@ -319,26 +343,65 @@ export default function PerfilPage() {
                   </motion.div>
                 </TabsContent>
 
+                {/* --- SECCIÓN DE RESEÑAS REALES --- */}
                 <TabsContent value="reviews" className="mt-0">
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
-                    <h3 className="text-lg font-semibold text-slate-800">Lo que dicen de ti</h3>
-                    <div className="grid gap-4">
-                      {reviews.map((review) => (
-                        <div key={review.id} className="flex gap-4 p-4 rounded-lg bg-slate-50 border border-slate-100">
-                          <Avatar className="h-10 w-10"><AvatarFallback className="bg-indigo-100 text-indigo-600">{review.user.charAt(0)}</AvatarFallback></Avatar>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-slate-900">{review.user}</span>
-                              <div className="flex text-amber-400">
-                                {[...Array(5)].map((_, i) => (<LuStar key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-current' : 'text-slate-300'}`} />))}
-                              </div>
-                            </div>
-                            <p className="text-slate-600 mt-1 text-sm">{review.comment}</p>
-                            <span className="text-xs text-slate-400 mt-2 block">{review.date}</span>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-lg font-semibold text-slate-800">Lo que dicen de ti</h3>
+                      {reviewData?.stats && (
+                        <Badge variant="secondary" className="bg-amber-50 text-amber-700">
+                          Promedio: {reviewData.stats.promedio} ★ ({reviewData.stats.total})
+                        </Badge>
+                      )}
                     </div>
+
+                    {isLoadingReviews ? (
+                      <div className="space-y-4">
+                         <Skeleton className="h-20 w-full bg-slate-50" />
+                         <Skeleton className="h-20 w-full bg-slate-50" />
+                      </div>
+                    ) : reviewData && reviewData.reviews.length > 0 ? (
+                      <div className="grid gap-4">
+                        {reviewData.reviews.map((review) => (
+                          <div key={review.id} className="flex gap-4 p-4 rounded-lg bg-slate-50 border border-slate-100 transition-colors hover:border-slate-200">
+                            <Avatar className="h-10 w-10 bg-slate-200">
+                               <AvatarImage src={getImageUrl(review.calificador.fotoPerfilUrl)} />
+                               <AvatarFallback className="bg-indigo-100 text-indigo-600 font-bold">
+                                 {review.calificador.nombre.charAt(0).toUpperCase()}
+                               </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-slate-900 text-sm">{review.calificador.nombre}</span>
+                                  <div className="flex text-amber-400">
+                                    {[...Array(5)].map((_, i) => (
+                                      <LuStar key={i} className={`w-3 h-3 ${i < Number(review.puntuacion) ? 'fill-current' : 'text-slate-200'}`} />
+                                    ))}
+                                  </div>
+                                </div>
+                                <span className="text-[10px] text-slate-400">{new Date(review.fecha).toLocaleDateString()}</span>
+                              </div>
+                              
+                              <p className="text-slate-600 mt-1 text-sm leading-snug">"{review.comentario}"</p>
+                              
+                              {review.transaccion?.producto && (
+                                <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white border border-slate-100 text-[10px] text-slate-500">
+                                  <LuShoppingBag size={10} /> {review.transaccion.producto.nombre}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <div className="inline-flex p-3 bg-slate-50 rounded-full mb-3">
+                           <LuGhost className="text-slate-300 w-6 h-6" />
+                        </div>
+                        <p className="text-slate-500 text-sm">Aún no tienes reseñas de compradores.</p>
+                      </div>
+                    )}
                   </motion.div>
                 </TabsContent>
               </Tabs>
@@ -371,14 +434,14 @@ function ProfileField({ label, value, isEditing, editComponent, icon }: any) {
 function ProfileSkeleton() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <Skeleton className="h-48 w-full rounded-t-2xl" />
+      <Skeleton className="h-48 w-full rounded-t-2xl bg-slate-200" />
       <div className="px-6 -mt-16 flex gap-6">
-        <Skeleton className="h-32 w-32 rounded-full border-4 border-white" />
-        <div className="pt-16 space-y-2"><Skeleton className="h-8 w-64" /><Skeleton className="h-4 w-40" /></div>
+        <Skeleton className="h-32 w-32 rounded-full border-4 border-white bg-slate-300" />
+        <div className="pt-16 space-y-2"><Skeleton className="h-8 w-64 bg-slate-200" /><Skeleton className="h-4 w-40 bg-slate-200" /></div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-        <Skeleton className="h-64 w-full rounded-xl" />
-        <Skeleton className="h-96 w-full lg:col-span-2 rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-xl bg-slate-100" />
+        <Skeleton className="h-96 w-full lg:col-span-2 rounded-xl bg-slate-100" />
       </div>
     </div>
   )
