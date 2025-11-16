@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Heart, ShoppingBag, ArrowRight, Loader2, X, 
-  ChevronLeft, ChevronRight, Star, MessageCircle, Send, Check
+  ChevronLeft, ChevronRight, Star, MessageCircle, Send, Check,
+  Search, ArrowUpRight
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
