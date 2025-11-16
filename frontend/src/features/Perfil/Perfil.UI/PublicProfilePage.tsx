@@ -15,12 +15,12 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   LuMapPin, LuCalendar, LuStar, LuShieldCheck, 
-  LuLayoutGrid, LuMessageCircle, LuShoppingBag, LuGhost
+  LuLayoutGrid, LuMessageCircle, LuShoppingBag, LuGhost, LuUser
 } from "react-icons/lu";
 
 const URL_BASE = import.meta.env.VITE_API_URL;
 
-// --- 1. TIPOS LOCALES (Independientes del Marketplace) ---
+// --- 1. TIPOS LOCALES ---
 
 interface ProfileUser {
   id: number;
@@ -41,9 +41,26 @@ interface ProfileProduct {
   nombre: string;
   precioActual: number;
   categoria: string;
-  imagenUrl?: string; // URL directa de la primera imagen
-  estado: string;     // 'Nuevo' | 'Usado'
+  imagenUrl?: string;
+  estado: string;
   cantidad: number;
+}
+
+// Nuevo tipo para las reseñas
+interface Review {
+  id: number;
+  puntuacion: number;
+  comentario: string;
+  fecha: string;
+  calificador: {
+    nombre: string;
+    fotoPerfilUrl?: string;
+  };
+  transaccion?: {
+    producto: {
+      nombre: string;
+    };
+  };
 }
 
 // --- 2. API FETCHERS ---
@@ -56,14 +73,21 @@ const fetchPublicProfile = async (userId: string): Promise<ProfileUser> => {
 };
 
 const fetchUserProducts = async (userId: string): Promise<ProfileProduct[]> => {
-  // ✅ Usar la nueva ruta específica
   const res = await fetch(`${URL_BASE}/api/products/user/${userId}`);
-  
   if (!res.ok) return [];
   const data = await res.json();
-  
-  // El backend ya devuelve los datos formateados, así que solo retornamos
   return data.products; 
+};
+
+// Nuevo fetcher para reseñas
+const fetchUserReviews = async (userId: string): Promise<{ reviews: Review[], stats: { total: number, promedio: string } }> => {
+  const url = `${URL_BASE}/api/users/reviews/user/${userId}`;
+  
+  console.log("📡 Fetching reviews from:", url); // Log para verificar
+
+  const res = await fetch(url);
+  if (!res.ok) return { reviews: [], stats: { total: 0, promedio: "0" } };
+  return await res.json();
 };
 
 // --- 3. COMPONENTES LOCALES ---
@@ -112,6 +136,44 @@ const ProfileProductCard = ({ product, onClick }: { product: ProfileProduct, onC
   );
 };
 
+// Nuevo componente para tarjeta de reseña
+const ReviewCard = ({ review }: { review: Review }) => (
+  <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm mb-4">
+    <div className="flex justify-between items-start mb-2">
+      <div className="flex items-center gap-3">
+        <Avatar className="h-8 w-8 bg-slate-100 border border-slate-200">
+          <AvatarImage src={getImageUrl(review.calificador.fotoPerfilUrl)} />
+          <AvatarFallback><LuUser className="text-slate-400" /></AvatarFallback>
+        </Avatar>
+        <div>
+          <p className="text-sm font-semibold text-slate-900">{review.calificador.nombre}</p>
+          <p className="text-xs text-slate-400">{new Date(review.fecha).toLocaleDateString()}</p>
+        </div>
+      </div>
+      {review.transaccion?.producto && (
+        <Badge variant="secondary" className="text-[10px] font-normal bg-slate-50 text-slate-500">
+          Compró: {review.transaccion.producto.nombre}
+        </Badge>
+      )}
+    </div>
+    
+    <div className="flex text-amber-400 mb-2">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <LuStar 
+          key={star} 
+          size={14} 
+          fill={star <= Number(review.puntuacion) ? "currentColor" : "none"} 
+          className={star <= Number(review.puntuacion) ? "text-amber-400" : "text-slate-200"}
+        />
+      ))}
+    </div>
+    
+    <p className="text-sm text-slate-600 leading-relaxed">
+      "{review.comentario}"
+    </p>
+  </div>
+);
+
 // --- 4. PÁGINA PRINCIPAL ---
 
 export default function PublicProfilePage() {
@@ -119,7 +181,7 @@ export default function PublicProfilePage() {
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
 
-  // Queries
+  // Query Perfil
   const { data: profile, isLoading, isError } = useQuery({
     queryKey: ["publicProfile", id],
     queryFn: () => fetchPublicProfile(id!),
@@ -127,9 +189,17 @@ export default function PublicProfilePage() {
     retry: 1
   });
 
+  // Query Productos
   const { data: products, isLoading: isLoadingProducts } = useQuery({
     queryKey: ["userProducts", id],
     queryFn: () => fetchUserProducts(id!),
+    enabled: !!id,
+  });
+
+  // Query Reseñas (NUEVO)
+  const { data: reviewData, isLoading: isLoadingReviews } = useQuery({
+    queryKey: ["userReviews", id],
+    queryFn: () => fetchUserReviews(id!),
     enabled: !!id,
   });
 
@@ -246,6 +316,7 @@ export default function PublicProfilePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 grid gap-4">
+                   {/* Reputación */}
                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                          <div className="p-2 bg-white border border-slate-100 text-amber-500 rounded-lg shadow-sm">
@@ -254,10 +325,11 @@ export default function PublicProfilePage() {
                          <span className="text-sm font-medium text-slate-600">Reputación</span>
                       </div>
                       <span className="text-lg font-bold text-slate-900">
-                        {Number(profile.reputacion).toFixed(1)}
+                        {Number(profile.reputacion || 0).toFixed(1)}
                       </span>
                    </div>
                    
+                   {/* Ventas */}
                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                          <div className="p-2 bg-white border border-slate-100 text-green-600 rounded-lg shadow-sm">
@@ -270,6 +342,7 @@ export default function PublicProfilePage() {
                       </span>
                    </div>
 
+                   {/* Productos Publicados */}
                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                          <div className="p-2 bg-white border border-slate-100 text-blue-600 rounded-lg shadow-sm">
@@ -285,7 +358,7 @@ export default function PublicProfilePage() {
              </Card>
           </div>
 
-          {/* CONTENIDO: PUBLICACIONES */}
+          {/* CONTENIDO: PUBLICACIONES Y RESEÑAS */}
           <div className="lg:col-span-3">
             <Tabs defaultValue="products" className="w-full">
               <div className="flex items-center justify-between mb-6">
@@ -294,11 +367,12 @@ export default function PublicProfilePage() {
                     Publicaciones ({products?.length || 0})
                   </TabsTrigger>
                   <TabsTrigger value="reviews" className="rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
-                    Valoraciones
+                    Valoraciones ({reviewData?.reviews.length || 0})
                   </TabsTrigger>
                 </TabsList>
               </div>
 
+              {/* Pestaña Productos */}
               <TabsContent value="products" className="mt-0">
                 {isLoadingProducts ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -337,14 +411,46 @@ export default function PublicProfilePage() {
                 )}
               </TabsContent>
 
+              {/* Pestaña Reseñas (NUEVA LÓGICA) */}
               <TabsContent value="reviews" className="mt-0">
-                <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-                   <div className="inline-flex p-3 bg-amber-50 rounded-full mb-4">
-                     <LuStar className="text-amber-400 h-6 w-6" />
+                 {isLoadingReviews ? (
+                   <div className="space-y-4">
+                     <Skeleton className="h-32 w-full rounded-xl" />
+                     <Skeleton className="h-32 w-full rounded-xl" />
                    </div>
-                   <h3 className="text-lg font-medium text-slate-900">Valoraciones</h3>
-                   <p className="text-slate-500">Las opiniones de otros usuarios aparecerán aquí.</p>
-                </div>
+                 ) : reviewData && reviewData.reviews.length > 0 ? (
+                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                     {/* Resumen de estrellas */}
+                     <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6 flex items-center gap-6">
+                        <div className="text-center">
+                           <div className="text-3xl font-bold text-slate-900">{reviewData.stats.promedio}</div>
+                           <div className="text-xs text-slate-500 uppercase tracking-wide mt-1">Promedio</div>
+                        </div>
+                        <div className="h-10 w-px bg-slate-100" />
+                        <div className="flex-1">
+                           <div className="flex gap-1 mb-1">
+                             {[1,2,3,4,5].map(s => (
+                               <LuStar key={s} size={20} className={s <= Math.round(Number(reviewData.stats.promedio)) ? "text-amber-400 fill-amber-400" : "text-slate-200"} />
+                             ))}
+                           </div>
+                           <div className="text-sm text-slate-500">{reviewData.stats.total} opiniones recibidas</div>
+                        </div>
+                     </div>
+
+                     {/* Lista de reseñas */}
+                     {reviewData.reviews.map((review) => (
+                       <ReviewCard key={review.id} review={review} />
+                     ))}
+                   </motion.div>
+                 ) : (
+                    <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+                      <div className="inline-flex p-3 bg-amber-50 rounded-full mb-4">
+                        <LuStar className="text-amber-400 h-6 w-6" />
+                      </div>
+                      <h3 className="text-lg font-medium text-slate-900">Sin valoraciones</h3>
+                      <p className="text-slate-500 mt-1">Este usuario aún no ha recibido opiniones de compradores.</p>
+                   </div>
+                 )}
               </TabsContent>
             </Tabs>
           </div>
