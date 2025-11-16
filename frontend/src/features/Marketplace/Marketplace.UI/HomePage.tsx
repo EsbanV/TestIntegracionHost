@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, X, ChevronLeft, ChevronRight, 
-  ShoppingBag, MessageCircle, Star, Filter, Send, Check
+  ShoppingBag, Star, Filter, Heart, Loader2
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -37,7 +37,90 @@ const getInitials = (name?: string) => {
 };
 
 // ---------------------------------------------------------------------------
-// 2. COMPONENTES UI (Estilo Shadcn - Tailwind Puro)
+// 1. HOOK DE FAVORITOS (Lógica de Backend)
+// ---------------------------------------------------------------------------
+function useFavorites() {
+  const { token } = useAuth();
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Cargar favoritos al iniciar
+  useEffect(() => {
+    if (!token) return;
+    
+    const fetchFavorites = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/favorites?limit=100`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.ok) {
+          // Creamos un Set con los IDs de productos que son favoritos
+          const ids = new Set(data.favorites.map((fav: any) => fav.productoId));
+          setFavoriteIds(ids as Set<number>);
+        }
+      } catch (error) {
+        console.error("Error cargando favoritos:", error);
+      }
+    };
+
+    fetchFavorites();
+  }, [token]);
+
+  // Función para dar like/dislike
+  const toggleFavorite = async (productId: number) => {
+    if (!token) return; // O redirigir a login
+
+    const isFav = favoriteIds.has(productId);
+    
+    // 1. Actualización Optimista (UI instantánea)
+    setFavoriteIds(prev => {
+      const newSet = new Set(prev);
+      if (isFav) newSet.delete(productId);
+      else newSet.add(productId);
+      return newSet;
+    });
+
+    try {
+      const method = isFav ? 'DELETE' : 'POST';
+      // La ruta DELETE es /api/favorites/:id, la POST es /api/favorites con body
+      const url = isFav 
+        ? `${API_URL}/api/favorites/${productId}` 
+        : `${API_URL}/api/favorites`;
+      
+      const options: RequestInit = {
+        method,
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      };
+
+      if (!isFav) {
+        options.body = JSON.stringify({ productoId: productId });
+      }
+
+      const res = await fetch(url, options);
+      
+      if (!res.ok) throw new Error("Falló la petición");
+
+    } catch (error) {
+      console.error("Error actualizando favorito:", error);
+      // Revertir cambio si falla
+      setFavoriteIds(prev => {
+        const newSet = new Set(prev);
+        if (isFav) newSet.add(productId);
+        else newSet.delete(productId);
+        return newSet;
+      });
+    }
+  };
+
+  return { favoriteIds, toggleFavorite };
+}
+
+// ---------------------------------------------------------------------------
+// 2. COMPONENTES UI
 // ---------------------------------------------------------------------------
 
 const Badge = ({ children, className, variant = 'default', onClick }: { children: React.ReactNode, className?: string, variant?: 'default'|'secondary'|'outline'|'price'|'category'|'suggestion', onClick?: () => void }) => {
@@ -52,7 +135,7 @@ const Badge = ({ children, className, variant = 'default', onClick }: { children
   return (
     <div 
       onClick={onClick}
-      className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2", variants[variant], className)}
+      className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs transition-colors focus:outline-none", variants[variant], className)}
     >
       {children}
     </div>
@@ -73,7 +156,7 @@ const Button = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HT
       icon: "h-9 w-9",
     };
     return (
-      <button ref={ref} className={cn("inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50", variants[variant], sizes[size], className)} {...props} />
+      <button ref={ref} className={cn("inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50", variants[variant], sizes[size], className)} {...props} />
     );
   }
 );
@@ -85,10 +168,30 @@ const LoadingSpinner = () => (
   </div>
 );
 
+// --- BOTÓN DE CORAZÓN (Reutilizable) ---
+const FavoriteButton = ({ isFavorite, onClick, className }: { isFavorite: boolean, onClick: () => void, className?: string }) => (
+  <button
+    onClick={(e) => { e.stopPropagation(); onClick(); }}
+    className={cn(
+      "group relative flex h-9 w-9 items-center justify-center rounded-full transition-all active:scale-90",
+      isFavorite 
+        ? "bg-red-50 text-red-500 shadow-sm ring-1 ring-red-100" 
+        : "bg-white/90 text-slate-400 backdrop-blur-sm hover:bg-white hover:text-red-400 hover:shadow-md",
+      className
+    )}
+    title={isFavorite ? "Quitar de favoritos" : "Guardar en favoritos"}
+  >
+    <Heart 
+      className={cn("h-5 w-5 transition-all", isFavorite && "fill-current scale-110")} 
+      strokeWidth={isFavorite ? 0 : 2}
+    />
+  </button>
+);
+
 // ---------------------------------------------------------------------------
-// 3. CARRUSEL DE IMÁGENES
+// 3. CARRUSEL DE IMÁGENES (Con Favoritos)
 // ---------------------------------------------------------------------------
-function ImageCarousel({ images, altPrefix }: { images: string[], altPrefix?: string }) {
+function ImageCarousel({ images, altPrefix, isFavorite, onToggleFavorite }: { images: string[], altPrefix?: string, isFavorite?: boolean, onToggleFavorite?: () => void }) {
   const [index, setIndex] = useState(0);
   const validImages = images?.length ? images : ["/img/placeholder-product.png"];
   const thumbRef = useRef<HTMLDivElement>(null);
@@ -113,6 +216,14 @@ function ImageCarousel({ images, altPrefix }: { images: string[], altPrefix?: st
           />
         </AnimatePresence>
         
+        {/* BOTÓN DE FAVORITOS EN CARRUSEL */}
+        {onToggleFavorite && (
+          <div className="absolute top-3 right-3 z-10">
+            <FavoriteButton isFavorite={!!isFavorite} onClick={onToggleFavorite} />
+          </div>
+        )}
+        
+        {/* Flechas de Navegación */}
         {validImages.length > 1 && (
           <>
             <button onClick={(e) => { e.stopPropagation(); setIndex((i) => (i - 1 + validImages.length) % validImages.length) }} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-slate-800 backdrop-blur-md transition-all hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100 shadow-sm">
@@ -125,6 +236,7 @@ function ImageCarousel({ images, altPrefix }: { images: string[], altPrefix?: st
         )}
       </div>
 
+      {/* Miniaturas */}
       {validImages.length > 1 && (
         <div ref={thumbRef} className="flex w-full gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {validImages.map((img, i) => (
@@ -146,9 +258,9 @@ function ImageCarousel({ images, altPrefix }: { images: string[], altPrefix?: st
 }
 
 // ---------------------------------------------------------------------------
-// 4. MODAL DE DETALLE (Con Conexión Real al Chat)
+// 4. MODAL DE DETALLE (Actualizado)
 // ---------------------------------------------------------------------------
-function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: () => void, post: Post | null }) {
+function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFavorite }: { open: boolean, onClose: () => void, post: Post | null, isFavorite: boolean, onToggleFavorite: (id: number) => void }) {
   const { token, user } = useAuth();
   const navigate = useNavigate();
   
@@ -156,19 +268,10 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
   const [isSending, setIsSending] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
 
-  const quickReplies = [
-    "¡Hola! ¿Sigue disponible?",
-    `Me interesa tu ${post?.nombre || 'producto'}, ¿dónde entregas?`,
-    "¿El precio es conversable?",
-    "¿Tienes más fotos?"
-  ];
+  const quickReplies = ["¡Hola! ¿Sigue disponible?", "¿El precio es conversable?", "¿Dónde entregas?"];
 
   useEffect(() => {
-    if (open) {
-      setMessage('');
-      setSentSuccess(false);
-      setIsSending(false);
-    }
+    if (open) { setMessage(''); setSentSuccess(false); setIsSending(false); }
   }, [open, post]);
 
   if (!post) return null;
@@ -186,53 +289,28 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
 
   const handleSendMessage = async () => {
     if (!message.trim() || !token || !post.vendedor) return;
-
     setIsSending(true);
     try {
       const res = await fetch(`${API_URL}/api/chat/send`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          destinatarioId: post.vendedor.id,
-          contenido: message,
-          tipo: 'texto'
-        })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ destinatarioId: post.vendedor.id, contenido: message, tipo: 'texto' })
       });
-
-      if (res.ok) {
-        setSentSuccess(true);
-      } else {
-        alert("Error al enviar mensaje");
-      }
-    } catch (error) {
-      console.error("Error enviando mensaje", error);
-    } finally {
-      setIsSending(false);
-    }
+      if (res.ok) setSentSuccess(true);
+      else alert("Error al enviar mensaje");
+    } catch (error) { console.error("Error enviando mensaje", error); } 
+    finally { setIsSending(false); }
   };
 
-  const goToChat = () => {
-     navigate('/chats', { state: { toUser: post.vendedor } });
-     onClose();
-  };
+  const goToChat = () => { navigate('/chats', { state: { toUser: post.vendedor } }); onClose(); };
 
   return (
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-          <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
-          />
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95, y: 20 }} 
-            animate={{ opacity: 1, scale: 1, y: 0 }} 
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl md:flex-row max-h-[90vh] z-10"
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl md:flex-row max-h-[90vh] z-10">
+            
             {/* IZQUIERDA */}
             <div className="flex-1 overflow-y-auto p-6 bg-white">
               <div className="hidden md:flex items-start justify-between mb-6">
@@ -240,7 +318,11 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
                 <Button variant="outline" size="icon" className="rounded-full" onClick={onClose}><X size={18} /></Button>
               </div>
 
-              <ImageCarousel images={post.imagenes?.map(i => i.url || "") || []} />
+              <ImageCarousel 
+                images={post.imagenes?.map(i => i.url || "") || []} 
+                isFavorite={isFavorite}
+                onToggleFavorite={() => onToggleFavorite(post.id)}
+              />
 
               <div className="mt-6 space-y-4">
                  <div className="flex flex-wrap gap-2">
@@ -250,48 +332,35 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
                  </div>
                  <div>
                     <h3 className="font-semibold text-slate-900 mb-2">Descripción</h3>
-                    <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
-                        {post.descripcion || "El vendedor no proporcionó una descripción detallada."}
-                    </p>
+                    <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{post.descripcion || "El vendedor no proporcionó una descripción detallada."}</p>
                  </div>
               </div>
             </div>
 
             {/* DERECHA */}
             <div className="w-full md:w-[380px] bg-slate-50 border-l border-slate-100 p-6 flex flex-col overflow-y-auto shrink-0">
-              
-              {/* Card Vendedor */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6">
                 <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Vendedor</div>
                 <div className="flex items-center gap-3">
                    <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg shrink-0 overflow-hidden">
-                     {post.vendedor?.fotoPerfilUrl ? (
-                        <img src={post.vendedor.fotoPerfilUrl} className="w-full h-full object-cover"/>
-                     ) : getInitials(post.vendedor?.usuario)}
+                     {post.vendedor?.fotoPerfilUrl ? <img src={post.vendedor.fotoPerfilUrl} className="w-full h-full object-cover"/> : getInitials(post.vendedor?.nombre)}
                    </div>
                    <div>
-                      <div className="font-semibold text-slate-900">{post.vendedor?.usuario || "Usuario"}</div>
-                      <div className="flex items-center gap-1 text-xs text-slate-500">
-                        <Star size={12} className="fill-yellow-400 text-yellow-400" /> 
-                        {post.vendedor?.reputacion ? Number(post.vendedor.reputacion).toFixed(1) : "0.0"}
-                      </div>
+                      <div className="font-semibold text-slate-900">{post.vendedor?.nombre || "Usuario"}</div>
+                      <div className="flex items-center gap-1 text-xs text-slate-500"><Star size={12} className="fill-yellow-400 text-yellow-400" /> {post.vendedor?.reputacion ? Number(post.vendedor.reputacion).toFixed(1) : "5.0"}</div>
                    </div>
                 </div>
               </div>
 
-              {/* Detalles */}
               <div className="space-y-3 mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 {details.map((item, idx) => (
                     <div key={idx} className="flex justify-between items-baseline border-b border-slate-50 pb-2 last:border-0 last:pb-0">
                         <span className="text-sm text-slate-500">{item.label}</span>
-                        <span className={cn("text-sm font-medium text-slate-900", item.highlight && "text-emerald-600 font-bold text-base")}>
-                            {item.value}
-                        </span>
+                        <span className={cn("text-sm font-medium text-slate-900", item.highlight && "text-emerald-600 font-bold text-base")}>{item.value}</span>
                     </div>
                 ))}
               </div>
 
-              {/* Formulario de Contacto */}
               <div className="mt-auto pt-4 border-t border-slate-200">
                 {isOwnProduct ? (
                    <div className="text-center p-4 bg-yellow-50 text-yellow-700 rounded-xl text-sm font-medium">Este es tu producto</div>
@@ -305,12 +374,7 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
                   <div className="space-y-3">
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Enviar mensaje al vendedor</label>
                     <div className="relative">
-                      <textarea 
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        placeholder="Escribe tu mensaje aquí..."
-                        className="w-full p-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none h-24 bg-white"
-                      />
+                      <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Escribe tu mensaje aquí..." className="w-full p-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none h-24 bg-white" />
                       <div className="absolute bottom-2 right-2">
                          <Button size="icon" className={cn("h-8 w-8 rounded-lg transition-all", message ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-200 text-slate-400")} disabled={!message || isSending} onClick={handleSendMessage}>
                            {isSending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Send size={14} />}
@@ -318,9 +382,7 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {quickReplies.map((reply, i) => (
-                        <Badge key={i} variant="suggestion" onClick={() => setMessage(reply)}>{reply}</Badge>
-                      ))}
+                      {quickReplies.map((reply, i) => <Badge key={i} variant="suggestion" onClick={() => setMessage(reply)}>{reply}</Badge>)}
                     </div>
                   </div>
                 )}
@@ -337,15 +399,12 @@ function ProductDetailModal({ open, onClose, post }: { open: boolean, onClose: (
 // ---------------------------------------------------------------------------
 // 5. TARJETA DEL FEED
 // ---------------------------------------------------------------------------
-function ItemCard({ post, onClick }: { post: Post, onClick: (p: Post) => void }) {
+function ItemCard({ post, onClick, isFavorite, onToggleFavorite }: { post: Post, onClick: (p: Post) => void, isFavorite: boolean, onToggleFavorite: (id: number) => void }) {
   const { nombre, precioActual, categoria, imagenes, vendedor, fechaAgregado } = post;
   const image = imagenes?.[0]?.url;
 
   return (
-    <div 
-      onClick={() => onClick(post)}
-      className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm border border-slate-200 transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer"
-    >
+    <div onClick={() => onClick(post)} className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm border border-slate-200 transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer">
       <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
         {image ? (
           <img src={image} alt={nombre} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
@@ -353,18 +412,20 @@ function ItemCard({ post, onClick }: { post: Post, onClick: (p: Post) => void })
           <div className="flex h-full items-center justify-center text-slate-300"><ShoppingBag size={48} strokeWidth={1} /></div>
         )}
         <div className="absolute top-3 left-3"><Badge variant="category">{categoria || "Varios"}</Badge></div>
-        <div className="absolute top-3 right-3"><Badge variant="price">{formatCLP(precioActual || 0)}</Badge></div>
+        <div className="absolute top-3 right-3 z-10">
+           {/* Botón Favorito en la Card */}
+           <FavoriteButton isFavorite={isFavorite} onClick={() => onToggleFavorite(post.id)} />
+        </div>
+        <div className="absolute bottom-3 right-3"><Badge variant="price">{formatCLP(precioActual || 0)}</Badge></div>
       </div>
 
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-center gap-2 mb-2">
            <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0 overflow-hidden">
-             {vendedor?.fotoPerfilUrl ? (
-                 <img src={vendedor.fotoPerfilUrl} alt={vendedor.usuario} className="w-full h-full object-cover" />
-             ) : getInitials(vendedor?.usuario)}
+             {vendedor?.fotoPerfilUrl ? <img src={vendedor.fotoPerfilUrl} alt={vendedor.nombre} className="w-full h-full object-cover" /> : getInitials(vendedor?.nombre)}
            </div>
            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-slate-700">{vendedor?.usuario}</span>
+              <span className="text-xs font-semibold text-slate-700">{vendedor?.nombre}</span>
               <span className="text-[10px] text-slate-400 leading-none">{formatDate(fechaAgregado)}</span>
            </div>
         </div>
@@ -380,7 +441,7 @@ function ItemCard({ post, onClick }: { post: Post, onClick: (p: Post) => void })
 }
 
 // ---------------------------------------------------------------------------
-// 6. PÁGINA PRINCIPAL (CONTENIDO DEL LAYOUT)
+// 6. PÁGINA PRINCIPAL
 // ---------------------------------------------------------------------------
 export default function MarketplacePage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -394,10 +455,12 @@ export default function MarketplacePage() {
   };
   const selectedCategoryId = selectedCategory ? (categoryMap[selectedCategory] ?? '') : '';
 
-  // --- USANDO DATOS REALES ---
   const { posts, hasNextPage, fetchNextPage, isLoading, isError } = usePostsWithFilters({
     searchTerm, categoryId: selectedCategoryId
   });
+
+  // Hook de favoritos
+  const { favoriteIds, toggleFavorite } = useFavorites();
 
   const observer = useRef<IntersectionObserver | null>(null);
   
@@ -449,7 +512,12 @@ export default function MarketplacePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {posts.map((post, i) => (
               <div key={post.id} ref={i === posts.length - 1 ? lastPostRef : null}>
-                <ItemCard post={post} onClick={setSelectedPost} />
+                <ItemCard 
+                  post={post} 
+                  onClick={setSelectedPost} 
+                  isFavorite={favoriteIds.has(post.id)}
+                  onToggleFavorite={toggleFavorite}
+                />
               </div>
             ))}
           </div>
@@ -458,7 +526,15 @@ export default function MarketplacePage() {
         {isLoading && posts.length > 0 && <LoadingSpinner />}
       </div>
 
-      <ProductDetailModal open={!!selectedPost} onClose={() => setSelectedPost(null)} post={selectedPost} />
+      {selectedPost && (
+        <ProductDetailModal 
+          open={!!selectedPost} 
+          onClose={() => setSelectedPost(null)} 
+          post={selectedPost} 
+          isFavorite={favoriteIds.has(selectedPost.id)}
+          onToggleFavorite={toggleFavorite}
+        />
+      )}
     </div>
   );
 }
