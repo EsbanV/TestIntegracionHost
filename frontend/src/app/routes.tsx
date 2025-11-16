@@ -30,6 +30,7 @@ import AdminDashboardPage from '../features/admin/pages/DashboardPage';
 import AdminPostsPage from '../features/admin/pages/PostsPage';
 import AdminSettingsPage from '../features/admin/pages/SettingsPage';
 import AdminMarketplacePage from '../features/admin/pages/MarketplacePage';
+import AdminProductsPage from '../features/admin/pages/AdminProductsPage';
 
 
 export function AppRoutes() {
@@ -115,6 +116,7 @@ export function AppRoutes() {
           <Route path="/admin/publicaciones" element={<AdminPostsPage />} />
           <Route path="/admin/ajustes" element={<AdminSettingsPage />} />
           <Route path="/admin/marketplace" element={<AdminMarketplacePage />} />
+          <Route path="/admin/productos" element={<AdminProductsPage />} />
         </Route>
 
       </Route> {/* Fin ProtectedRoute */}

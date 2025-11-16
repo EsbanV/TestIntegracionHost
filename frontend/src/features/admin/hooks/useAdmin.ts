@@ -1,15 +1,13 @@
-// frontend/src/features/admin/hooks/useAdmin.ts
-
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { AdminUser } from '../types/adminUser';
 import type { AdminProduct, AdminProductQuery } from '../types/adminProduct';
-import type { Post } from '@/types/Post';
 
 // 1. CONFIGURACIÓN BASE
 const API_URL = import.meta.env.VITE_API_URL;
 
-const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
+// Helper robusto para fetch
+const fetchWithAuth = async <T = any>(endpoint: string, options: RequestInit = {}): Promise<T> => {
   const token = localStorage.getItem('token'); 
   
   const headers = {
@@ -18,170 +16,168 @@ const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
     ...options.headers,
   };
 
-  const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+  try {
+    const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
 
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    if (res.status === 401) console.error("⚠️ Token inválido en admin");
-    throw new Error(errorData.message || errorData.error || `Error ${res.status}`);
+    // Intentar parsear JSON, si falla (ej: 204 No Content), devolver null
+    const data = res.status !== 204 ? await res.json().catch(() => ({})) : null;
+
+    if (!res.ok) {
+      if (res.status === 401) console.error("⚠️ Token inválido en admin request");
+      throw new Error(data?.message || data?.error || `Error ${res.status}: ${res.statusText}`);
+    }
+
+    return data as T;
+  } catch (error: any) {
+    // Re-lanzar el error para que React Query lo capture
+    throw error;
   }
-
-  return res.json();
 };
 
 // ============================================================================
-// 2. GESTIÓN DE USUARIOS (USERS)
+// 2. QUERY KEYS (Centralizados)
 // ============================================================================
-
-export const adminUserKeys = {
-  all: ['admin', 'users'] as const,
-  lists: () => [...adminUserKeys.all, 'list'] as const,
-  list: (query: string) => [...adminUserKeys.lists(), { query }] as const,
-  metrics: () => ['admin', 'metrics'] as const, // Key para métricas
+export const adminKeys = {
+  users: {
+    all: ['admin', 'users'] as const,
+    list: (query: string) => [...adminKeys.users.all, 'list', { query }] as const,
+  },
+  products: {
+    all: ['admin', 'products'] as const,
+    list: (query: string, status?: string) => [...adminKeys.products.all, 'list', { query, status }] as const,
+  },
+  metrics: ['admin', 'metrics'] as const,
 };
+
+// ============================================================================
+// 3. GESTIÓN DE MÉTRICAS
+// ============================================================================
+export interface AdminMetrics {
+  totalUsers: number;
+  totalProducts: number;
+  completedTransactions: number;
+  openReports: number;
+  activeUsers30d: number;
+  newUsersChart: { day: string; count: number }[];
+}
+
+export function useAdminMetrics() {
+  return useQuery<AdminMetrics, Error>({
+    queryKey: adminKeys.metrics,
+    queryFn: async () => {
+      const res = await fetchWithAuth<{ metrics: AdminMetrics }>('/api/admin/metrics');
+      return res.metrics;
+    },
+    staleTime: 1000 * 60 * 5, // 5 min
+  });
+}
+
+// ============================================================================
+// 4. GESTIÓN DE USUARIOS
+// ============================================================================
 
 interface AdminUsersResponse {
   users: any[];
   total: number;
 }
 
-// GET /api/admin/users
-const fetchUsers = async (query: string): Promise<AdminUsersResponse> => {
-  const params = new URLSearchParams();
-  if (query) params.append('q', query);
-  const queryString = params.toString();
-  
-  const response = await fetchWithAuth(`/api/admin/users${queryString ? `?${queryString}` : ''}`);
-  
-  const coercedUsers = response.users.map((user: any) => ({
-    ...user,
-    // En tu backend: 2 = BANEADO, 1 = ACTIVO
-    banned: user.estadoId === 3, 
-    id: String(user.id)
-  })) as AdminUser[];
-  
-  return { ...response, users: coercedUsers };
-};
-
+// GET Users
 export function useAdminUsers(query: string) {
   return useQuery<AdminUsersResponse, Error>({
-    queryKey: adminUserKeys.list(query),
-    queryFn: () => fetchUsers(query),
-    staleTime: 1000 * 60 * 5, 
-    retry: (failureCount, error: any) => {
-        if (error.message.includes('401') || error.message.includes('403')) return false;
-        return failureCount < 2;
-    }
+    queryKey: adminKeys.users.list(query),
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (query) params.append('q', query);
+      
+      const res = await fetchWithAuth<AdminUsersResponse>(`/api/admin/users?${params.toString()}`);
+      
+      // Mapeo robusto
+      const coercedUsers = res.users.map((user: any) => ({
+        ...user,
+        banned: user.banned ?? (user.estadoId === 2), // Soporte híbrido
+        id: String(user.id)
+      })) as AdminUser[];
+      
+      return { ...res, users: coercedUsers };
+    },
+    staleTime: 1000 * 60 * 2, // 2 min
   });
 }
 
-// POST /api/admin/users (Crear Usuario)
+// POST Create User
 export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (newUserData: any) => {
-      return fetchWithAuth(`/api/admin/users`, {
-        method: 'POST',
-        body: JSON.stringify(newUserData),
-      });
-    },
+    mutationFn: (data: Partial<AdminUser>) => 
+      fetchWithAuth('/api/admin/users', { method: 'POST', body: JSON.stringify(data) }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
-      // También invalidar métricas porque aumentó el total de usuarios
-      queryClient.invalidateQueries({ queryKey: adminUserKeys.metrics() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.users.all });
+      queryClient.invalidateQueries({ queryKey: adminKeys.metrics });
     },
   });
 }
 
-// PUT /api/admin/:id (Actualizar Usuario Completo)
+// PUT Update User (Completo)
 export function useUpdateUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string, data: any }) => {
-      return fetchWithAuth(`/api/admin/${id}`, { // Ojo: tu ruta es PUT /:id directo en el router admin
-        method: 'PUT',
-        body: JSON.stringify(data),
-      });
-    },
+    mutationFn: ({ id, data }: { id: string, data: Partial<AdminUser> }) => 
+      fetchWithAuth(`/api/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
-    }
-  });
-}
-
-// DELETE /api/admin/users/:id
-export function useDeleteUser() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (userId: string) => {
-      return fetchWithAuth(`/api/admin/users/${userId}`, { method: 'DELETE' });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: adminUserKeys.metrics() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.users.all });
     },
   });
 }
 
-// PATCH /api/admin/users/:id/ban
+// PATCH Ban/Unban
 export function useBanUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ userId, banned }: { userId: string, banned: boolean }) => {
-      return fetchWithAuth(`/api/admin/users/${userId}/ban`, {
-        method: 'PATCH',
-        body: JSON.stringify({ banned }),
-      });
-    },
+    mutationFn: ({ userId, banned }: { userId: string, banned: boolean }) => 
+      fetchWithAuth(`/api/admin/users/${userId}/ban`, { method: 'PATCH', body: JSON.stringify({ banned }) }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.users.all });
     },
   });
 }
 
-// PATCH /api/admin/users/:id/role (Nota: No vi esta ruta explícita en tu admin.js subido, 
-// pero la tenías en los hooks anteriores. Si la usas, asegúrate de agregarla a admin.js 
-// o usa useUpdateUser para cambiar el rolId)
+// PATCH Change Role (Helper para usar el PUT general o endpoint específico si existiera)
 export function useUpdateUserRole() {
   const queryClient = useQueryClient();
-  // Adaptamos para usar la ruta genérica de actualización si no existe ruta específica
   return useMutation({
-    mutationFn: async ({ id, newRole }: { id: string, newRole: string }) => {
-      // Mapeo de string 'ADMIN' a ID (ej: 1) debería hacerse aquí o en el backend.
-      // Asumiremos que el backend espera 'rolId' en el PUT general.
-      let rolId = 3; 
-      if(newRole === 'ADMIN') rolId = 1;
-      if(newRole === 'MODERATOR') rolId = 2;
+    mutationFn: ({ id, newRole }: { id: string, newRole: string }) => {
+      // Mapeo de roles a IDs para tu backend (Ajusta según tu DB)
+      let rolId = 3; // Usuario
+      if (newRole === 'ADMIN') rolId = 1;
+      if (newRole === 'MODERATOR' || newRole === 'VENDEDOR') rolId = 2;
 
-      return fetchWithAuth(`/api/admin/${id}`, { // Usando PUT general
-        method: 'PUT',
-        body: JSON.stringify({ rolId }),
+      // Usamos el PUT de actualización general
+      return fetchWithAuth(`/api/admin/users/${id}`, { 
+        method: 'PUT', 
+        body: JSON.stringify({ rolId }) 
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
-    }
-  });
-}
-
-// ============================================================================
-// 3. MÉTRICAS (DASHBOARD)
-// ============================================================================
-
-// GET /api/admin/metrics
-export function useAdminMetrics() {
-  return useQuery({
-    queryKey: adminUserKeys.metrics(),
-    queryFn: async () => {
-      const res = await fetchWithAuth('/api/admin/metrics');
-      return res.metrics; // Devolvemos el objeto 'metrics' directamente
+      queryClient.invalidateQueries({ queryKey: adminKeys.users.all });
     },
-    staleTime: 1000 * 60 * 5 // 5 minutos
+  });
+}
+
+// DELETE User
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => 
+      fetchWithAuth(`/api/admin/users/${userId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.users.all });
+      queryClient.invalidateQueries({ queryKey: adminKeys.metrics });
+    },
   });
 }
 
 // ============================================================================
-// 4. GESTIÓN DE PRODUCTOS (PRODUCTS)
+// 5. GESTIÓN DE PRODUCTOS
 // ============================================================================
 
 function mapPostToAdminProduct(p: any): AdminProduct {
@@ -189,11 +185,11 @@ function mapPostToAdminProduct(p: any): AdminProduct {
   return {
     id: String(p.id),
     title: p.title || p.nombre,
-    author: p.author || p.vendedor?.nombre || 'Desconocido',
+    author: p.author || p.vendedor?.nombre || p.vendedor?.usuario || 'Desconocido',
     price: typeof priceNum === 'number' && !Number.isNaN(priceNum) ? priceNum : undefined,
     categoryName: p.categoryName || p.categoria?.nombre,
     createdAt: p.createdAt || p.fechaAgregado,
-    status: p.status || (p.visible ? 'published' : 'hidden'),
+    status: p.status || (p.visible ? 'published' : 'hidden'), // Mapeo visible -> status
   };
 }
 
@@ -213,22 +209,20 @@ export function useAdminProducts(initialQuery: string = '') {
       
       const params = new URLSearchParams();
       if (q) params.append('q', q);
-      // Nota: Tu backend admin.js actual no filtra por 'status', solo por 'q'.
-      // Si necesitas filtro por estado, deberás agregarlo al backend.
       
-      const data = await fetchWithAuth(`/api/admin/products?${params.toString()}`);
+      // El backend no filtra por status aún, lo haremos en cliente si es necesario
+      const rawData = await fetchWithAuth<any[]>(`/api/admin/products?${params.toString()}`);
       
-      const rawList = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
-      const list = rawList.map(mapPostToAdminProduct);
+      const list = rawData.map(mapPostToAdminProduct);
       
-      // Filtrado local de estado si el backend no lo soporta aún
+      // Filtrado local por estado
       const filteredList = s ? list.filter(p => p.status === s) : list;
       
       setProducts(filteredList);
 
     } catch (err: any) {
       console.error("Error fetching products:", err);
-      setError(err?.message ?? 'Error fetching products');
+      setError(err?.message ?? 'Error cargando productos');
     } finally {
       setLoading(false);
     }
@@ -245,34 +239,27 @@ export function useAdminProducts(initialQuery: string = '') {
   return { products, loading, error, query, status, ...actions };
 }
 
-// PATCH /api/admin/products/:id/hide
+// PATCH Hide/Show Product
 export function useHideProduct() {
   const queryClient = useQueryClient();
-  // Ahora retornamos la mutación completa
   return useMutation({
-    mutationFn: async (id: string) => {
-      return fetchWithAuth(`/api/admin/products/${encodeURIComponent(id)}/hide`, {
-        method: 'PATCH'
-      });
-    },
+    mutationFn: (id: string) => 
+      fetchWithAuth(`/api/admin/products/${encodeURIComponent(id)}/hide`, { method: 'PATCH' }),
     onSuccess: () => {
-      // Invalidamos la lista para que se refresque sola
-      queryClient.invalidateQueries({ queryKey: ['admin', 'products'] }); 
+      // Invalidar caché de productos (si usáramos react-query para el listado también)
+      // Como usas estado local en useAdminProducts, deberás llamar a refetch() manualmente en el componente
     }
   });
 }
 
-// DELETE /api/admin/products/:id
+// DELETE Product
 export function useDeleteProduct() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      return fetchWithAuth(`/api/admin/products/${encodeURIComponent(id)}`, {
-        method: 'DELETE'
-      });
-    },
+    mutationFn: (id: string) => 
+      fetchWithAuth(`/api/admin/products/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'products'] });
+      queryClient.invalidateQueries({ queryKey: adminKeys.metrics }); // Actualizar contadores
     }
   });
 }
