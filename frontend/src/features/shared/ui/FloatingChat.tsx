@@ -144,7 +144,6 @@ export default function FloatingChat() {
     setIsLoading(true)
     const currentChat = chats.find(c => c.id === chatId)
     
-    // Optimización: si ya tiene mensajes, no recargar (o recargar en background)
     if (currentChat && currentChat.mensajes.length > 0) {
       setIsLoading(false)
       markRead(chatId)
@@ -188,7 +187,7 @@ export default function FloatingChat() {
     loadMessages(id)
   }
 
-  // 5. Enviar Mensaje (Texto o Imagen)
+  // 5. Enviar Mensaje
   const handleSend = useCallback(async (texto: string, file?: File) => {
     if (!activeChatId || !token) return
     if (!texto.trim() && !file) return
@@ -199,7 +198,6 @@ export default function FloatingChat() {
     let contenidoFinal = texto
     let tipoMensaje = 'texto'
 
-    // A. Subir imagen si existe
     if (file) {
       try {
         const formData = new FormData()
@@ -217,7 +215,6 @@ export default function FloatingChat() {
       } catch (e) { console.error(e); return; }
     }
     
-    // B. Optimistic Update
     const prevUrl = file ? URL.createObjectURL(file) : undefined;
 
     setChats(prev => prev.map(c => 
@@ -237,7 +234,6 @@ export default function FloatingChat() {
         : c
     ))
 
-    // C. Emitir Socket
     if (socketRef.current) {
       socketRef.current.emit("send_message", {
         destinatarioId: activeChatId,
@@ -274,7 +270,7 @@ export default function FloatingChat() {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-6 right-6 z-[9999] shadow-2xl shadow-blue-900/40 bg-slate-900 text-white w-14 h-14 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+            className="fixed bottom-6 right-6 z-[9999] shadow-xl shadow-blue-900/20 bg-gradient-to-br from-slate-800 to-slate-900 text-white w-14 h-14 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
           >
             <LuMessageCircle size={28} />
             {totalUnread > 0 && (
@@ -300,7 +296,6 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
       dragListener={false}
       dragControls={dragControls}
       dragMomentum={false}
-      // ✅ FIX ARRASTRE: Restricciones para no perder la ventana
       dragConstraints={{ left: -window.innerWidth + 350, right: 20, top: -window.innerHeight + 500, bottom: 20 }}
       initial={{ opacity: 0, scale: 0.9, y: 50 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -308,24 +303,29 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
       className="fixed right-6 bottom-24 w-[350px] h-[500px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden z-[9999]"
     >
-      {/* Header Arrastrable */}
+      {/* --- HEADER BLANCO (CORREGIDO) --- */}
       <div 
         onPointerDown={(e) => dragControls.start(e)}
-        className="h-12 bg-slate-900 text-white flex items-center justify-between px-3 cursor-move touch-none select-none"
+        className="h-14 bg-white border-b border-slate-100 flex items-center justify-between px-4 cursor-move touch-none select-none"
       >
         <div className="flex items-center gap-2">
           {view === "chat" && (
-            <button onClick={() => setView("list")} className="p-1 hover:bg-white/20 rounded-full transition-colors">
-              <LuChevronLeft />
+            <button onClick={() => setView("list")} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors text-slate-600">
+              <LuChevronLeft size={20} />
             </button>
           )}
-          <h3 className="font-bold text-sm truncate max-w-[200px]">
-            {view === "chat" ? activeChat?.nombre : "Mensajes"}
-          </h3>
+          <div className="flex flex-col">
+             <h3 className="font-bold text-slate-800 text-sm truncate max-w-[180px]">
+               {view === "chat" ? activeChat?.nombre : "Mensajes"}
+             </h3>
+             {view === "chat" && <span className="text-[10px] text-green-600 font-medium flex items-center gap-1">● En línea</span>}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <LuGripHorizontal className="text-slate-400" size={16} />
-          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full text-slate-300 hover:text-white">
+        <div className="flex items-center gap-1">
+          <div className="cursor-move p-2 text-slate-300 hover:text-slate-500">
+             <LuGripHorizontal size={16} />
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-red-50 hover:text-red-500 rounded-full text-slate-400 transition-colors">
             <LuX size={18} />
           </button>
         </div>
@@ -346,28 +346,34 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
 
 const ChatListView = ({ chats, onSelect }: any) => (
   <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="h-full flex flex-col">
-    <div className="p-3 border-b border-slate-100 bg-slate-50">
+    <div className="p-3 border-b border-slate-50 bg-white">
       <div className="relative">
-        <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3 h-3" />
-        <input placeholder="Buscar..." className="w-full bg-white border border-slate-200 text-sm pl-9 pr-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/20 transition-all" />
+        <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
+        <input placeholder="Buscar..." className="w-full bg-slate-50 text-sm pl-9 pr-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all" />
       </div>
     </div>
     <div className="flex-1 overflow-y-auto">
       {chats.length === 0 ? (
-        <div className="p-8 text-center text-slate-400 text-xs">No hay conversaciones activas</div>
+        <div className="flex flex-col items-center justify-center h-40 text-slate-400 text-xs">
+           <LuMessageCircle size={32} className="mb-2 opacity-20" />
+           No hay conversaciones
+        </div>
       ) : (
         chats.map((chat: any) => (
-          <div key={chat.id} onClick={() => onSelect(chat.id)} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors">
-            <Avatar className="h-10 w-10 border border-slate-100">
-              <AvatarImage src={chat.avatar} className="object-cover" />
-              <AvatarFallback>{chat.nombre.charAt(0)}</AvatarFallback>
-            </Avatar>
+          <div key={chat.id} onClick={() => onSelect(chat.id)} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors group">
+            <div className="relative">
+               <Avatar className="h-10 w-10 border border-slate-100">
+                 <AvatarImage src={chat.avatar} className="object-cover" />
+                 <AvatarFallback className="bg-blue-50 text-blue-600 text-xs font-bold">{chat.nombre.charAt(0)}</AvatarFallback>
+               </Avatar>
+               {chat.noLeidos > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>}
+            </div>
             <div className="flex-1 min-w-0">
-              <div className="flex justify-between items-baseline">
-                <h4 className="font-semibold text-slate-800 text-sm truncate">{chat.nombre}</h4>
-                {chat.noLeidos > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full shadow-sm">{chat.noLeidos}</span>}
+              <div className="flex justify-between items-baseline mb-0.5">
+                <h4 className={`text-sm truncate ${chat.noLeidos > 0 ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>{chat.nombre}</h4>
+                {chat.noLeidos > 0 && <span className="bg-blue-600 text-white text-[10px] px-1.5 rounded-full font-bold">{chat.noLeidos}</span>}
               </div>
-              <p className={`text-xs truncate ${chat.noLeidos ? 'text-slate-900 font-medium' : 'text-slate-500'}`}>{chat.ultimoMensaje || 'Imagen enviada'}</p>
+              <p className={`text-xs truncate ${chat.noLeidos ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>{chat.ultimoMensaje || 'Imagen enviada'}</p>
             </div>
           </div>
         ))
@@ -406,26 +412,33 @@ const ChatConversationView = ({ chat, onSend, isLoading }: any) => {
   if (isLoading) return <div className="h-full flex items-center justify-center"><LuLoader className="animate-spin text-slate-400" /></div>
 
   return (
-    <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 20, opacity: 0 }} className="h-full flex flex-col bg-[#f8f9fc]">
+    <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 20, opacity: 0 }} className="h-full flex flex-col bg-[#F8F9FC]">
       
       {/* Mensajes */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2">
-        {chat?.mensajes.map((msg: Mensaje) => (
-          <div key={msg.id} className={`flex ${msg.autor === "yo" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
-              msg.autor === "yo" ? "bg-slate-900 text-white rounded-br-none" : "bg-white text-slate-800 border border-slate-200 rounded-bl-none"
-            }`}>
-              {msg.imagenUrl && (
-                 <img src={msg.imagenUrl} alt="adjunto" className="rounded-lg mb-1 max-h-40 object-cover cursor-pointer" onClick={() => window.open(msg.imagenUrl, '_blank')} />
-              )}
-              {msg.texto && <p className="leading-snug break-words whitespace-pre-wrap">{msg.texto}</p>}
-              <div className={`text-[9px] mt-1 flex justify-end opacity-70`}>{msg.hora}</div>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
+        {chat?.mensajes.map((msg: Mensaje) => {
+          const isMe = msg.autor === "yo";
+          return (
+            <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                isMe 
+                  ? "bg-blue-600 text-white rounded-br-none" // 🔵 Azul para mí
+                  : "bg-white text-slate-800 border border-slate-200 rounded-bl-none" // ⚪ Blanco para otros
+              }`}>
+                {msg.imagenUrl && (
+                   <img src={msg.imagenUrl} alt="adjunto" className="rounded-lg mb-1 max-h-40 object-cover cursor-pointer bg-black/10" onClick={() => window.open(msg.imagenUrl, '_blank')} />
+                )}
+                {msg.texto && <p className="leading-snug break-words whitespace-pre-wrap">{msg.texto}</p>}
+                <div className={`text-[9px] mt-1 flex justify-end gap-1 ${isMe ? 'text-blue-200' : 'text-slate-400'}`}>
+                  {msg.hora}
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
-      {/* Emoji Picker Flotante */}
+      {/* Emoji Picker */}
       {showEmoji && (
         <div className="absolute bottom-16 left-2 z-50 shadow-xl rounded-xl overflow-hidden border border-slate-200">
           <EmojiPicker onEmojiClick={onEmojiClick} width={300} height={350} theme={Theme.LIGHT} searchDisabled previewConfig={{showPreview: false}} />
@@ -433,7 +446,7 @@ const ChatConversationView = ({ chat, onSend, isLoading }: any) => {
       )}
 
       {/* Input Area */}
-      <form onSubmit={handleSubmit} className="p-2 bg-white border-t border-slate-200 flex items-end gap-2">
+      <form onSubmit={handleSubmit} className="p-2 bg-white border-t border-slate-200 flex items-end gap-1.5">
         <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors">
           <LuImage size={20} />
         </button>
@@ -447,11 +460,11 @@ const ChatConversationView = ({ chat, onSend, isLoading }: any) => {
            onChange={(e) => setText(e.target.value)} 
            onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
            placeholder="Escribe..." 
-           className="flex-1 bg-slate-50 border-none rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-slate-900/10 resize-none max-h-24"
+           className="flex-1 bg-slate-50 border-none rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 resize-none max-h-24 min-h-[36px]"
            rows={1}
         />
         
-        <Button type="submit" size="icon" disabled={!text.trim()} className="bg-slate-900 hover:bg-slate-800 rounded-xl h-10 w-10 shrink-0">
+        <Button type="submit" size="icon" disabled={!text.trim()} className="bg-blue-600 hover:bg-blue-700 rounded-xl h-9 w-9 shrink-0 shadow-sm">
           <LuSend size={16} />
         </Button>
       </form>
