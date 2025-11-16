@@ -211,27 +211,22 @@ function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFavorite,
     setIsSending(true);
     
     try {
-      // 1. Crear Transacción (Intención de compra)
+      // 1. Intentar crear/retomar transacción
       const resTx = await fetch(`${API_URL}/api/transactions`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          productId: post.id,
-          quantity: 1 // Por defecto 1 unidad
-        })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ productId: post.id, quantity: 1 })
       });
-
+      
+      const dataTx = await resTx.json();
+      
+      // Si hay error (ej: es tu propio producto), alertamos pero permitimos enviar mensaje
       if (!resTx.ok) {
-        const err = await resTx.json();
-        // Si ya existe una transacción pendiente o error de stock, podríamos decidir continuar o parar.
-        // Aquí continuamos para permitir el chat, pero logueamos el error.
-        console.warn("Aviso de transacción:", err.message);
+         console.warn("Aviso de transacción:", dataTx.message);
+         // Opcional: alert(dataTx.message || "No se pudo crear la transacción");
       }
 
-      // 2. Enviar el Mensaje
+      // 2. Enviar Mensaje
       const resChat = await fetch(`${API_URL}/api/chat/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -240,11 +235,13 @@ function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFavorite,
 
       if (resChat.ok) {
         setSentSuccess(true);
+        // Opcional: Si quieres ir directo al chat tras enviar
+        // goToChat(); 
       } else {
         alert("Error al enviar mensaje");
       }
     } catch (error) {
-      console.error("Error en proceso de contacto", error);
+      console.error("Error en proceso:", error);
     } finally {
       setIsSending(false);
     }
@@ -396,18 +393,40 @@ export default function MarketplacePage() {
     if (node) observer.current.observe(node);
   }, [isLoading, hasNextPage, fetchNextPage]);
 
-  const handleContact = async (post: Post) => {
-    // Función para el botón "Ir al Chat Directo" (Botón grande del sidebar)
-    // También crea transacción para asegurar flujo
-    if (!token) return;
+const handleContact = async (post: Post) => {
+    if (!token) return; // O redirigir a login
+    
+    let transactionId: number | undefined = undefined;
+
     try {
-      await fetch(`${API_URL}/api/transactions`, {
+      const res = await fetch(`${API_URL}/api/transactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ productId: post.id, quantity: 1 })
       });
-    } catch (e) {} // Ignoramos error si ya existe, lo importante es ir al chat
-    navigate('/chats', { state: { toUser: post.vendedor } });
+      
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Si es error de "Auto-compra", no generamos ID, pero dejamos ir al chat
+        console.warn("No se creó transacción:", data.message);
+        if (data.message?.includes('autocomprarte')) {
+             alert("Aviso: Es tu propio producto. Irás al chat sin generar compra.");
+        }
+      } else {
+        transactionId = data.transactionId;
+      }
+    } catch (e) {
+        console.error("Error de conexión:", e);
+    }
+
+    // Navegar pasando explícitamente el ID de transacción
+    navigate('/chats', { 
+        state: { 
+            toUser: post.vendedor,
+            transactionId: transactionId // Esto forzará al chat a reconocerla
+        } 
+    });
     setSelectedPost(null);
   };
 
