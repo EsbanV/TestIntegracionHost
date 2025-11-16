@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/app/context/AuthContext'
 import { RequireSetup } from '@/app/context/RequireOnboarding'
+import AdminRoute from '../components/auth/AdminRoute';
 
 // Layout
 import PageLayout from '@/features/shared/ui/PageLayout'
@@ -23,6 +24,12 @@ import MyProductsPage from '@/features/MyPublications/MyPublications.UI/MisPubli
 import ForumPage from '@/features/Forum/ForumPage'
 import MyPublicationsPage from '@/features/Forum/MyPublications'
 import FavoritesPage from '@/features/Favoritos/FavoritesPage'
+
+import UsersPage from '../features/admin/pages/UsersPage';
+import AdminDashboardPage from '../features/admin/pages/DashboardPage';
+import AdminPostsPage from '../features/admin/pages/PostsPage';
+import AdminSettingsPage from '../features/admin/pages/SettingsPage';
+import AdminMarketplacePage from '../features/admin/pages/MarketplacePage';
 
 
 export function AppRoutes() {
@@ -101,6 +108,15 @@ export function AppRoutes() {
 
         </Route> {/* Fin RequireSetup */}
 
+        {/* --- Rutas de Administrador (Requiere rol 'ADMIN') --- */}
+        <Route element={<AdminRoute />}>
+          <Route path="/admin" element={<AdminDashboardPage />} />
+          <Route path="/admin/usuarios" element={<UsersPage />} />
+          <Route path="/admin/publicaciones" element={<AdminPostsPage />} />
+          <Route path="/admin/ajustes" element={<AdminSettingsPage />} />
+          <Route path="/admin/marketplace" element={<AdminMarketplacePage />} />
+        </Route>
+
       </Route> {/* Fin ProtectedRoute */}
 
       {/* =========================================
@@ -108,7 +124,12 @@ export function AppRoutes() {
           ========================================= */}
       <Route path="/" element={<Navigate to="/home" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
+
+
     </Routes>
+
+
+
   )
 }
 

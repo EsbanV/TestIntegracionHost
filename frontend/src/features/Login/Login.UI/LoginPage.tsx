@@ -4,16 +4,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 
-// --- IMPORTA TU IMAGEN AQUÍ (Opcional) ---
+// --- IMPORTA TU IMAGEN AQUÍ ---
 import loginBg from '@/assets/img/FondoLogin.jpg'; 
 
 // --- CONFIGURACIÓN ---
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const API_URL = import.meta.env.VITE_API_URL;
-const ALLOWED_DOMAINS = ["alu.uct.cl", "uct.cl"];
 
-// Imagen de fondo por defecto (Universidad/Campus) - Cámbiala por tu import
-const BACKGROUND_IMAGE = loginBg
+// Imagen de fondo
+const BACKGROUND_IMAGE = loginBg;
 
 // --- UTILIDADES INTERNAS ---
 const decodeJwt = (token: string) => {
@@ -58,7 +57,7 @@ export default function LoginPage() {
 
       if (googleButtonRef.current) {
         w.google.accounts.id.renderButton(googleButtonRef.current, {
-          theme: 'filled_blue', // Cambié a azul para que contraste mejor
+          theme: 'filled_blue',
           size: 'large',
           width: '320',
           text: 'continue_with',
@@ -81,13 +80,8 @@ export default function LoginPage() {
       return;
     }
 
-    const email = payload.email;
-    const domain = email.split('@')[1];
-
-    if (!ALLOWED_DOMAINS.includes(domain)) {
-      setError(`Solo se permite el ingreso con correos institucionales (@${ALLOWED_DOMAINS.join(', @')}).`);
-      return;
-    }
+    // NOTA: Ya no bloqueamos por dominio aquí en el frontend.
+    // Dejamos que el backend decida si el usuario es válido (Estudiante UCT o Admin Externo).
 
     setIsLoading(true);
     setError(null);
@@ -99,21 +93,34 @@ export default function LoginPage() {
         body: JSON.stringify({
           idToken: idToken,
           email: payload.email,
-          name: payload.name || payload.given_name
+          name: payload.name || payload.given_name,
+          picture: payload.picture
         }),
       });
 
       const data = await res.json();
 
       if (res.ok && data.ok) {
+        // Login exitoso en AuthContext
         login(data.accessToken, data.refreshToken, data.user);
-        if (data.isNewUser || !data.user.campus) {
+        
+        // --- REDIRECCIÓN INTELIGENTE ---
+        const role = data.user.role?.toUpperCase();
+
+        if (role === 'ADMINISTRADOR' || role === 'ADMIN') {
+           // Si es admin, va directo al panel
+           navigate('/admin', { replace: true });
+        } else if (data.isNewUser || !data.user.campus) {
+           // Si es nuevo o le faltan datos, al onboarding
            navigate('/onboarding', { replace: true });
         } else {
+           // Usuario normal completo, al home
            navigate('/home', { replace: true });
         }
+
       } else {
-        throw new Error(data.message || "Error al iniciar sesión en el servidor");
+        // Mostrar el error específico del backend (ej: "Acceso denegado...")
+        throw new Error(data.message || "Error al iniciar sesión.");
       }
 
     } catch (err: any) {
@@ -134,7 +141,6 @@ export default function LoginPage() {
           alt="Fondo Campus" 
           className="w-full h-full object-cover"
         />
-        {/* Overlay oscuro para que la tarjeta resalte */}
         <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" />
       </div>
 
@@ -179,6 +185,9 @@ export default function LoginPage() {
               <span className="bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">@alu.uct.cl</span>
               <span className="bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">@uct.cl</span>
             </div>
+            <p className="text-[10px] text-slate-400 mt-2 italic">
+              * Administradores pueden ingresar con cualquier correo registrado.
+            </p>
           </div>
 
           {/* Mensaje de Error */}

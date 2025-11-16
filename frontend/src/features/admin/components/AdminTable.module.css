@@ -1,0 +1,41 @@
+.tableWrap {
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border-strong);
+  box-shadow: var(--admin-shadow-sm);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+}
+
+.table th, .table td {
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--admin-border-strong);
+  font-size: 0.95rem;
+}
+
+.table thead th {
+  background: var(--admin-primary-50);
+  font-weight: 600;
+}
+
+.skeletonBar { height: 10px; border-radius: 6px; background: linear-gradient(90deg, rgba(2,6,23,0.08), rgba(2,6,23,0.16), rgba(2,6,23,0.08)); background-size: 200% 100%; animation: shimmer 1.2s ease-in-out infinite; }
+
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+.clickable {
+  transition: background .15s ease, transform .12s ease;
+}
+
+.clickable:hover {
+  background: rgba(11,58,110,0.06); /* navy tint */
+  cursor: pointer;
+  transform: translateY(-0.5px);
+}
+
+.tableWrap:hover { box-shadow: var(--admin-shadow-md); }
