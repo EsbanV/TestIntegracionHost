@@ -62,36 +62,142 @@ const FavoriteButton = ({ isFavorite, onClick }: { isFavorite: boolean, onClick:
       isFavorite ? "bg-red-50 text-red-500" : "bg-white/90 text-slate-400 hover:text-red-400"
     )}
   >
-    <Heart className={cn("h-5 w-5 transition-all", isFavorite && "fill-current scale-110")} strokeWidth={isFavorite ? 0 : 2} />
+    <Heart 
+  className={cn("h-5 w-5 transition-all text-red-500", isFavorite && "fill-red-500 scale-110")} 
+  strokeWidth={2}
+/>
   </button>
 );
 
 // --- CARRUSEL ---
-function ImageCarousel({ images, altPrefix }: { images: string[], altPrefix?: string }) {
+// ---------------------------------------------------------------------------
+// 3. CARRUSEL DE IMÁGENES (Refactorizado para Múltiples Imágenes)
+// ---------------------------------------------------------------------------
+function ImageCarousel({ 
+  images, 
+  altPrefix, 
+  isFavorite, 
+  onToggleFavorite 
+}: { 
+  images: { id: number; url: string }[] | undefined | null, 
+  altPrefix?: string, 
+  isFavorite?: boolean, 
+  onToggleFavorite?: () => void 
+}) {
   const [index, setIndex] = useState(0);
-  const validImages = images?.length ? images : ["/img/placeholder-product.png"];
   
+  // Asegurar que siempre haya al menos un array (aunque sea con placeholder)
+  const validImages = useMemo(() => {
+    if (images && images.length > 0) {
+      return images;
+    }
+    return [{ id: 0, url: "/img/placeholder-product.png" }];
+  }, [images]);
+
+  const thumbRef = useRef<HTMLDivElement>(null);
+
+  // Resetear índice cuando cambian las imágenes (ej: al abrir otro producto)
+  useEffect(() => {
+    setIndex(0);
+  }, [images]);
+
+  // Auto-scroll de miniaturas
+  useEffect(() => {
+    if (thumbRef.current) {
+      const el = thumbRef.current.children[index] as HTMLElement;
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [index]);
+
+  const nextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIndex((prev) => (prev + 1) % validImages.length);
+  };
+
+  const prevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIndex((prev) => (prev - 1 + validImages.length) % validImages.length);
+  };
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gray-100 border border-slate-100 group">
-        <motion.img 
-          key={index}
-          src={validImages[index]}
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="h-full w-full object-contain bg-white"
-        />
+    <div className="flex flex-col gap-3 relative group">
+      
+      {/* --- VISOR PRINCIPAL --- */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-gray-100 border border-slate-200 shadow-sm">
+        
+        <AnimatePresence mode='wait'>
+          <motion.img 
+            key={validImages[index].id} // Key única para animar el cambio
+            src={validImages[index].url}
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            transition={{ duration: 0.2 }}
+            alt={`${altPrefix || 'Producto'} - Imagen ${index + 1}`}
+            className="h-full w-full object-contain bg-white" // object-contain evita recortes
+          />
+        </AnimatePresence>
+        
+        {/* Botón de Favorito (Flotante) */}
+        {onToggleFavorite && (
+          <div className="absolute top-3 right-3 z-20">
+            <FavoriteButton isFavorite={!!isFavorite} onClick={onToggleFavorite} />
+          </div>
+        )}
+        
+        {/* Flechas de Navegación (Solo si hay > 1 imagen) */}
         {validImages.length > 1 && (
           <>
-            <button onClick={(e) => { e.stopPropagation(); setIndex((i) => (i - 1 + validImages.length) % validImages.length) }} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 opacity-0 group-hover:opacity-100 transition-all"><ChevronLeft size={20} /></button>
-            <button onClick={(e) => { e.stopPropagation(); setIndex((i) => (i + 1) % validImages.length) }} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 opacity-0 group-hover:opacity-100 transition-all"><ChevronRight size={20} /></button>
+            <button 
+              onClick={prevImage} 
+              className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-slate-800 shadow-md backdrop-blur-sm transition-all hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            
+            <button 
+              onClick={nextImage} 
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-slate-800 shadow-md backdrop-blur-sm transition-all hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100"
+            >
+              <ChevronRight size={20} />
+            </button>
+
+            {/* Indicador de página (puntos) */}
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 px-3 py-1.5 bg-black/20 backdrop-blur-sm rounded-full">
+              {validImages.map((_, i) => (
+                <div 
+                  key={i}
+                  className={cn(
+                    "h-1.5 rounded-full transition-all shadow-sm",
+                    i === index ? "w-4 bg-white" : "w-1.5 bg-white/60"
+                  )}
+                />
+              ))}
+            </div>
           </>
         )}
       </div>
+
+      {/* --- TIRA DE MINIATURAS (THUMBNAILS) --- */}
       {validImages.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <div 
+          ref={thumbRef} 
+          className="flex w-full gap-2 overflow-x-auto pb-2 scrollbar-hide scroll-smooth"
+        >
           {validImages.map((img, i) => (
-            <button key={i} onClick={() => setIndex(i)} className={cn("h-14 w-14 rounded-lg overflow-hidden border-2 transition-all", i === index ? "border-slate-900" : "border-transparent opacity-50")}>
-              <img src={img} className="h-full w-full object-cover" />
+            <button
+              key={img.id}
+              onClick={(e) => { e.stopPropagation(); setIndex(i); }}
+              className={cn(
+                "relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all",
+                i === index 
+                  ? "border-slate-900 ring-2 ring-slate-900/10 opacity-100 scale-105" 
+                  : "border-transparent opacity-60 hover:opacity-100"
+              )}
+            >
+              <img src={img.url} alt="" className="h-full w-full object-cover" />
             </button>
           ))}
         </div>
@@ -125,7 +231,12 @@ function ProductDetailModal({ open, onClose, post, onRemoveFavorite }: { open: b
               
               {/* Carrusel con botón de favorito superpuesto */}
               <div className="relative">
-                 <ImageCarousel images={post.imagenes?.map(i => i.url || "") || []} />
+                 <ImageCarousel 
+                  images={post.imagenes} // Pasamos el array de objetos directo
+                  altPrefix={post.nombre}
+                  isFavorite={isFavorite} // Asegúrate de pasar estas props si están disponibles en el modal scope
+                  onToggleFavorite={() => onToggleFavorite(post.id)}
+                />
                  <div className="absolute top-3 right-3 z-20">
                     <FavoriteButton isFavorite={true} onClick={() => { onRemoveFavorite(post.id); onClose(); }} />
                  </div>
@@ -175,7 +286,8 @@ function ProductDetailModal({ open, onClose, post, onRemoveFavorite }: { open: b
 
 // --- TARJETA DE GRID (Idéntica a Marketplace) ---
 const ItemCard = ({ post, onClick, onRemove }: { post: Post, onClick: (p: Post) => void, onRemove: (id: number) => void }) => {
-  const image = post.imagenes?.[0]?.url;
+  // En FavoriteCard
+  const image = product.imagenes?.[0]?.url || product.imagenes?.[0]?.urlImagen || "/img/placeholder-product.png";
 
   return (
     <div onClick={() => onClick(post)} className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm border border-slate-200 transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer">
