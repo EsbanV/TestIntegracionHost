@@ -107,7 +107,11 @@ export default function LoginPage() {
 
       if (res.ok && data.ok) {
         login(data.token, data.user);
-        navigate('/home', { replace: true });
+        if (data.isNewUser || !data.user.campus) {
+           navigate('/onboarding', { replace: true });
+        } else {
+           navigate('/home', { replace: true });
+        }
       } else {
         throw new Error(data.message || "Error al iniciar sesión en el servidor");
       }

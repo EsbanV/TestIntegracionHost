@@ -20,6 +20,7 @@ import AyudaPage from '@/features/About.Terms.Help/Help.UI/AyudaPage'
 import TermsPage from '@/features/About.Terms.Help/Terms.UI/TermsPage'
 import AboutPage from '@/features/About.Terms.Help/About.UI/AboutPage'
 import PublicProfilePage from '@/features/Perfil/Perfil.UI/PublicProfilePage'
+import OnboardingPage from '@/features/Onboarding/Onboarding.UI/OnboardingPage'
 
 export function AppRoutes() {
   return (
@@ -61,6 +62,7 @@ export function AppRoutes() {
           }
         >
           <Route path="/home" element={<HomePage />} />
+          <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/crear" element={<CreateProductPage />} />
           <Route path="/editar" element={<EditarPublicacionPage />} />
           <Route path="/mis-publicaciones" element={<MyProductsPage />} />
