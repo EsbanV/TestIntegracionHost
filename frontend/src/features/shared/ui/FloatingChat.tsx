@@ -296,56 +296,46 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
       dragListener={false}
       dragControls={dragControls}
       dragMomentum={false}
-      // Ajustamos constraints para el nuevo ancho
       dragConstraints={{ left: -window.innerWidth + 400, right: 20, top: -window.innerHeight + 500, bottom: 20 }}
       initial={{ opacity: 0, scale: 0.9, y: 50 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9, y: 50 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      // CAMBIO 1: Aumentamos el ancho a w-[380px]
       className="fixed right-6 bottom-24 w-[380px] h-[520px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden z-[9999]"
     >
-      {/* --- HEADER (Rediseñado) --- */}
+      {/* Header */}
       <div 
         onPointerDown={(e) => dragControls.start(e)}
         className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 cursor-move touch-none select-none"
       >
-        {/* Lado Izquierdo: Título y Volver */}
         <div className="flex items-center gap-3 overflow-hidden">
           {view === "chat" && (
-            <button 
-              onClick={() => setView("list")} 
-              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500 transition-colors shrink-0"
-            >
+            <button onClick={() => setView("list")} className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500 transition-colors shrink-0">
               <LuChevronLeft size={20} />
             </button>
           )}
           
+          {/* Avatar en el Header cuando estamos en el chat */}
+          {view === "chat" && activeChat && (
+             <Avatar className="h-8 w-8 border border-slate-100 shrink-0">
+               <AvatarImage src={activeChat.avatar} />
+               <AvatarFallback className="text-xs bg-slate-100">{activeChat.nombre.charAt(0)}</AvatarFallback>
+             </Avatar>
+          )}
+
           <div className="flex flex-col min-w-0">
              <h3 className="font-bold text-slate-800 text-sm truncate">
                {view === "chat" ? activeChat?.nombre : "Mensajes"}
              </h3>
-             {view === "chat" && (
-               <span className="text-[10px] text-green-600 font-medium flex items-center gap-1">
-                 <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> En línea
-               </span>
-             )}
+             {view === "chat" && <span className="text-[10px] text-green-600 font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> En línea</span>}
           </div>
         </div>
 
-        {/* Lado Derecho: Drag y Cerrar */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Icono de arrastre */}
           <div className="p-2 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing transition-colors">
              <LuGripHorizontal size={18} />
           </div>
-          
-          {/* CAMBIO 2: Botón Cerrar Centrado y Circular */}
-          <button 
-            onClick={onClose} 
-            className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all"
-            title="Cerrar chat"
-          >
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all" title="Cerrar chat">
             <LuX size={18} />
           </button>
         </div>
@@ -356,7 +346,7 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
           {view === "list" ? (
             <ChatListView key="list" chats={chats} onSelect={onSelectChat} />
           ) : (
-            <ChatConversationView key="chat" chat={activeChat} onSend={onSend} isLoading={isLoading} />
+            <ChatConversationView key="chat" chat={activeChat} onSend={onSend} isLoading={isLoading} chatAvatar={activeChat?.avatar} />
           )}
         </AnimatePresence>
       </div>
@@ -402,7 +392,7 @@ const ChatListView = ({ chats, onSelect }: any) => (
   </motion.div>
 )
 
-const ChatConversationView = ({ chat, onSend, isLoading }: any) => {
+const ChatConversationView = ({ chat, onSend, isLoading, chatAvatar }: any) => {
   const [text, setText] = useState("")
   const [showEmoji, setShowEmoji] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -439,11 +429,20 @@ const ChatConversationView = ({ chat, onSend, isLoading }: any) => {
         {chat?.mensajes.map((msg: Mensaje) => {
           const isMe = msg.autor === "yo";
           return (
-            <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+            <div key={msg.id} className={`flex w-full gap-2 ${isMe ? "justify-end" : "justify-start"}`}>
+              
+              {/* Avatar para mensajes recibidos */}
+              {!isMe && (
+                 <Avatar className="h-6 w-6 mt-auto mb-1 shadow-sm border border-slate-200 shrink-0">
+                   <AvatarImage src={chatAvatar} />
+                   <AvatarFallback className="text-[9px] bg-white text-slate-500 font-bold">{chat?.nombre?.charAt(0)}</AvatarFallback>
+                 </Avatar>
+              )}
+
+              <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
                 isMe 
-                  ? "bg-blue-600 text-white rounded-br-none" // 🔵 Azul para mí
-                  : "bg-white text-slate-800 border border-slate-200 rounded-bl-none" // ⚪ Blanco para otros
+                  ? "bg-blue-600 text-white rounded-br-sm" 
+                  : "bg-white text-slate-800 border border-slate-200 rounded-bl-sm"
               }`}>
                 {msg.imagenUrl && (
                    <img src={msg.imagenUrl} alt="adjunto" className="rounded-lg mb-1 max-h-40 object-cover cursor-pointer bg-black/10" onClick={() => window.open(msg.imagenUrl, '_blank')} />
