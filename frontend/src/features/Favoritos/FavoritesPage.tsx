@@ -9,12 +9,12 @@ import { twMerge } from 'tailwind-merge';
 
 // --- Imports Externos ---
 import { useAuth } from '@/app/context/AuthContext';
-import { formatCLP } from '@/features/marketplace/Marketplace.Utils/format';
-import type { Post } from '@/features/marketplace/Marketplace.Types/ProductInterfaces';
+import { formatCLP } from '@/features/Marketplace/Marketplace.Utils/format';
+import type { Post } from '@/features/Marketplace/Marketplace.Types/ProductInterfaces';
 
 // Reutilizamos el Modal de Detalle del Marketplace si lo tienes exportado,
 // si no, este archivo incluye una versión simplificada para funcionar autónomamente.
-import { ProductDetailModal } from '@/features/marketplace/Marketplace.UI/MarketplacePage';
+import ProductDetailModal from '@/features/Marketplace/Marketplace.UI/HomePage';
 
 // --- Configuración ---
 const API_URL = import.meta.env.VITE_API_URL;
