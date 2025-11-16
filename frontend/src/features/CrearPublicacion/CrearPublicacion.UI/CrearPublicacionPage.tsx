@@ -23,7 +23,7 @@ const CATEGORY_MAP: Record<string, number> = {
 };
 
 const CONDITIONS = ["Nuevo", "Usado", "Reacondicionado"];
-const CAMPUS_OPTIONS = ["San Francisco", "San Juan Pablo II", "Menchaca Lira", "Norte"];
+const CAMPUS_OPTIONS = ["San Francisco", "San Juan Pablo II"];
 
 // --- UTILIDADES ---
 function cn(...inputs: ClassValue[]) {
