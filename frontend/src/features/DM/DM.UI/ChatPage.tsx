@@ -1,17 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { io, Socket } from 'socket.io-client'
-import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react' // 👈 Importar librería
+import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react'
 
 // Icons
 import { 
   LuSend, LuSmile, LuSearch, LuEllipsisVertical, 
-  LuCheck, LuCheckCheck, LuClock, LuX, LuMessageSquare, LuImage, LuLoader 
+  LuCheck, LuCheckCheck, LuClock, LuX, LuMessageSquare, LuImage, LuLoader,
+  LuShoppingBag, LuStar
 } from 'react-icons/lu'
 
 // Hooks & Context
 import { useAuth } from '@/app/context/AuthContext'
+// Importamos el modal de calificación (Asegúrate de tenerlo creado como vimos antes)
+import RateUserModal from '@/features/DM/DM.UI/DM.Components/RateUserModal'
 
 // --- TIPOS ---
 type EstadoMensaje = 'enviando' | 'enviado' | 'recibido' | 'leido' | 'error'
@@ -19,11 +22,12 @@ type EstadoMensaje = 'enviando' | 'enviado' | 'recibido' | 'leido' | 'error'
 interface Mensaje {
   id: number | string
   texto: string
-  autor: 'yo' | 'otro'
+  autor: 'yo' | 'otro' | 'sistema' // Agregamos 'sistema'
   hora: string
   estado?: EstadoMensaje
   imagenUrl?: string
-  tipo?: string
+  tipo?: string // 'texto', 'imagen', 'sistema'
+  metadata?: any // Para guardar IDs de transacción, estado, etc.
 }
 
 interface Chat {
@@ -52,12 +56,16 @@ export default function ChatPage() {
   const { user, token } = useAuth()
   const location = useLocation()
   
-  // Estado
+  // Estado Chat
   const [chats, setChats] = useState<Chat[]>([])
   const [activeChatId, setActiveChatId] = useState<number | null>(null)
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list')
   const [isLoading, setIsLoading] = useState(true)
   const [isUploading, setIsUploading] = useState(false)
+  
+  // Estado Calificación
+  const [isRateModalOpen, setIsRateModalOpen] = useState(false)
+  const [pendingRatingData, setPendingRatingData] = useState<{sellerId: number, sellerName: string} | null>(null)
   
   // Refs
   const socketRef = useRef<Socket | null>(null)
@@ -74,20 +82,13 @@ export default function ChatPage() {
 
     socketRef.current = newSocket
 
-    newSocket.on('connect', () => {
-      console.log("🟢 Socket conectado:", newSocket.id)
-    })
+    newSocket.on('connect', () => console.log("🟢 Socket conectado"))
+    newSocket.on('new_message', (data: any) => handleIncomingMessage(data))
 
-    newSocket.on('new_message', (data: any) => {
-      handleIncomingMessage(data)
-    })
-
-    return () => {
-      newSocket.disconnect()
-    }
+    return () => { newSocket.disconnect() }
   }, [token])
 
-  // 2. CARGAR BANDEJA DE ENTRADA
+  // 2. CARGAR CHATS
   const fetchConversations = async () => {
     if (!token) return
     try {
@@ -101,13 +102,14 @@ export default function ChatPage() {
           id: c.usuario.id,
           nombre: c.usuario.nombre || c.usuario.usuario,
           avatar: c.usuario.fotoPerfilUrl ? getFullImgUrl(c.usuario.fotoPerfilUrl) : undefined,
-          ultimoMensaje: c.ultimoMensaje?.contenido || (c.ultimoMensaje?.tipo === 'imagen' ? '📷 Imagen' : ''),
+          ultimoMensaje: c.ultimoMensaje?.tipo === 'imagen' ? '📷 Imagen' : (c.ultimoMensaje?.tipo === 'sistema' ? '🔔 Actualización de venta' : c.ultimoMensaje?.contenido),
           noLeidos: c.unreadCount || 0,
           mensajes: [],
           online: false
         }))
         setChats(formattedChats)
         
+        // Manejo de redirección desde "Contactar"
         const state = location.state as { toUser?: any }
         if (state?.toUser) {
            const existingChat = formattedChats.find(c => c.id === state.toUser.id)
@@ -115,6 +117,7 @@ export default function ChatPage() {
              setActiveChatId(existingChat.id)
              setMobileView('chat')
            } else {
+             // Chat temporal
              const newChatTemp: Chat = {
                id: state.toUser.id,
                nombre: state.toUser.nombre,
@@ -128,16 +131,11 @@ export default function ChatPage() {
            }
         }
       }
-    } catch (error) {
-      console.error("Error cargando chats:", error)
-    } finally {
-      setIsLoading(false)
-    }
+    } catch (error) { console.error(error) } 
+    finally { setIsLoading(false) }
   }
 
-  useEffect(() => {
-    fetchConversations()
-  }, [token])
+  useEffect(() => { fetchConversations() }, [token])
 
   // 3. CARGAR HISTORIAL
   useEffect(() => {
@@ -151,61 +149,75 @@ export default function ChatPage() {
         const data = await res.json()
 
         if (data.ok) {
-          const mensajesFormateados: Mensaje[] = data.mensajes.map((m: any) => ({
-            id: m.id,
-            texto: m.tipo === 'imagen' ? '' : m.contenido,
-            imagenUrl: m.tipo === 'imagen' ? getFullImgUrl(m.contenido) : undefined,
-            autor: m.remitenteId === user?.id ? 'yo' : 'otro',
-            hora: new Date(m.fechaEnvio).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            estado: m.leido ? 'leido' : 'recibido',
-            tipo: m.tipo
-          }))
+          const mensajesFormateados: Mensaje[] = data.mensajes.map((m: any) => {
+            // Intentar parsear metadata si es mensaje de sistema
+            let metadata = null;
+            if (m.tipo === 'sistema') {
+                try { metadata = JSON.parse(m.contenido) } catch {}
+            }
 
-          setChats(prev => prev.map(c => 
-            c.id === activeChatId 
-              ? { ...c, mensajes: mensajesFormateados, noLeidos: 0 } 
-              : c
-          ))
+            return {
+              id: m.id,
+              texto: m.tipo === 'imagen' ? '' : (m.tipo === 'sistema' ? '' : m.contenido),
+              imagenUrl: m.tipo === 'imagen' ? getFullImgUrl(m.contenido) : undefined,
+              autor: m.remitenteId === user?.id ? 'yo' : 'otro',
+              hora: new Date(m.fechaEnvio).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              estado: m.leido ? 'leido' : 'recibido',
+              tipo: m.tipo,
+              metadata: metadata // Guardamos el JSON parseado aquí
+            }
+          })
+
+          setChats(prev => prev.map(c => c.id === activeChatId ? { ...c, mensajes: mensajesFormateados, noLeidos: 0 } : c))
         }
 
+        // Marcar leídos
         await fetch(`${URL_BASE}/api/chat/conversacion/${activeChatId}/mark-read`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` }
+          method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
         })
 
-      } catch (error) {
-        console.error("Error cargando historial:", error)
-      }
+      } catch (error) { console.error(error) }
     }
 
     fetchHistory()
   }, [activeChatId, token, user?.id])
 
-  // 4. MANEJO DE MENSAJES ENTRANTES
+  // 4. INCOMING MESSAGES
   const handleIncomingMessage = (msgData: any) => {
     const remitenteId = msgData.remitente.id
-    const esImagen = msgData.tipo === 'imagen'
-    const contenido = esImagen ? '📷 Imagen' : msgData.contenido
+    const isSystem = msgData.tipo === 'sistema'
+    const isImage = msgData.tipo === 'imagen'
+    
+    let contenidoPreview = msgData.contenido
+    if (isImage) contenidoPreview = '📷 Imagen'
+    if (isSystem) contenidoPreview = '🔔 Actualización de venta'
+
+    // Parsear metadata si es sistema
+    let metadata = null;
+    if (isSystem) {
+        try { metadata = JSON.parse(msgData.contenido) } catch {}
+    }
 
     const nuevoMensaje: Mensaje = {
       id: msgData.id,
-      texto: esImagen ? '' : msgData.contenido,
-      imagenUrl: esImagen ? getFullImgUrl(msgData.contenido) : undefined,
+      texto: isImage || isSystem ? '' : msgData.contenido,
+      imagenUrl: isImage ? getFullImgUrl(msgData.contenido) : undefined,
       autor: 'otro',
       hora: new Date(msgData.fechaEnvio).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      estado: 'recibido'
+      estado: 'recibido',
+      tipo: msgData.tipo,
+      metadata: metadata
     }
 
     setChats(prev => {
       const chatExists = prev.find(c => c.id === remitenteId)
-      
       if (chatExists) {
         return prev.map(c => {
           if (c.id === remitenteId) {
             const isChatOpen = activeChatId === remitenteId
             return {
               ...c,
-              ultimoMensaje: contenido,
+              ultimoMensaje: contenidoPreview,
               noLeidos: isChatOpen ? 0 : (c.noLeidos || 0) + 1,
               mensajes: [...c.mensajes, nuevoMensaje]
             }
@@ -213,13 +225,13 @@ export default function ChatPage() {
           return c
         })
       } else {
-        fetchConversations()
+        fetchConversations() // Recargar si es chat nuevo
         return prev
       }
     })
   }
 
-  // 5. ENVÍO DE MENSAJES
+  // 5. ENVIAR MENSAJE
   const handleSend = async (texto: string, file?: File | null) => {
     if (!activeChatId || !token) return
 
@@ -232,27 +244,15 @@ export default function ChatPage() {
       try {
         const formData = new FormData()
         formData.append('image', file)
-
         const res = await fetch(`${URL_BASE}/api/upload/upload-image`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData
+          method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData
         })
         const data = await res.json()
-
         if (data.ok) {
           contenidoFinal = data.imageUrl
           tipoMensaje = 'imagen'
-        } else {
-          alert("Error al subir imagen")
-          setIsUploading(false)
-          return
         }
-      } catch (error) {
-        console.error("Error subiendo imagen", error)
-        setIsUploading(false)
-        return
-      }
+      } catch (e) { console.error(e); setIsUploading(false); return; }
       setIsUploading(false)
     }
 
@@ -262,19 +262,15 @@ export default function ChatPage() {
       imagenUrl: tipoMensaje === 'imagen' ? (file ? URL.createObjectURL(file) : getFullImgUrl(contenidoFinal)) : undefined,
       autor: 'yo',
       hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      estado: 'enviando'
+      estado: 'enviando',
+      tipo: tipoMensaje
     }
 
-    setChats(prev => prev.map(c => {
-      if (c.id === activeChatId) {
-        return {
-          ...c,
-          ultimoMensaje: tipoMensaje === 'imagen' ? '📷 Imagen' : contenidoFinal,
-          mensajes: [...c.mensajes, mensajeOptimista]
-        }
-      }
-      return c
-    }))
+    setChats(prev => prev.map(c => 
+       c.id === activeChatId 
+         ? { ...c, ultimoMensaje: tipoMensaje === 'imagen' ? '📷 Imagen' : contenidoFinal, mensajes: [...c.mensajes, mensajeOptimista] } 
+         : c
+    ))
 
     if (socketRef.current) {
       socketRef.current.emit('send_message', {
@@ -283,14 +279,48 @@ export default function ChatPage() {
         tipo: tipoMensaje
       })
       
+      // Simulación de confirmación (en prod el socket debería devolver ack)
       setTimeout(() => {
         setChats(prev => prev.map(c => 
            c.id === activeChatId 
              ? { ...c, mensajes: c.mensajes.map(m => m.id === tempId ? { ...m, estado: 'enviado' } : m) } 
              : c
         ))
-      }, 500)
+      }, 300)
     }
+  }
+
+  // --- LOGICA DE TRANSACCIONES ---
+  
+  const handleConfirmReceipt = async (transactionId: number) => {
+      if(!token || !activeChatId) return;
+      try {
+          // Llamar al endpoint de confirmar recibo
+          const res = await fetch(`${URL_BASE}/api/transactions/${transactionId}/confirm-receipt`, {
+              method: 'PATCH',
+              headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if(res.ok) {
+              // Abrir modal de calificación
+              const chat = chats.find(c => c.id === activeChatId);
+              if(chat) {
+                  setPendingRatingData({ sellerId: chat.id, sellerName: chat.nombre });
+                  setIsRateModalOpen(true);
+              }
+              
+              // Opcional: Enviar mensaje de sistema automático avisando que confirmó
+              if (socketRef.current) {
+                  socketRef.current.emit('send_message', {
+                      destinatarioId: activeChatId,
+                      contenido: JSON.stringify({ 
+                          type: 'SYSTEM_EVENT', 
+                          text: '✅ El comprador ha confirmado la recepción del producto.' 
+                      }),
+                      tipo: 'sistema'
+                  });
+              }
+          }
+      } catch(e) { console.error(e); }
   }
 
   const activeChat = chats.find(c => c.id === activeChatId)
@@ -323,7 +353,7 @@ export default function ChatPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline mb-1"><h3 className={`text-sm font-semibold truncate ${activeChatId === chat.id ? 'text-blue-700' : 'text-slate-700'}`}>{chat.nombre}</h3></div>
                   <div className="flex justify-between items-center">
-                    <p className={`text-xs truncate max-w-[140px] ${chat.noLeidos ? 'font-bold text-slate-800' : 'text-slate-500'}`}>{chat.ultimoMensaje || "Comenzar charla..."}</p>
+                    <p className={`text-xs truncate max-w-[140px] ${chat.noLeidos ? 'font-bold text-slate-800' : 'text-slate-500'}`}>{chat.ultimoMensaje}</p>
                     {chat.noLeidos ? <span className="flex items-center justify-center w-5 h-5 bg-blue-600 text-white text-[10px] font-bold rounded-full shadow-sm">{chat.noLeidos}</span> : null}
                   </div>
                 </div>
@@ -346,9 +376,25 @@ export default function ChatPage() {
                 </div>
                 <div><h3 className="font-bold text-slate-800 text-sm">{activeChat.nombre}</h3></div>
               </div>
-              <button className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"><LuEllipsisVertical size={20} /></button>
+              {/* Botón para calificar manual (si se necesita) */}
+              <button 
+                  onClick={() => {
+                      setPendingRatingData({ sellerId: activeChat.id, sellerName: activeChat.nombre });
+                      setIsRateModalOpen(true);
+                  }} 
+                  className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors" 
+                  title="Calificar Usuario"
+              >
+                  <LuStar size={20} />
+              </button>
             </div>
-            <ChatMessages mensajes={activeChat.mensajes} messagesEndRef={messagesEndRef} />
+            
+            <ChatMessages 
+                mensajes={activeChat.mensajes} 
+                messagesEndRef={messagesEndRef} 
+                onConfirmReceipt={handleConfirmReceipt} // Pasamos la función al componente
+            />
+            
             {isUploading && <div className="px-4 py-1 text-xs text-blue-600 bg-blue-50 flex items-center gap-2"><LuLoader className="animate-spin"/> Subiendo imagen...</div>}
             
             <ChatInputBox onSend={handleSend} isLoading={isUploading} />
@@ -360,6 +406,16 @@ export default function ChatPage() {
             <p className="text-sm max-w-xs mt-2">Selecciona un contacto de la izquierda para ver la conversación.</p>
           </div>
         )}
+
+        {/* MODAL DE CALIFICACIÓN */}
+        {pendingRatingData && (
+            <RateUserModal 
+                isOpen={isRateModalOpen}
+                onClose={() => setIsRateModalOpen(false)}
+                sellerId={pendingRatingData.sellerId}
+                sellerName={pendingRatingData.sellerName}
+            />
+        )}
       </div>
     </div>
   )
@@ -367,7 +423,7 @@ export default function ChatPage() {
 
 // --- SUBCOMPONENTES ---
 
-const ChatMessages = ({ mensajes, messagesEndRef }: { mensajes: Mensaje[], messagesEndRef: any }) => {
+const ChatMessages = ({ mensajes, messagesEndRef, onConfirmReceipt }: { mensajes: Mensaje[], messagesEndRef: any, onConfirmReceipt: (id: number) => void }) => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [mensajes])
@@ -375,7 +431,45 @@ const ChatMessages = ({ mensajes, messagesEndRef }: { mensajes: Mensaje[], messa
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-[#f8f9fc]">
       {mensajes.length === 0 && <div className="text-center text-slate-400 text-xs mt-10">No hay mensajes previos. Di "Hola" 👋</div>}
+      
       {mensajes.map((msg) => {
+        
+        // A) RENDERIZADO DE MENSAJES DE SISTEMA (TARJETAS DE ACCIÓN)
+        if (msg.tipo === 'sistema') {
+            let sysData: any = {};
+            try { sysData = msg.metadata || JSON.parse(msg.texto || '{}'); } catch {}
+            
+            return (
+                <motion.div 
+                    key={msg.id} 
+                    initial={{ opacity: 0, y: 10 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    className="flex justify-center my-4"
+                >
+                    <div className="bg-white border border-slate-200 rounded-xl p-4 text-center shadow-sm max-w-sm w-full">
+                        <div className="mx-auto w-8 h-8 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-2">
+                           <LuShoppingBag size={16} />
+                        </div>
+                        <p className="text-sm text-slate-700 font-medium mb-1">
+                           {sysData.text || msg.texto || "Actualización de venta"}
+                        </p>
+                        
+                        {/* Si hay un ID de transacción, mostramos botón de acción */}
+                        {/* Este botón solo debería aparecerle al Comprador en este ejemplo */}
+                        {sysData.transactionId && (
+                            <button 
+                                onClick={() => onConfirmReceipt(sysData.transactionId)}
+                                className="mt-3 w-full py-2 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-colors"
+                            >
+                                Confirmar Recepción
+                            </button>
+                        )}
+                    </div>
+                </motion.div>
+            );
+        }
+
+        // B) RENDERIZADO DE MENSAJES NORMALES
         const esPropio = msg.autor === 'yo'
         return (
           <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex w-full ${esPropio ? 'justify-end' : 'justify-start'}`}>
@@ -386,7 +480,7 @@ const ChatMessages = ({ mensajes, messagesEndRef }: { mensajes: Mensaje[], messa
                     <img src={msg.imagenUrl} alt="adjunto" className="max-w-full h-auto object-cover max-h-60" onClick={() => window.open(msg.imagenUrl, '_blank')} />
                   </div>
                 )}
-                {msg.texto && <p className="leading-relaxed whitespace-pre-wrap break-words break-all">{msg.texto}</p>}
+                {msg.texto && <p className="leading-snug break-words whitespace-pre-wrap">{msg.texto}</p>}
               </div>
               <div className="text-[10px] mt-1 text-slate-400 flex items-center gap-1 px-1">
                  <span>{msg.hora}</span>
@@ -401,10 +495,10 @@ const ChatMessages = ({ mensajes, messagesEndRef }: { mensajes: Mensaje[], messa
   )
 }
 
-// --- CAJA DE TEXTO + EMOJIS + IMAGEN ---
+// --- CAJA DE TEXTO ---
 const ChatInputBox = ({ onSend, isLoading }: { onSend: (t: string, f?: File) => void, isLoading: boolean }) => {
   const [text, setText] = useState('')
-  const [showEmoji, setShowEmoji] = useState(false) // Estado para el picker
+  const [showEmoji, setShowEmoji] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const emojiRef = useRef<HTMLDivElement>(null)
 
@@ -417,25 +511,17 @@ const ChatInputBox = ({ onSend, isLoading }: { onSend: (t: string, f?: File) => 
   }
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      onSend('', e.target.files[0])
-    }
+    if (e.target.files?.[0]) onSend('', e.target.files[0])
     e.target.value = ''
   }
 
   const onEmojiClick = (emojiData: EmojiClickData) => {
-    // Añadir emoji al texto respetando el límite
     setText(prev => (prev + emojiData.emoji).slice(0, MAX_LENGTH))
-    // Opcional: Mantener el picker abierto o cerrarlo
-    // setShowEmoji(false); 
   }
 
-  // Cerrar picker al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (emojiRef.current && !emojiRef.current.contains(event.target as Node)) {
-        setShowEmoji(false);
-      }
+      if (emojiRef.current && !emojiRef.current.contains(event.target as Node)) setShowEmoji(false)
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -443,59 +529,30 @@ const ChatInputBox = ({ onSend, isLoading }: { onSend: (t: string, f?: File) => 
 
   return (
     <div className="p-4 bg-white border-t border-slate-200 relative">
-      {/* EMOJI PICKER POPUP */}
       {showEmoji && (
-        <div ref={emojiRef} className="absolute bottom-20 left-4 z-50 shadow-xl rounded-2xl">
-           <EmojiPicker 
-             onEmojiClick={onEmojiClick} 
-             theme={Theme.LIGHT} 
-             width={300} 
-             height={400}
-             searchDisabled={true} // Opcional: Ocultar barra búsqueda para ahorrar espacio
-             previewConfig={{ showPreview: false }} // Opcional
-           />
+        <div ref={emojiRef} className="absolute bottom-20 left-4 z-50 shadow-xl rounded-2xl border border-slate-200 overflow-hidden">
+           <EmojiPicker onEmojiClick={onEmojiClick} theme={Theme.LIGHT} width={300} height={400} searchDisabled previewConfig={{ showPreview: false }} />
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="flex items-end gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-50 transition-all">
-        
-        {/* Botón Imagen */}
-        <button 
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isLoading}
-          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
-          title="Enviar imagen"
-        >
-          <LuImage size={20} />
-        </button>
-        
-        {/* Botón Emoji */}
-        <button 
-          type="button"
-          onClick={() => setShowEmoji(!showEmoji)}
-          disabled={isLoading}
-          className={`p-2 rounded-lg transition-colors ${showEmoji ? 'text-yellow-500 bg-yellow-50' : 'text-slate-400 hover:text-yellow-500 hover:bg-yellow-50'} disabled:opacity-50`}
-          title="Emojis"
-        >
-          <LuSmile size={20} />
-        </button>
-
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Enviar imagen"><LuImage size={20} /></button>
+        <button type="button" onClick={() => setShowEmoji(!showEmoji)} disabled={isLoading} className={`p-2 rounded-lg transition-colors ${showEmoji ? 'text-yellow-500 bg-yellow-50' : 'text-slate-400 hover:text-yellow-500 hover:bg-yellow-50'}`} title="Emojis"><LuSmile size={20} /></button>
         <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={handleFile} />
         
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value.slice(0, MAX_LENGTH))}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
-          placeholder="Escribe un mensaje..."
-          className="flex-1 bg-transparent border-none focus:ring-0 resize-none py-2 text-sm max-h-32 text-slate-800 placeholder:text-slate-400"
-          rows={1}
-          disabled={isLoading}
-          maxLength={MAX_LENGTH} 
+        <textarea 
+           value={text} 
+           onChange={(e) => setText(e.target.value.slice(0, MAX_LENGTH))} 
+           onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
+           placeholder="Escribe un mensaje..." 
+           className="flex-1 bg-transparent border-none focus:ring-0 resize-none py-2 text-sm max-h-32 text-slate-800 placeholder:text-slate-400"
+           rows={1}
+           disabled={isLoading}
+           maxLength={MAX_LENGTH} 
         />
         <div className="text-[10px] text-slate-400 self-center mr-2">{text.length}/{MAX_LENGTH}</div>
 
-        <button type="submit" disabled={(!text.trim() && !isLoading) || isLoading} className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"><LuSend size={18} /></button>
+        <button type="submit" disabled={(!text.trim() && !isLoading) || isLoading} className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-all shadow-sm active:scale-95"><LuSend size={18} /></button>
       </form>
     </div>
   )
