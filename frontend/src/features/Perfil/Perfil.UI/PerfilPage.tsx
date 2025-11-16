@@ -277,7 +277,6 @@ export default function PerfilPage() {
                     <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm" value={formData.campus} onChange={(e) => setFormData({...formData, campus: e.target.value})}>
                       <option>Campus San Francisco</option>
                       <option>Campus San Juan Pablo II</option>
-                      <option>Campus Menchaca Lira</option>
                     </select>
                   } />
                   <Separator />

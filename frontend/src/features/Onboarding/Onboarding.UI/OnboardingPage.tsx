@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { getImageUrl } from '@/app/imageHelper';
 
-const CAMPUS_OPTIONS = ["San Francisco", "San Juan Pablo II", "Menchaca Lira", "Norte"];
+const CAMPUS_OPTIONS = ["San Francisco", "San Juan Pablo II"];
 const API_URL = import.meta.env.VITE_API_URL;
 
 // Helper para obtener "PrimerNombre PrimerApellido"
