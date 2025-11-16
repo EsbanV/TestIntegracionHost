@@ -4,14 +4,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 
+// --- IMPORTA TU IMAGEN AQUÍ (Opcional) ---
+import loginBg from '@/assets/img/FondoLogin.jpg'; 
+
 // --- CONFIGURACIÓN ---
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const API_URL = import.meta.env.VITE_API_URL;
 const ALLOWED_DOMAINS = ["alu.uct.cl", "uct.cl"];
 
-// --- UTILIDADES INTERNAS ---
+// Imagen de fondo por defecto (Universidad/Campus) - Cámbiala por tu import
+const BACKGROUND_IMAGE = loginBg
 
-// Decodificar JWT para leer datos básicos antes de enviarlos al backend
+// --- UTILIDADES INTERNAS ---
 const decodeJwt = (token: string) => {
   try {
     const base64Url = token.split('.')[1];
@@ -33,13 +37,10 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Referencia para el botón de Google
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
   // 1. Inicializar Google Identity Services
   useEffect(() => {
-    // Verificar si el script de Google está cargado en index.html
-    // <script src="https://accounts.google.com/gsi/client" async defer></script>
     const w = window as any;
     
     if (!GOOGLE_CLIENT_ID) {
@@ -48,20 +49,18 @@ export default function LoginPage() {
     }
 
     if (w.google && w.google.accounts) {
-      // Inicializar
       w.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleGoogleCallback,
-        auto_select: false, // No forzar login automático para evitar bucles
+        auto_select: false,
         ux_mode: 'popup',
       });
 
-      // Renderizar botón
       if (googleButtonRef.current) {
         w.google.accounts.id.renderButton(googleButtonRef.current, {
-          theme: 'outline',
+          theme: 'filled_blue', // Cambié a azul para que contraste mejor
           size: 'large',
-          width: '350', // Ancho en px
+          width: '320',
           text: 'continue_with',
           shape: 'pill',
           logo_alignment: 'left'
@@ -75,9 +74,8 @@ export default function LoginPage() {
   // 2. Manejar la respuesta de Google
   const handleGoogleCallback = async (response: any) => {
     const idToken = response.credential;
-    
-    // A. Validaciones preliminares en Frontend
     const payload = decodeJwt(idToken);
+    
     if (!payload) {
       setError("No se pudo verificar la identidad de Google.");
       return;
@@ -91,7 +89,6 @@ export default function LoginPage() {
       return;
     }
 
-    // B. Enviar al Backend
     setIsLoading(true);
     setError(null);
 
@@ -109,11 +106,9 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok && data.ok) {
-        // C. Login Exitoso
         login(data.token, data.user);
         navigate('/home', { replace: true });
       } else {
-        // D. Error del Backend
         throw new Error(data.message || "Error al iniciar sesión en el servidor");
       }
 
@@ -126,51 +121,59 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
       
-      {/* Fondo decorativo */}
+      {/* --- FONDO PERSONALIZADO --- */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-200/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-200/20 rounded-full blur-3xl" />
+        <img 
+          src={BACKGROUND_IMAGE} 
+          alt="Fondo Campus" 
+          className="w-full h-full object-cover"
+        />
+        {/* Overlay oscuro para que la tarjeta resalte */}
+        <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" />
       </div>
 
+      {/* --- TARJETA DE LOGIN --- */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-10"
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "out" }}
+        className="w-full max-w-md bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-white/20 overflow-hidden z-10 mx-4"
       >
         {/* Header */}
-        <div className="bg-white p-8 pb-0 text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg mb-6">
-            <ShieldCheck className="text-white w-8 h-8" />
+        <div className="p-8 pb-0 text-center">
+          <div className="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-blue-600/30 mb-6 transform rotate-3 hover:rotate-0 transition-transform duration-300">
+            <ShieldCheck className="text-white w-9 h-9" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Bienvenido a MarketUCT</h1>
-          <p className="text-slate-500 text-sm px-4">
-            La plataforma de compra y venta exclusiva para la comunidad universitaria.
+          <h1 className="text-3xl font-extrabold text-slate-900 mb-2 tracking-tight">MarketUCT</h1>
+          <p className="text-slate-500 text-sm font-medium">
+            Comunidad exclusiva universitaria
           </p>
         </div>
 
         {/* Login Area */}
-        <div className="p-8 pt-6">
-          {/* Botón Google Container */}
-          <div className="flex justify-center min-h-[50px] mb-6 relative">
-            {/* Loader superpuesto si está cargando */}
-            {isLoading && (
-              <div className="absolute inset-0 bg-white/80 z-20 flex items-center justify-center">
-                <Loader2 className="animate-spin text-blue-600" />
-              </div>
-            )}
-            <div ref={googleButtonRef} className="w-full flex justify-center" />
+        <div className="p-8 pt-8">
+          
+          {/* Botón Google */}
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative w-full flex justify-center min-h-[50px]">
+              {isLoading && (
+                <div className="absolute inset-0 bg-white/80 z-20 flex items-center justify-center rounded-full">
+                  <Loader2 className="animate-spin text-blue-600" />
+                </div>
+              )}
+              <div ref={googleButtonRef} className="overflow-hidden rounded-full shadow-md" />
+            </div>
           </div>
 
-          <div className="text-center">
-            <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-2">
-              Acceso exclusivo
+          <div className="mt-8 text-center">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
+              Dominios permitidos
             </p>
-            <div className="flex justify-center gap-2 text-xs text-slate-500">
-              <span className="bg-slate-100 px-2 py-1 rounded border border-slate-200">@alu.uct.cl</span>
-              <span className="bg-slate-100 px-2 py-1 rounded border border-slate-200">@uct.cl</span>
+            <div className="flex justify-center gap-2 text-xs font-medium text-slate-600">
+              <span className="bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">@alu.uct.cl</span>
+              <span className="bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">@uct.cl</span>
             </div>
           </div>
 
@@ -181,19 +184,19 @@ export default function LoginPage() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-6 bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-3"
+                className="mt-6 bg-red-50/80 border border-red-100 rounded-xl p-3 flex items-start gap-3"
               >
                 <AlertCircle className="text-red-600 w-5 h-5 shrink-0 mt-0.5" />
-                <p className="text-sm text-red-700">{error}</p>
+                <p className="text-sm text-red-700 font-medium leading-tight">{error}</p>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-50 p-4 text-center border-t border-slate-100">
-          <p className="text-xs text-slate-400">
-            &copy; {new Date().getFullYear()} MarketUCT. Todos los derechos reservados.
+        <div className="bg-slate-50/50 p-4 text-center border-t border-slate-200/50">
+          <p className="text-xs text-slate-400 font-medium">
+            © {new Date().getFullYear()} MarketUCT • Compra y vende seguro
           </p>
         </div>
       </motion.div>
