@@ -18,7 +18,8 @@ import { Label } from "@/components/ui/label";
 // Icons
 import { 
   LuMapPin, LuCalendar, LuStar, LuShieldCheck, 
-  LuLayoutGrid, LuMessageCircle, LuShoppingBag, LuGhost, LuUser, LuMail
+  LuLayoutGrid, LuMessageCircle, LuShoppingBag, LuGhost, 
+  LuUser, LuMail, LuInfo // Nuevo LuInfo
 } from "react-icons/lu";
 
 const URL_BASE = import.meta.env.VITE_API_URL;
@@ -26,16 +27,16 @@ const URL_BASE = import.meta.env.VITE_API_URL;
 // --- TIPOS ---
 interface ProfileUser {
   id: number;
-  nombre: string;
-  usuario: string;
-  correo: string; // Agregado para consistencia
+  nombre: string; // Nombre completo del usuario
+  usuario: string; // @username
+  correo: string; // Email (mostrar si se decide)
   fotoPerfilUrl?: string;
   campus?: string;
   reputacion: number;
   fechaRegistro: string;
   stats?: {
     ventas: number;
-    publicaciones: number;
+    publicaciones: number; // Nuevo para consistencia con PerfilPage
   };
 }
 
@@ -157,9 +158,9 @@ export default function PublicProfilePage() {
         animate="visible"
         className="space-y-6"
       >
-        {/* --- HERO SECTION (Igual al Perfil Personal) --- */}
+        {/* --- HERO SECTION (Ahora idéntica al Perfil Personal) --- */}
         <motion.div variants={itemVariants} className="relative">
-          <div className="h-48 w-full bg-gradient-to-r from-slate-800 to-slate-900 rounded-t-2xl shadow-sm"></div>
+          <div className="h-48 w-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-2xl shadow-sm"></div>
             
           <Card className="relative -mt-16 mx-4 md:mx-0 border-none shadow-lg overflow-visible">
             <CardContent className="pt-0 pb-6 px-6">
@@ -171,28 +172,28 @@ export default function PublicProfilePage() {
                     <Avatar className="h-32 w-32 border-4 border-white shadow-inner">
                       <AvatarImage 
                         src={getImageUrl(profile.fotoPerfilUrl)}
-                        alt={profile.nombre} 
+                        alt={profile.usuario} // Usar el username para alt
                         className="object-cover" 
                       />
                       <AvatarFallback className="text-4xl bg-slate-100 text-slate-400 font-bold">
-                        {profile.nombre.charAt(0).toUpperCase()}
+                        {profile.usuario.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   </div>
                   <div className="absolute bottom-2 right-2 bg-green-500 h-5 w-5 rounded-full border-4 border-white" title="Online"></div>
                 </div>
 
-                {/* User Info */}
+                {/* User Info (Nombre de Usuario, Correo, Miembro Desde) */}
                 <div className="flex-1 mt-4 md:mt-2 w-full">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                       <div className="flex items-center gap-3 mb-1">
-                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{profile.nombre}</h1>
-                        <Badge variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-200">@{profile.usuario}</Badge>
+                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{profile.usuario}</h1> {/* Mostrar @username */}
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-200">{profile.usuario}</Badge> {/* Puedes cambiar por role si tu API lo envía para público */}
                       </div>
                       <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
+                        <span className="flex items-center gap-1.5"><LuMail className="w-4 h-4" /> {profile.correo || "No disponible"}</span> {/* Mostrar correo si es seguro */}
                         <span className="flex items-center gap-1.5"><LuCalendar className="w-4 h-4" /> Miembro desde {new Date(profile.fechaRegistro).getFullYear()}</span>
-                        {profile.campus && <span className="flex items-center gap-1.5"><LuMapPin className="w-4 h-4" /> {profile.campus}</span>}
                       </div>
                     </div>
 
@@ -219,40 +220,40 @@ export default function PublicProfilePage() {
           
           {/* COLUMNA IZQUIERDA: INFO */}
           <motion.div variants={itemVariants} className="space-y-6">
-             {/* Información Personal */}
+             {/* Información Personal (Ahora con Nombre Completo, Campus, Contacto) */}
              <Card className="shadow-sm border-slate-200">
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold flex items-center gap-2"><LuUser className="text-blue-500" /> Información Pública</CardTitle>
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2"><LuInfo className="text-blue-500" /> Información Personal</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                    <ProfileField label="Nombre Completo" value={profile.nombre} />
                    <Separator />
                    <ProfileField label="Campus" icon={<LuMapPin className="w-4 h-4 text-slate-400" />} value={profile.campus || "No especificado"} />
                    <Separator />
-                   {/* Solo mostramos correo si es necesario, o lo ocultamos por privacidad */}
+                   {/* En perfil público, el contacto es SIEMPRE vía chat */}
                    <ProfileField label="Contacto" icon={<LuMail className="w-4 h-4 text-slate-400" />} value="Vía Chat Interno" />
                 </CardContent>
              </Card>
 
-             {/* Estadísticas */}
+             {/* Estadísticas (Idéntico al Perfil Personal) */}
              <Card className="bg-gradient-to-br from-slate-900 to-slate-800 text-white border-none shadow-lg">
                 <CardContent className="p-6">
-                  <h3 className="text-sm font-medium text-slate-300 mb-4 uppercase tracking-wider">Reputación</h3>
+                  <h3 className="text-sm font-medium text-slate-300 mb-4 uppercase tracking-wider">Estadísticas</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-3 rounded-lg bg-white/5 backdrop-blur-sm">
                       <p className="text-2xl font-bold">{Number(profile.reputacion || 0).toFixed(1)}</p>
-                      <div className="flex items-center gap-1 text-amber-400 text-sm"><LuStar className="fill-current" /> Calificación</div>
+                      <div className="flex items-center gap-1 text-amber-400 text-sm"><LuStar className="fill-current" /> Reputación</div>
                     </div>
                     <div className="p-3 rounded-lg bg-white/5 backdrop-blur-sm">
                       <p className="text-2xl font-bold">{profile.stats?.ventas || 0}</p>
-                      <div className="flex items-center gap-1 text-green-400 text-sm"><LuShieldCheck /> Ventas</div>
+                      <div className="flex items-center gap-1 text-blue-300 text-sm"><LuShieldCheck /> Ventas</div>
                     </div>
                   </div>
                 </CardContent>
              </Card>
           </motion.div>
 
-          {/* COLUMNA DERECHA: CONTENIDO */}
+          {/* COLUMNA DERECHA: CONTENIDO (Pestañas) */}
           <motion.div variants={itemVariants} className="lg:col-span-2">
             <Tabs defaultValue="products" className="w-full">
               <div className="flex items-center justify-between mb-4">
@@ -348,6 +349,7 @@ export default function PublicProfilePage() {
 
 // --- SUBCOMPONENTES ---
 
+// Componente para mostrar un campo del perfil (sin edición en perfil público)
 const ProfileField = ({ label, value, icon }: { label: string, value: string, icon?: React.ReactNode }) => (
   <div className="space-y-1">
     <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
@@ -357,6 +359,7 @@ const ProfileField = ({ label, value, icon }: { label: string, value: string, ic
   </div>
 );
 
+// Tarjeta de Producto (misma que en PerfilPage, si es un componente compartido, mejor)
 const ProfileProductCard = ({ product, onClick }: { product: ProfileProduct, onClick: (id: number) => void }) => {
   const formattedPrice = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(product.precioActual);
   return (
@@ -380,6 +383,7 @@ const ProfileProductCard = ({ product, onClick }: { product: ProfileProduct, onC
   );
 };
 
+// Tarjeta de Reseña (misma que en PerfilPage, si es un componente compartido, mejor)
 const ReviewCard = ({ review }: { review: Review }) => (
   <div className="flex gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100 hover:bg-white hover:shadow-sm hover:border-slate-200 transition-all">
     <Avatar className="h-10 w-10 bg-white border border-slate-200">
