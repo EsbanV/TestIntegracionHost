@@ -12,7 +12,7 @@ function resolveAuthUrl() {
   const fromEnv = import.meta.env.VITE_GOOGLE_AUTH_URL as string | undefined
   const api = import.meta.env.VITE_API_URL as string | undefined
   if (fromEnv) return fromEnv
-  if (api) return `${api.replace(/\/$/, '')}/auth/google`
+  if (api) return `${api.replace(/\/$/, '')}/api/auth/google`
   // Fallback al prefijo /api si no hay envs definidos
   return '/api/auth/google'
 }
