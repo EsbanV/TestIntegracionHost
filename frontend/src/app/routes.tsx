@@ -10,8 +10,8 @@ import LoginPage from '@/features/Login/Login.UI/LoginPage'
 import RegisterTest from '@/features/Login/Login.UI/RegisterTest'
 import LoginTest from '@/features/Login/Login.UI/LoginTest'
 import HomePage from '@/features/Marketplace/Marketplace.UI/HomePage'
-import CreateProductPage from '@/features/CrearPublicacion/CrearPublicacion.UI/CreateProductPage' // Corregí el nombre del archivo según el último paso
-import MyProductsPage from '@/features/MisPublicaciones/MisPublicacionesPage' // Corregí la ruta
+import CreateProductPage from '@/features/CrearPublicacion/CrearPublicacion.UI/CrearPublicacionPage' // Corregí el nombre del archivo según el último paso
+import MyProductsPage from '@/features/MyPublications/MyPublications.UI/MisPublicacionesPage' // Corregí la ruta
 import PerfilPage from '@/features/Perfil/Perfil.UI/PerfilPage'
 import ChatPage from '@/features/DM/DM.UI/ChatPage'
 import AyudaPage from '@/features/About.Terms.Help/Help.UI/AyudaPage'
