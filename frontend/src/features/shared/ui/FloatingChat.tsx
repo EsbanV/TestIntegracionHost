@@ -7,13 +7,14 @@ import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react'
 // Icons
 import { 
   LuMessageCircle, LuX, LuSend, LuSearch, LuChevronLeft, 
-  LuGripHorizontal, LuLoader, LuImage, LuSmile 
+  LuGripHorizontal, LuLoader, LuImage, LuSmile,
+  LuShoppingBag, LuTruck, LuPackageCheck, LuCheckCheck, LuStar
 } from "react-icons/lu"
 
 // UI Components
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import RateUserModal from "@/features/DM/DM.UI/DM.Components/RateUserModal"
 
 // --- TIPOS ---
 type Estado = "enviando" | "enviado" | "recibido" | "leido"
@@ -21,11 +22,22 @@ type Estado = "enviando" | "enviado" | "recibido" | "leido"
 interface Mensaje { 
   id: number | string; 
   texto: string; 
-  autor: "yo" | "otro"; 
+  autor: "yo" | "otro" | "sistema"; // Agregado 'sistema'
   hora: string; 
   estado?: Estado;
   imagenUrl?: string;
   tipo?: string;
+  metadata?: any;
+}
+
+interface TransaccionActiva {
+  id: number;
+  producto: { id: number, nombre: string, imagen?: string };
+  estadoId: number; 
+  esComprador: boolean;
+  esVendedor: boolean;
+  confirmacionVendedor: boolean;
+  confirmacionComprador: boolean;
 }
 
 interface Chat { 
@@ -36,6 +48,7 @@ interface Chat {
   avatar?: string; 
   noLeidos?: number;
   online?: boolean;
+  transaccion?: TransaccionActiva | null; // Agregado
 }
 
 type ViewState = "list" | "chat"
@@ -58,6 +71,10 @@ export default function FloatingChat() {
   const [activeChatId, setActiveChatId] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   
+  // Estado para calificación
+  const [isRateModalOpen, setIsRateModalOpen] = useState(false)
+  const [pendingRatingData, setPendingRatingData] = useState<{sellerId: number, sellerName: string, transactionId: number} | null>(null)
+  
   const socketRef = useRef<Socket | null>(null)
 
   // 1. Conexión Socket
@@ -72,11 +89,14 @@ export default function FloatingChat() {
 
     newSocket.on("connect", () => console.log("🟢 MiniChat conectado"))
     newSocket.on("new_message", (msg: any) => handleIncomingMessage(msg))
+    
+    // Escuchar actualizaciones de transacción
+    newSocket.on("transaction_event", (data: any) => handleTransactionUpdate(data))
 
     return () => { newSocket.disconnect() }
   }, [token])
 
-  // 2. Cargar Chats
+  // 2. Cargar Chats (Lista)
   const fetchChats = async () => {
     if (!token) return
     try {
@@ -92,7 +112,8 @@ export default function FloatingChat() {
           avatar: getFullImgUrl(c.usuario.fotoPerfilUrl),
           noLeidos: c.unreadCount || 0,
           mensajes: [],
-          online: false
+          online: false,
+          transaccion: null
         }))
         setChats(formattedChats)
       }
@@ -103,19 +124,25 @@ export default function FloatingChat() {
     if (token && isOpen) fetchChats()
   }, [token, isOpen])
 
-  // 3. Manejar Mensajes Entrantes
+  // 3. Manejo de Mensajes y Transacciones
   const handleIncomingMessage = (msgData: any) => {
     const remitenteId = msgData.remitente.id
-    const contenido = msgData.tipo === 'imagen' ? '📷 Imagen' : msgData.contenido
+    const isSystem = msgData.tipo === 'sistema'
+    let metadata = null;
+    if (isSystem) { try { metadata = JSON.parse(msgData.contenido) } catch {} }
+
+    const contenido = msgData.tipo === 'imagen' ? '📷 Imagen' : (isSystem ? (metadata?.text || msgData.contenido) : msgData.contenido)
     const hora = new Date(msgData.fechaEnvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
 
     const nuevoMensaje: Mensaje = {
       id: msgData.id,
-      texto: msgData.tipo === 'imagen' ? '' : msgData.contenido,
+      texto: msgData.tipo === 'imagen' ? '' : contenido,
       imagenUrl: msgData.tipo === 'imagen' ? getFullImgUrl(msgData.contenido) : undefined,
-      autor: "otro",
+      autor: "otro", // El sistema también cuenta como "otro" para visualización simple
       hora: hora,
-      estado: "recibido"
+      estado: "recibido",
+      tipo: msgData.tipo,
+      metadata
     }
 
     setChats(prev => {
@@ -139,55 +166,150 @@ export default function FloatingChat() {
     })
   }
 
-  // 4. Cargar Mensajes
-  const loadMessages = async (chatId: number) => {
-    setIsLoading(true)
-    const currentChat = chats.find(c => c.id === chatId)
-    
-    if (currentChat && currentChat.mensajes.length > 0) {
-      setIsLoading(false)
-      markRead(chatId)
-      return
-    }
+  const handleTransactionUpdate = (data: any) => {
+    if (!activeChatId) return;
 
+    setChats((prev: Chat[]) => prev.map((c): Chat => {
+        if (c.id === activeChatId && c.transaccion?.id === data.transactionId) {
+            const currentTx = c.transaccion!; 
+            const txUpdate = { ...currentTx };
+            
+            if (data.type === 'DELIVERY_CONFIRMED') {
+                txUpdate.confirmacionVendedor = true;
+            } else if (data.type === 'RECEIPT_CONFIRMED') {
+                txUpdate.confirmacionComprador = true;
+                txUpdate.estadoId = 2; // Completado
+            }
+            return { ...c, transaccion: txUpdate };
+        }
+        return c;
+    }));
+  };
+
+  // 4. Cargar Mensajes y Transacción al abrir chat
+  const loadChatData = async (chatId: number) => {
+    setIsLoading(true)
     try {
-      const res = await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}`, {
+      // A. Mensajes
+      const resMsg = await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      const data = await res.json()
-      if (data.ok) {
-        const msgs: Mensaje[] = data.mensajes.map((m: any) => ({
-          id: m.id,
-          texto: m.tipo === 'imagen' ? '' : m.contenido,
-          imagenUrl: m.tipo === 'imagen' ? getFullImgUrl(m.contenido) : undefined,
-          autor: m.remitenteId === user?.id ? 'yo' : 'otro',
-          hora: new Date(m.fechaEnvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-          estado: 'leido'
-        }))
-        setChats(prev => prev.map(c => c.id === chatId ? { ...c, mensajes: msgs, noLeidos: 0 } : c))
-        markRead(chatId)
+      const dataMsg = await resMsg.json()
+      
+      // B. Transacción Activa
+      let transaccionActiva = null;
+      try {
+           const resTx = await fetch(`${URL_BASE}/api/transactions/check-active/${chatId}`, {
+               headers: { 'Authorization': `Bearer ${token}` }
+           });
+           const dataTx = await resTx.json();
+           
+           if(dataTx.ok && dataTx.transaction) {
+               transaccionActiva = {
+                   id: dataTx.transaction.id,
+                   producto: dataTx.transaction.producto,
+                   estadoId: dataTx.transaction.estadoId,
+                   esComprador: dataTx.transaction.compradorId === user?.id,
+                   esVendedor: dataTx.transaction.vendedorId === user?.id,
+                   confirmacionVendedor: dataTx.transaction.confirmacionVendedor,
+                   confirmacionComprador: dataTx.transaction.confirmacionComprador
+               };
+           }
+      } catch (e) {}
+
+      if (dataMsg.ok) {
+        const msgs: Mensaje[] = dataMsg.mensajes.map((m: any) => {
+          let metadata = null;
+          if (m.tipo === 'sistema') { try { metadata = JSON.parse(m.contenido) } catch {} }
+          return {
+            id: m.id,
+            texto: m.tipo === 'imagen' ? '' : (m.tipo === 'sistema' ? (metadata?.text || m.contenido) : m.contenido),
+            imagenUrl: m.tipo === 'imagen' ? getFullImgUrl(m.contenido) : undefined,
+            autor: m.remitenteId === user?.id ? 'yo' : (m.tipo === 'sistema' ? 'sistema' : 'otro'),
+            hora: new Date(m.fechaEnvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+            estado: 'leido',
+            tipo: m.tipo,
+            metadata
+          }
+        })
+        
+        setChats(prev => prev.map(c => c.id === chatId ? { 
+            ...c, 
+            mensajes: msgs, 
+            noLeidos: 0,
+            transaccion: transaccionActiva
+        } : c))
+        
+        // Marcar leídos
+        await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}/mark-read`, {
+          method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+        })
       }
     } catch (error) { console.error(error) }
     finally { setIsLoading(false) }
   }
 
-  const markRead = async (chatId: number) => {
-    try {
-       await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}/mark-read`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` }
-       })
-    } catch(e) {}
-  }
-
   const handleSelectChat = (id: number) => {
     setActiveChatId(id)
     setView("chat")
-    setChats(prev => prev.map(c => c.id === id ? { ...c, noLeidos: 0 } : c))
-    loadMessages(id)
+    loadChatData(id)
   }
 
-  // 5. Enviar Mensaje
+  // 5. Acciones de Transacción
+  const handleConfirmDelivery = async (txId: number) => {
+      if(!token) return;
+      try {
+          const res = await fetch(`${URL_BASE}/api/transactions/${txId}/confirm-delivery`, {
+              method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if(res.ok) {
+              setChats(prev => prev.map(c => c.id === activeChatId ? {
+                  ...c,
+                  transaccion: c.transaccion ? { ...c.transaccion, confirmacionVendedor: true } : null
+              } : c));
+              
+              socketRef.current?.emit('transaction_event', { toUserId: activeChatId, type: 'DELIVERY_CONFIRMED', transactionId: txId });
+              
+              // Mensaje de sistema
+              const sysMsg = JSON.stringify({ type: 'SYSTEM_EVENT', text: '📦 El vendedor marcó como entregado.' });
+              socketRef.current?.emit('send_message', { destinatarioId: activeChatId, contenido: sysMsg, tipo: 'sistema' });
+          }
+      } catch(e) { console.error(e); }
+  }
+
+  const handleConfirmReceipt = async (txId: number) => {
+      if(!token) return;
+      try {
+          const res = await fetch(`${URL_BASE}/api/transactions/${txId}/confirm-receipt`, {
+              method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          if(res.ok) {
+              const activeChat = chats.find(c => c.id === activeChatId);
+              setChats(prev => prev.map(c => c.id === activeChatId ? {
+                  ...c,
+                  transaccion: c.transaccion ? { ...c.transaccion, confirmacionComprador: true, estadoId: 2 } : null
+              } : c));
+
+              socketRef.current?.emit('transaction_event', { toUserId: activeChatId, type: 'RECEIPT_CONFIRMED', transactionId: txId });
+
+              const sysMsg = JSON.stringify({ type: 'SYSTEM_EVENT', text: '✅ El comprador confirmó recepción.' });
+              socketRef.current?.emit('send_message', { destinatarioId: activeChatId, contenido: sysMsg, tipo: 'sistema' });
+
+              if (activeChat) {
+                  setPendingRatingData({ 
+                      sellerId: activeChat.id, 
+                      sellerName: activeChat.nombre,
+                      transactionId: txId 
+                  });
+                  setIsRateModalOpen(true);
+              }
+          }
+      } catch(e) { console.error(e); }
+  }
+
+  // 6. Enviar Mensaje
   const handleSend = useCallback(async (texto: string, file?: File) => {
     if (!activeChatId || !token) return
     if (!texto.trim() && !file) return
@@ -259,6 +381,14 @@ export default function FloatingChat() {
             onSend={handleSend}
             onClose={() => setIsOpen(false)}
             isLoading={isLoading}
+            onConfirmDelivery={handleConfirmDelivery}
+            onConfirmReceipt={handleConfirmReceipt}
+            openRating={() => {
+                if(activeChat && activeChat.transaccion) {
+                    setPendingRatingData({ sellerId: activeChat.id, sellerName: activeChat.nombre, transactionId: activeChat.transaccion.id });
+                    setIsRateModalOpen(true);
+                }
+            }}
           />
         )}
       </AnimatePresence>
@@ -281,13 +411,24 @@ export default function FloatingChat() {
           </motion.button>
         )}
       </AnimatePresence>
+
+      {/* Modal Calificación */}
+      {pendingRatingData && (
+        <RateUserModal 
+            isOpen={isRateModalOpen}
+            onClose={() => setIsRateModalOpen(false)}
+            sellerId={pendingRatingData.sellerId}
+            sellerName={pendingRatingData.sellerName}
+            transactionId={pendingRatingData.transactionId}
+        />
+      )}
     </>
   )
 }
 
 /* ===================== SUBCOMPONENTES ===================== */
 
-const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, onClose, isLoading }: any) => {
+const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, onClose, isLoading, onConfirmDelivery, onConfirmReceipt, openRating }: any) => {
   const dragControls = useDragControls()
 
   return (
@@ -301,7 +442,7 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9, y: 50 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="fixed right-6 bottom-24 w-[380px] h-[520px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden z-[9999]"
+      className="fixed right-6 bottom-24 w-[380px] h-[550px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden z-[9999]"
     >
       {/* Header */}
       <div 
@@ -315,7 +456,6 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
             </button>
           )}
           
-          {/* Avatar en el Header cuando estamos en el chat */}
           {view === "chat" && activeChat && (
              <Avatar className="h-8 w-8 border border-slate-100 shrink-0">
                <AvatarImage src={activeChat.avatar} />
@@ -335,11 +475,21 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
           <div className="p-2 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing transition-colors">
              <LuGripHorizontal size={18} />
           </div>
-          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all" title="Cerrar chat">
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all">
             <LuX size={18} />
           </button>
         </div>
       </div>
+
+      {/* Mini Transaction Bar (Solo en vista de chat) */}
+      {view === "chat" && activeChat?.transaccion && activeChat.transaccion.estadoId !== 3 && (
+         <MiniTransactionBar 
+            tx={activeChat.transaccion} 
+            onConfirmDelivery={() => onConfirmDelivery(activeChat.transaccion.id)}
+            onConfirmReceipt={() => onConfirmReceipt(activeChat.transaccion.id)}
+            onRate={openRating}
+         />
+      )}
 
       <div className="flex-1 overflow-hidden bg-white relative">
         <AnimatePresence mode="wait">
@@ -352,6 +502,59 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
       </div>
     </motion.div>
   )
+}
+
+// --- COMPONENTE: BARRA DE TRANSACCIÓN MINI ---
+const MiniTransactionBar = ({ tx, onConfirmDelivery, onConfirmReceipt, onRate }: any) => {
+    // Estado 1: Pendiente
+    if (tx.estadoId === 1 && !tx.confirmacionVendedor) {
+        return (
+            <div className="bg-blue-50 border-b border-blue-100 p-2 px-3 flex items-center justify-between">
+                <div className="flex items-center gap-2 overflow-hidden">
+                    <LuShoppingBag className="text-blue-600 flex-shrink-0" size={16} />
+                    <span className="text-xs text-slate-700 truncate">Venta: <b>{tx.producto.nombre}</b></span>
+                </div>
+                {tx.esVendedor ? (
+                    <button onClick={onConfirmDelivery} className="bg-blue-600 text-white px-2 py-1 rounded text-[10px] font-bold hover:bg-blue-700 whitespace-nowrap">Entregar</button>
+                ) : (
+                    <span className="text-[10px] text-slate-400 italic whitespace-nowrap">Esperando envío</span>
+                )}
+            </div>
+        )
+    }
+    // Estado 2: Enviado
+    if (tx.estadoId === 1 && tx.confirmacionVendedor && !tx.confirmacionComprador) {
+        return (
+            <div className="bg-amber-50 border-b border-amber-100 p-2 px-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <LuTruck className="text-amber-600" size={16} />
+                    <span className="text-xs text-slate-700">En camino</span>
+                </div>
+                {tx.esComprador ? (
+                    <button onClick={onConfirmReceipt} className="bg-green-600 text-white px-2 py-1 rounded text-[10px] font-bold hover:bg-green-700 whitespace-nowrap">Recibí</button>
+                ) : (
+                    <span className="text-[10px] text-slate-400 italic whitespace-nowrap">Esperando confirmación</span>
+                )}
+            </div>
+        )
+    }
+    // Estado 3: Completado
+    if (tx.estadoId === 2) {
+        return (
+            <div className="bg-green-50 border-b border-green-100 p-2 px-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <LuCheckCheck className="text-green-600" size={16} />
+                    <span className="text-xs text-green-700 font-medium">Completado</span>
+                </div>
+                {tx.esComprador && (
+                    <button onClick={onRate} className="flex items-center gap-1 text-[10px] bg-white border border-amber-200 text-amber-600 px-2 py-0.5 rounded-full hover:bg-amber-50">
+                        <LuStar size={10} /> Calificar
+                    </button>
+                )}
+            </div>
+        )
+    }
+    return null;
 }
 
 const ChatListView = ({ chats, onSelect }: any) => (
@@ -428,6 +631,18 @@ const ChatConversationView = ({ chat, onSend, isLoading, chatAvatar }: any) => {
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
         {chat?.mensajes.map((msg: Mensaje) => {
           const isMe = msg.autor === "yo";
+          const isSystem = msg.tipo === 'sistema' || msg.autor === 'sistema';
+
+          if (isSystem) {
+              return (
+                <div key={msg.id} className="flex justify-center my-2">
+                    <span className="bg-slate-100 text-slate-500 text-[10px] px-3 py-1 rounded-full border border-slate-200">
+                        {msg.texto}
+                    </span>
+                </div>
+              )
+          }
+
           return (
             <div key={msg.id} className={`flex w-full gap-2 ${isMe ? "justify-end" : "justify-start"}`}>
               
