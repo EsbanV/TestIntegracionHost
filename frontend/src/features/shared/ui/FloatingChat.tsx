@@ -296,36 +296,56 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
       dragListener={false}
       dragControls={dragControls}
       dragMomentum={false}
-      dragConstraints={{ left: -window.innerWidth + 350, right: 20, top: -window.innerHeight + 500, bottom: 20 }}
+      // Ajustamos constraints para el nuevo ancho
+      dragConstraints={{ left: -window.innerWidth + 400, right: 20, top: -window.innerHeight + 500, bottom: 20 }}
       initial={{ opacity: 0, scale: 0.9, y: 50 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9, y: 50 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="fixed right-6 bottom-24 w-[350px] h-[500px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden z-[9999]"
+      // CAMBIO 1: Aumentamos el ancho a w-[380px]
+      className="fixed right-6 bottom-24 w-[380px] h-[520px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden z-[9999]"
     >
-      {/* --- HEADER BLANCO (CORREGIDO) --- */}
+      {/* --- HEADER (Rediseñado) --- */}
       <div 
         onPointerDown={(e) => dragControls.start(e)}
-        className="h-14 bg-white border-b border-slate-100 flex items-center justify-between px-4 cursor-move touch-none select-none"
+        className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 cursor-move touch-none select-none"
       >
-        <div className="flex items-center gap-2">
+        {/* Lado Izquierdo: Título y Volver */}
+        <div className="flex items-center gap-3 overflow-hidden">
           {view === "chat" && (
-            <button onClick={() => setView("list")} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors text-slate-600">
+            <button 
+              onClick={() => setView("list")} 
+              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500 transition-colors shrink-0"
+            >
               <LuChevronLeft size={20} />
             </button>
           )}
-          <div className="flex flex-col">
-             <h3 className="font-bold text-slate-800 text-sm truncate max-w-[180px]">
+          
+          <div className="flex flex-col min-w-0">
+             <h3 className="font-bold text-slate-800 text-sm truncate">
                {view === "chat" ? activeChat?.nombre : "Mensajes"}
              </h3>
-             {view === "chat" && <span className="text-[10px] text-green-600 font-medium flex items-center gap-1">● En línea</span>}
+             {view === "chat" && (
+               <span className="text-[10px] text-green-600 font-medium flex items-center gap-1">
+                 <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> En línea
+               </span>
+             )}
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <div className="cursor-move p-2 text-slate-300 hover:text-slate-500">
-             <LuGripHorizontal size={16} />
+
+        {/* Lado Derecho: Drag y Cerrar */}
+        <div className="flex items-center gap-1 shrink-0">
+          {/* Icono de arrastre */}
+          <div className="p-2 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing transition-colors">
+             <LuGripHorizontal size={18} />
           </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-red-50 hover:text-red-500 rounded-full text-slate-400 transition-colors">
+          
+          {/* CAMBIO 2: Botón Cerrar Centrado y Circular */}
+          <button 
+            onClick={onClose} 
+            className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all"
+            title="Cerrar chat"
+          >
             <LuX size={18} />
           </button>
         </div>
