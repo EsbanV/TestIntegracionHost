@@ -8,24 +8,22 @@ import {
 } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
-// Importamos la URL base del entorno
-const URL_BASE = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL;
 
-// --- 1. Definición de Tipos ---
 interface AuthUser {
   id: number;
   email: string;
   nombre: string;
   apellido?: string;
   role: string;
-  campus?: string;
-  fotoPerfilUrl?: string;
+  campus?: string | null;
+  fotoPerfilUrl?: string | null;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
-  login: (token: string, user: AuthUser) => void;
+  login: (accessToken: string, refreshToken: string, user: AuthUser) => void;
   logout: () => void;
   isLoading: boolean;
 }
@@ -40,71 +38,91 @@ export const useAuth = () => {
   return context;
 };
 
-// --- 2. Componente Proveedor ---
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider = ({ children }: AuthProviderProps) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const validateToken = useCallback(async () => {
-    // 1. Leer del localStorage
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user_data'); 
+  // Función para intentar renovar el token
+  const refreshSession = async (refreshToken: string) => {
+    try {
+      console.log("🔄 Intentando renovar token...");
+      const res = await fetch(`${API_URL}/api/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken })
+      });
 
-    if (!storedToken) {
-      console.log("🔵 Auth: No hay token guardado.");
+      const data = await res.json();
+
+      if (res.ok && data.ok) {
+        console.log("✅ Token renovado con éxito");
+        // Guardamos los nuevos tokens
+        localStorage.setItem('token', data.accessToken);
+        localStorage.setItem('refresh_token', data.refreshToken);
+        setToken(data.accessToken);
+        return data.accessToken; // Retornamos el nuevo token para usarlo ya
+      } else {
+        throw new Error("No se pudo renovar");
+      }
+    } catch (error) {
+      console.error("❌ Falló la renovación de sesión:", error);
+      logout();
+      return null;
+    }
+  };
+
+  const validateToken = useCallback(async () => {
+    const storedToken = localStorage.getItem('token');
+    const storedRefreshToken = localStorage.getItem('refresh_token');
+    const storedUser = localStorage.getItem('user_data');
+
+    if (!storedToken || !storedRefreshToken) {
       setIsLoading(false);
       return;
     }
 
+    // Carga optimista inicial
+    if (storedUser) {
+      try { setUser(JSON.parse(storedUser)); } catch {}
+    }
+
     try {
-      // Carga optimista del usuario (para que se vea rápido la UI)
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-        } catch (e) {
-          console.warn("Datos de usuario corruptos en storage");
+      // Intentar validar el token actual
+      let currentToken = storedToken;
+      let res = await fetch(`${API_URL}/api/auth/me`, {
+        headers: { 'Authorization': `Bearer ${currentToken}` }
+      });
+
+      // Si falla por token expirado (401 o 403), intentamos refrescar
+      if (res.status === 401 || res.status === 403) {
+        const newToken = await refreshSession(storedRefreshToken);
+        if (newToken) {
+          // Reintentar la petición con el nuevo token
+          currentToken = newToken;
+          res = await fetch(`${API_URL}/api/auth/me`, {
+            headers: { 'Authorization': `Bearer ${currentToken}` }
+          });
+        } else {
+           // Si no se pudo refrescar, termina aquí (logout ya fue llamado en refreshSession)
+           return;
         }
       }
 
-      console.log("🟡 Auth: Validando token con backend...");
-      
-      // 2. Petición al backend (USANDO URL_BASE ABSOLUTA)
-      // Asegúrate de tener creado el endpoint /api/auth/me en tu backend
-      const res = await fetch(`${URL_BASE}/api/auth/me`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${storedToken}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include' // Importante para CORS consistente
-      });
-
       if (res.ok) {
         const data = await res.json();
-        // Ajusta esto según si tu backend devuelve { user: ... } o { data: ... }
-        const userData = data.user || data.data || data; 
-        
-        console.log("🟢 Auth: Token válido. Usuario:", userData.usuario);
-        
+        const userData = data.user || data.data;
         setUser(userData);
-        setToken(storedToken);
-        
-        // Actualizar datos frescos en storage
+        setToken(currentToken);
         localStorage.setItem('user_data', JSON.stringify(userData));
       } else {
-        console.error("🔴 Auth: Backend rechazó el token.", res.status);
-        logout(); 
+        // Si falla por otra razón (ej: usuario borrado de BD), cerrar sesión
+        logout();
       }
     } catch (error) {
-      console.error('🔴 Auth: Error de red al validar token:', error);
-      // En error de red, podrías optar por NO desloguear para permitir modo offline
-      // Pero por seguridad, si falla la validación inicial, es mejor pedir login
-      logout();
+      console.error('Error validando sesión:', error);
+      // En error de red, mantenemos la sesión optimista o forzamos logout según prefieras
+      // logout(); 
     } finally {
       setIsLoading(false);
     }
@@ -114,59 +132,43 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     validateToken();
   }, [validateToken]);
 
-  const login = (newToken: string, newUser: AuthUser) => {
-    console.log("🔵 Auth: Iniciando sesión...");
-    setToken(newToken);
+  const login = (accessToken: string, refreshToken: string, newUser: AuthUser) => {
+    setToken(accessToken);
     setUser(newUser);
-    
-    localStorage.setItem('token', newToken);
+    localStorage.setItem('token', accessToken);
+    localStorage.setItem('refresh_token', refreshToken); // Guardamos el refresh token
     localStorage.setItem('user_data', JSON.stringify(newUser));
   };
 
   const logout = () => {
-    console.log("⚫ Auth: Cerrando sesión...");
     setToken(null);
     setUser(null);
     localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_data');
+    // Opcional: Limpiar historial y forzar recarga
+    // window.location.href = '/login';
   };
 
-  const value = {
-    user,
-    token,
-    login,
-    logout,
-    isLoading
-  };
+  const value = { user, token, login, logout, isLoading };
 
-  // Renderizado condicional para evitar parpadeos
-  if (isLoading) {
-    return <LoadingScreen />;
-  }
+  if (isLoading) return <LoadingScreen />;
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// --- 3. Componente de Ruta Protegida ---
+// ... (Tus componentes ProtectedRoute y LoadingScreen siguen igual) ...
 export const ProtectedRoute = () => {
   const { user, isLoading } = useAuth();
   const location = useLocation();
-
-  if (isLoading) {
-    return <LoadingScreen />;
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
-  }
-
+  if (isLoading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
   return <Outlet />;
 };
 
-// --- Pantalla de Carga ---
 const LoadingScreen = () => (
   <div className="flex flex-col items-center justify-center h-screen bg-slate-50">
     <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-    <p className="text-slate-500 font-medium animate-pulse">Verificando sesión...</p>
+    <p className="text-slate-500 font-medium animate-pulse">Conectando...</p>
   </div>
 );

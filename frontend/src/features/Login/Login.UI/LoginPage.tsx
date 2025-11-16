@@ -106,7 +106,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok && data.ok) {
-        login(data.token, data.user);
+        login(data.accessToken, data.refreshToken, data.user);
         if (data.isNewUser || !data.user.campus) {
            navigate('/onboarding', { replace: true });
         } else {
