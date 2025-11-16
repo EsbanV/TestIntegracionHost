@@ -277,7 +277,7 @@ export default function CreateProductPage() {
               <div className="space-y-5 pt-2">
                 <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
                    <Tag className="text-slate-400" size={20} />
-                   <h2 className="text-lg font-semibold text-slate-800">Categorización</h2>
+                   <h2 className="text-lg font-semibold text-slate-800">Detalles</h2>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
