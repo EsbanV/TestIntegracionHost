@@ -185,9 +185,6 @@ export default function LoginPage() {
               <span className="bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">@alu.uct.cl</span>
               <span className="bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">@uct.cl</span>
             </div>
-            <p className="text-[10px] text-slate-400 mt-2 italic">
-              * Administradores pueden ingresar con cualquier correo registrado.
-            </p>
           </div>
 
           {/* Mensaje de Error */}

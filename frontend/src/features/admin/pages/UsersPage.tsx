@@ -26,6 +26,7 @@ export default function UsersPage() {
   const [query, setQuery] = useState('');
 
   // 1. Hook de consulta
+// ... dentro de UsersPage ...
   const { 
     data: usersResponse, 
     isLoading: loading, 
@@ -34,14 +35,12 @@ export default function UsersPage() {
     refetch 
   } = useAdminUsers(query);
 
-  // 2. Procesamiento de datos seguro
   const users = useMemo(() => {
     if (!usersResponse) return [];
-    if (usersResponse.users && Array.isArray(usersResponse.users)) {
-      return usersResponse.users;
-    }
-    return [];
+    // El hook devuelve { users: [...], total: N }
+    return usersResponse.users || []; 
   }, [usersResponse]);
+  // ...
 
   // 3. Hooks de mutación
   const { mutate: banUser, isLoading: banLoading } = useBanUser();
