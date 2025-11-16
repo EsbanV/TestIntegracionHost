@@ -37,10 +37,8 @@ interface Chat {
 
 type ViewState = "list" | "chat"
 
-// Configuración URL
 const URL_BASE = import.meta.env.VITE_API_URL; 
 
-// Helper para imágenes
 const getFullImgUrl = (url?: string) => {
   if (!url) return undefined;
   if (url.startsWith('http') || url.startsWith('data:')) return url;
@@ -53,42 +51,26 @@ export default function FloatingChat() {
   const [isOpen, setIsOpen] = useState(false)
   const [view, setView] = useState<ViewState>("list")
   
-  // Estado de datos
   const [chats, setChats] = useState<Chat[]>([])
   const [activeChatId, setActiveChatId] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   
-  // Referencia al Socket
   const socketRef = useRef<Socket | null>(null)
 
-  // 1. CONEXIÓN SOCKET.IO (REAL-TIME)
   useEffect(() => {
     if (!token) return
-
-    // Conectar usando la librería cliente
     const newSocket = io(URL_BASE, {
       auth: { token },
       transports: ['websocket', 'polling']
     })
-
     socketRef.current = newSocket
 
-    // Eventos Socket
-    newSocket.on("connect", () => {
-      console.log("🟢 MiniChat conectado:", newSocket.id)
-    })
+    newSocket.on("connect", () => console.log("🟢 MiniChat conectado"))
+    newSocket.on("new_message", (msg: any) => handleIncomingMessage(msg))
 
-    newSocket.on("new_message", (mensajeBackend: any) => {
-      console.log("📩 MiniChat recibió:", mensajeBackend)
-      handleIncomingMessage(mensajeBackend)
-    })
-
-    return () => {
-      newSocket.disconnect()
-    }
+    return () => { newSocket.disconnect() }
   }, [token])
 
-  // 2. Cargar lista de conversaciones (API REST)
   const fetchChats = async () => {
     if (!token) return
     try {
@@ -96,7 +78,6 @@ export default function FloatingChat() {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
-      
       if (data.ok) {
         const formattedChats: Chat[] = data.conversaciones.map((c: any) => ({
           id: c.usuario.id,
@@ -104,23 +85,18 @@ export default function FloatingChat() {
           ultimoMensaje: c.ultimoMensaje?.tipo === 'imagen' ? '📷 Imagen' : c.ultimoMensaje?.contenido,
           avatar: getFullImgUrl(c.usuario.fotoPerfilUrl),
           noLeidos: c.unreadCount || 0,
-          mensajes: [], // Se llenará al abrir
-          online: false // Pendiente implementar estado online
+          mensajes: [],
+          online: false
         }))
         setChats(formattedChats)
       }
-    } catch (error) {
-      console.error("Error cargando chats flotantes:", error)
-    }
+    } catch (error) { console.error(error) }
   }
 
-  // Cargar inicial al abrir
   useEffect(() => {
-    // Cargar chats al montar o al abrir si estaba vacío
     if (token) fetchChats()
   }, [token, isOpen])
 
-  // 3. Manejo de Mensajes Entrantes
   const handleIncomingMessage = (msgData: any) => {
     const remitenteId = msgData.remitente.id
     const contenido = msgData.tipo === 'imagen' ? '📷 Imagen' : msgData.contenido
@@ -134,44 +110,36 @@ export default function FloatingChat() {
       estado: "recibido"
     }
 
-    setChats(prevChats => {
-      const chatIndex = prevChats.findIndex(c => c.id === remitenteId)
-
+    setChats(prev => {
+      const chatIndex = prev.findIndex(c => c.id === remitenteId)
       if (chatIndex !== -1) {
-        // Actualizar chat existente
-        const updatedChats = [...prevChats]
-        const chat = updatedChats[chatIndex]
-        
-        // Si el chat está abierto y activo, no incrementamos no leídos
-        const isChatOpen = isOpen && view === 'chat' && activeChatId === remitenteId
-        
-        updatedChats[chatIndex] = {
-          ...chat,
+        const updated = [...prev]
+        updated[chatIndex] = {
+          ...updated[chatIndex],
           ultimoMensaje: contenido,
-          mensajes: [...chat.mensajes, nuevoMensaje],
-          noLeidos: isChatOpen ? 0 : (chat.noLeidos || 0) + 1
+          mensajes: [...updated[chatIndex].mensajes, nuevoMensaje],
+          noLeidos: (isOpen && view === 'chat' && activeChatId === remitenteId) ? 0 : (updated[chatIndex].noLeidos || 0) + 1
         }
-        
-        // Mover al principio
-        updatedChats.sort((a, b) => (a.id === remitenteId ? -1 : 1))
-        return updatedChats
+        updated.sort((a, b) => (a.id === remitenteId ? -1 : 1))
+        return updated
       } else {
-        // Si es nuevo chat, recargar lista
         fetchChats()
-        return prevChats
+        return prev
       }
     })
   }
 
-  // 4. Cargar historial de mensajes de un chat
   const loadMessages = async (chatId: number) => {
     setIsLoading(true)
-    // Verificar cache local simple
     const currentChat = chats.find(c => c.id === chatId)
     if (currentChat && currentChat.mensajes.length > 0) {
       setIsLoading(false)
-      // Aún así marcamos como leído en backend
-      markRead(chatId)
+      try {
+        await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}/mark-read`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+      } catch {}
       return
     }
 
@@ -180,82 +148,50 @@ export default function FloatingChat() {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
-      
       if (data.ok) {
-        const formattedMessages: Mensaje[] = data.mensajes.map((m: any) => ({
+        const msgs: Mensaje[] = data.mensajes.map((m: any) => ({
           id: m.id,
           texto: m.tipo === 'imagen' ? '📷 Imagen' : m.contenido,
           autor: m.remitenteId === user?.id ? 'yo' : 'otro',
           hora: new Date(m.fechaEnvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
           estado: 'leido'
         }))
-
-        setChats(prev => prev.map(c => 
-          c.id === chatId ? { ...c, mensajes: formattedMessages, noLeidos: 0 } : c
-        ))
+        setChats(prev => prev.map(c => c.id === chatId ? { ...c, mensajes: msgs, noLeidos: 0 } : c))
         
-        markRead(chatId)
+        await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}/mark-read`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
       }
-    } catch (error) {
-      console.error("Error cargando mensajes:", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-  
-  const markRead = async (chatId: number) => {
-    try {
-      await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}/mark-read`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` }
-      })
-    } catch (e) { console.error(e) }
+    } catch (error) { console.error(error) }
+    finally { setIsLoading(false) }
   }
 
   const handleSelectChat = (id: number) => {
     setActiveChatId(id)
     setView("chat")
-    // Resetear contador localmente
     setChats(prev => prev.map(c => c.id === id ? { ...c, noLeidos: 0 } : c))
     loadMessages(id)
   }
 
-  // 5. ENVIAR MENSAJE
-  const handleSend = useCallback(async (texto: string) => {
+  const handleSend = useCallback((texto: string) => {
     if (!activeChatId || !token || !texto.trim()) return
-    
     const tempId = "tmp-" + Date.now()
     const hora = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     
-    // Optimistic Update
     setChats(prev => prev.map(c => 
       c.id === activeChatId 
-        ? { 
-            ...c, 
-            ultimoMensaje: texto,
-            mensajes: [...c.mensajes, { id: tempId, texto, autor: 'yo', hora, estado: 'enviando' }] 
-          } 
+        ? { ...c, ultimoMensaje: texto, mensajes: [...c.mensajes, { id: tempId, texto, autor: 'yo', hora, estado: 'enviando' }] } 
         : c
     ))
 
-    // Emitir evento Socket
     if (socketRef.current) {
       socketRef.current.emit("send_message", {
         destinatarioId: activeChatId,
         contenido: texto,
         tipo: "texto"
       })
-      
-      // Confirmación simulada
-      setTimeout(() => {
-        setChats(prev => prev.map(c => 
-          c.id === activeChatId 
-            ? { ...c, mensajes: c.mensajes.map(m => m.id === tempId ? { ...m, estado: 'enviado' } : m) } 
-            : c
-        ))
-      }, 500)
     }
-
   }, [activeChatId, token])
 
   const activeChat = chats.find((c) => c.id === activeChatId)
@@ -300,7 +236,7 @@ export default function FloatingChat() {
   )
 }
 
-/* ===================== SUBCOMPONENTES (Vista y UI) ===================== */
+/* --- SUBCOMPONENTES --- */
 
 const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, onClose, isLoading }: any) => {
   const dragControls = useDragControls()
@@ -310,31 +246,36 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
       drag
       dragListener={false}
       dragControls={dragControls}
-      dragConstraints={{ left: 0, right: window.innerWidth - 350, top: 0, bottom: window.innerHeight - 500 }}
-      dragMomentum={false}
-      initial={{ opacity: 0, scale: 0.8, y: window.innerHeight - 100, x: window.innerWidth - 400 }}
-      animate={{ opacity: 1, scale: 1, y: window.innerHeight - 600 }}
-      exit={{ opacity: 0, scale: 0.8, y: window.innerHeight - 100, x: window.innerWidth - 400 }}
-      className="pointer-events-auto absolute w-[360px] h-[500px] bg-white rounded-xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden right-6 bottom-24" // Posición ajustada
+      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }} // Limita arrastre excesivo
+      dragElastic={0.1}
+      // ✅ FIX DE ANIMACIÓN: Coordenadas relativas simples
+      initial={{ opacity: 0, scale: 0.9, y: 20, x: 0 }}
+      animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+      exit={{ opacity: 0, scale: 0.9, y: 20 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      className="pointer-events-auto absolute right-4 bottom-24 w-[340px] h-[500px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden"
     >
       {/* Header */}
       <div 
         onPointerDown={(e) => dragControls.start(e)}
-        className="h-12 bg-slate-50 border-b border-slate-200 flex items-center justify-between px-3 cursor-move touch-none select-none"
+        className="h-14 bg-slate-50 border-b border-slate-100 flex items-center justify-between px-4 cursor-move touch-none select-none"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {view === "chat" && (
-            <button onClick={() => setView("list")} className="p-1 hover:bg-slate-200 rounded-full transition-colors">
-              <LuChevronLeft className="text-slate-600" />
+            <button onClick={() => setView("list")} className="p-1 hover:bg-white rounded-full transition-colors text-slate-500">
+              <LuChevronLeft size={20} />
             </button>
           )}
-          <h3 className="font-bold text-slate-800 text-sm truncate max-w-[200px]">
-            {view === "chat" ? activeChat?.nombre : "Mensajes"}
-          </h3>
+          <div className="flex flex-col">
+             <h3 className="font-bold text-slate-800 text-sm truncate max-w-[180px]">
+               {view === "chat" ? activeChat?.nombre : "Mensajes"}
+             </h3>
+             {view === "chat" && <span className="text-[10px] text-green-600 font-medium">En línea</span>}
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <LuGripHorizontal className="text-slate-300 mr-2" size={14} />
-          <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full text-slate-500">
+        <div className="flex items-center gap-2">
+          <LuGripHorizontal className="text-slate-300" size={16} />
+          <button onClick={onClose} className="p-1.5 hover:bg-white rounded-full text-slate-400 hover:text-slate-700 transition-colors">
             <LuX size={18} />
           </button>
         </div>
@@ -355,28 +296,34 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
 
 const ChatListView = ({ chats, onSelect }: any) => (
   <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="h-full flex flex-col">
-    <div className="p-2 border-b border-slate-100">
+    <div className="p-3 border-b border-slate-50">
       <div className="relative">
-        <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3 h-3" />
-        <input placeholder="Buscar..." className="w-full bg-slate-100 text-sm pl-8 pr-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all" />
+        <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
+        <input placeholder="Buscar..." className="w-full bg-slate-50 text-sm pl-9 pr-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
       </div>
     </div>
     <div className="flex-1 overflow-y-auto">
       {chats.length === 0 ? (
-        <div className="p-8 text-center text-slate-400 text-sm">No tienes chats recientes</div>
+        <div className="flex flex-col items-center justify-center h-40 text-slate-400 text-xs">
+           <LuMessageCircle size={32} className="mb-2 opacity-20" />
+           No tienes mensajes
+        </div>
       ) : (
         chats.map((chat: any) => (
-          <div key={chat.id} onClick={() => onSelect(chat.id)} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0">
-            <Avatar className="h-9 w-9 border border-slate-100">
-              <AvatarImage src={chat.avatar} />
-              <AvatarFallback>{chat.nombre.charAt(0)}</AvatarFallback>
-            </Avatar>
+          <div key={chat.id} onClick={() => onSelect(chat.id)} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors">
+            <div className="relative">
+               <Avatar className="h-10 w-10 border border-slate-100">
+                 <AvatarImage src={chat.avatar} className="object-cover" />
+                 <AvatarFallback className="bg-blue-50 text-blue-600 text-xs font-bold">{chat.nombre.charAt(0)}</AvatarFallback>
+               </Avatar>
+               {chat.noLeidos > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full"></span>}
+            </div>
             <div className="flex-1 min-w-0">
-              <div className="flex justify-between items-baseline">
-                <h4 className="font-medium text-slate-800 text-sm truncate">{chat.nombre}</h4>
-                {chat.noLeidos > 0 && <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">{chat.noLeidos}</span>}
+              <div className="flex justify-between items-baseline mb-0.5">
+                <h4 className={`text-sm truncate ${chat.noLeidos > 0 ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>{chat.nombre}</h4>
+                {chat.noLeidos > 0 && <span className="text-[10px] font-bold text-blue-600">{chat.noLeidos} nuevos</span>}
               </div>
-              <p className="text-xs text-slate-500 truncate">{chat.ultimoMensaje}</p>
+              <p className={`text-xs truncate ${chat.noLeidos > 0 ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>{chat.ultimoMensaje}</p>
             </div>
           </div>
         ))
@@ -403,29 +350,24 @@ const ChatConversationView = ({ chat, onSend, isLoading }: any) => {
   if (isLoading) return <div className="h-full flex items-center justify-center"><LuLoader className="animate-spin text-blue-500" /></div>
 
   return (
-    <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 20, opacity: 0 }} className="h-full flex flex-col bg-slate-50">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2">
+    <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 20, opacity: 0 }} className="h-full flex flex-col bg-[#F8F9FC]">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
         {chat?.mensajes.map((msg: Mensaje) => (
           <div key={msg.id} className={`flex ${msg.autor === "yo" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[85%] rounded-xl px-3 py-1.5 text-sm shadow-sm ${
-              msg.autor === "yo" ? "bg-blue-600 text-white rounded-br-none" : "bg-white text-slate-800 border border-slate-200 rounded-bl-none"
+            <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+              msg.autor === "yo" ? "bg-blue-600 text-white rounded-br-sm" : "bg-white text-slate-800 border border-slate-100 rounded-bl-sm"
             }`}>
-              <p className="leading-snug break-words">{msg.texto}</p>
-              <div className={`text-[9px] mt-0.5 flex justify-end gap-1 ${msg.autor === "yo" ? "text-blue-200" : "text-slate-400"}`}>
+              <p className="leading-snug break-words whitespace-pre-wrap">{msg.texto}</p>
+              <div className={`text-[9px] mt-1 flex justify-end gap-1 opacity-70`}>
                 {msg.hora}
               </div>
             </div>
           </div>
         ))}
       </div>
-      <form onSubmit={handleSend} className="p-2 bg-white border-t border-slate-200 flex items-center gap-2">
-        <Input 
-           value={text} 
-           onChange={(e) => setText(e.target.value)} 
-           placeholder="Escribe..." 
-           className="flex-1 h-9 rounded-full text-sm border-slate-200 focus:ring-1 focus:ring-blue-500" 
-        />
-        <Button type="submit" size="icon" className="h-9 w-9 bg-blue-600 hover:bg-blue-700 rounded-full">
+      <form onSubmit={handleSend} className="p-3 bg-white border-t border-slate-100 flex items-center gap-2">
+        <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Escribe un mensaje..." className="flex-1 h-9 rounded-full text-sm bg-slate-50 border-slate-200 focus:ring-1 focus:ring-blue-500" />
+        <Button type="submit" size="icon" className="h-9 w-9 bg-blue-600 hover:bg-blue-700 rounded-full shadow-sm">
           <LuSend size={16} />
         </Button>
       </form>
