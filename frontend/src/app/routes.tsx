@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/app/context/AuthContext'
+import { RequireSetup } from '@/app/context/RequireOnboarding'
 
 // Layout
 import PageLayout from '@/features/shared/ui/PageLayout'
@@ -9,13 +10,10 @@ import LoginPage from '@/features/Login/Login.UI/LoginPage'
 import RegisterTest from '@/features/Login/Login.UI/RegisterTest'
 import LoginTest from '@/features/Login/Login.UI/LoginTest'
 import HomePage from '@/features/Marketplace/Marketplace.UI/HomePage'
-import CreateProductPage from '@/features/CrearPublicacion/CrearPublicacion.UI/CrearPublicacionPage'
-import EditarPublicacionPage from '@/features/EditarPublicacion/EditarPublicacion.UI/EditarPublicacionPage'
-import MyProductsPage from '@/features/MyPublications/MyPublications.UI/MisPublicacionesPage'
-import MyPublicationsPage from '@/features/Forum/MyPublications'
+import CreateProductPage from '@/features/CrearPublicacion/CrearPublicacion.UI/CreateProductPage' // Corregí el nombre del archivo según el último paso
+import MyProductsPage from '@/features/MisPublicaciones/MisPublicacionesPage' // Corregí la ruta
 import PerfilPage from '@/features/Perfil/Perfil.UI/PerfilPage'
 import ChatPage from '@/features/DM/DM.UI/ChatPage'
-import ForumPage from '@/features/Forum/ForumPage'
 import AyudaPage from '@/features/About.Terms.Help/Help.UI/AyudaPage'
 import TermsPage from '@/features/About.Terms.Help/Terms.UI/TermsPage'
 import AboutPage from '@/features/About.Terms.Help/About.UI/AboutPage'
@@ -34,7 +32,6 @@ export function AppRoutes() {
 
       {/* =========================================
           2. RUTAS PÚBLICAS CON LAYOUT
-          (Header y Sidebar visibles, Chat Flotante opcional)
           ========================================= */}
       <Route element={<PageLayout showHeader={true} showSidebar={true} />}>
         <Route path="/ayuda" element={<AyudaPage />} />
@@ -43,53 +40,59 @@ export function AppRoutes() {
       </Route>
 
       {/* =========================================
-          3. RUTAS PROTEGIDAS (Requieren Login)
+          3. ZONA PROTEGIDA (Requiere Login)
           ========================================= */}
       <Route element={<ProtectedRoute />}>
         
-        {/* GRUPO A: Layout Estándar
-            - Header: SÍ
-            - Sidebar: SÍ
-            - Chat Flotante: SÍ
+        {/* 🚨 EXCEPCIÓN: ONBOARDING
+            Esta ruta debe estar protegida por login, pero FUERA del RequireSetup
+            para evitar bucles infinitos. Además, suele verse mejor sin el Sidebar.
         */}
-        <Route 
-          element={
-            <PageLayout 
-              showHeader={true} 
-              showSidebar={true} 
-              showFloatingChat={true} 
-            />
-          }
-        >
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/onboarding" element={<OnboardingPage />} />
-          <Route path="/crear" element={<CreateProductPage />} />
-          <Route path="/editar" element={<EditarPublicacionPage />} />
-          <Route path="/mis-publicaciones" element={<MyProductsPage />} />
-          <Route path="/mis-foros" element={<MyPublicationsPage />} />
-          <Route path="/forums" element={<ForumPage />} />
-          <Route path="/perfil" element={<PerfilPage />} />
-          <Route path="/perfil/public/:id" element={<PublicProfilePage />} />
-        </Route>
+        <Route path="/onboarding" element={<OnboardingPage />} />
 
-        {/* GRUPO B: Layout de Chat Completo
-            - Header: NO (Para ganar altura)
-            - Sidebar: SÍ
-            - Chat Flotante: NO (Ya estamos en el chat)
+        {/* 🛡️ ZONA DE USUARIOS VERIFICADOS (Requiere Setup Completo) 
+            Si el usuario no tiene campus, RequireSetup lo mandará a /onboarding
         */}
-        <Route 
-          element={
-            <PageLayout 
-              showHeader={false} 
-              showSidebar={true} 
-              showFloatingChat={false} 
-            />
-          }
-        >
-          <Route path="/chats" element={<ChatPage />} />
-        </Route>
+        <Route element={<RequireSetup />}>
 
-      </Route>
+            {/* GRUPO A: Layout Estándar (Marketplace, Perfil, etc.) */}
+            <Route 
+              element={
+                <PageLayout 
+                  showHeader={true} 
+                  showSidebar={true} 
+                  showFloatingChat={true} 
+                />
+              }
+            >
+              <Route path="/home" element={<HomePage />} />
+              <Route path="/crear" element={<CreateProductPage />} />
+              <Route path="/mis-publicaciones" element={<MyProductsPage />} />
+              <Route path="/perfil" element={<PerfilPage />} />
+              <Route path="/perfil/public/:id" element={<PublicProfilePage />} />
+              
+              {/* Rutas pendientes o placeholders */}
+              {/* <Route path="/editar" element={<EditarPublicacionPage />} /> */}
+              {/* <Route path="/mis-foros" element={<MyPublicationsPage />} /> */}
+              {/* <Route path="/forums" element={<ForumPage />} /> */}
+            </Route>
+
+            {/* GRUPO B: Layout de Chat (Pantalla completa) */}
+            <Route 
+              element={
+                <PageLayout 
+                  showHeader={false} 
+                  showSidebar={true} 
+                  showFloatingChat={false} 
+                />
+              }
+            >
+              <Route path="/chats" element={<ChatPage />} />
+            </Route>
+
+        </Route> {/* Fin RequireSetup */}
+
+      </Route> {/* Fin ProtectedRoute */}
 
       {/* =========================================
           4. REDIRECCIONES
