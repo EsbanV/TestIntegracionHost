@@ -7,13 +7,13 @@ import type { AdminProduct, AdminProductQuery } from '../types/adminProduct';
 import type { Post } from '@/types/Post';
 
 // 1. DEFINICIÓN ROBUSTA DE LA URL BASE
-// Si VITE_API_URL no está definida, usará una cadena vacía (lo que causaría error en prod), 
-// pero asumo que ya la tienes configurada en tu .env
 const API_URL = import.meta.env.VITE_API_URL;
 
 // Helper para fetch con Auth
 const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
-  const token = localStorage.getItem('accessToken'); // O como guardes tu token
+  // ⚠️ CORRECCIÓN AQUÍ: Usar la clave correcta 'token'
+  const token = localStorage.getItem('token'); 
+  
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -26,7 +26,14 @@ const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
   });
 
   if (!res.ok) {
+    // Intentar leer el error JSON, si falla usar el statusText
     const errorData = await res.json().catch(() => ({}));
+    
+    // Si es 401, podrías disparar un evento de logout global aquí si quisieras
+    if (res.status === 401) {
+      console.error("⚠️ Token inválido o expirado en admin request");
+    }
+
     throw new Error(errorData.message || `Error ${res.status}: ${res.statusText}`);
   }
 
@@ -70,6 +77,11 @@ export function useAdminUsers(query: string) {
     queryKey: adminUserKeys.list(query),
     queryFn: () => fetchUsers(query),
     staleTime: 1000 * 60 * 5, 
+    retry: (failureCount, error: any) => {
+        // No reintentar si es error de permisos (401/403)
+        if (error.message.includes('401') || error.message.includes('403')) return false;
+        return failureCount < 2;
+    }
   });
 }
 
