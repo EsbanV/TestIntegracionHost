@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from "react"
 import { motion, AnimatePresence, useDragControls } from "framer-motion"
 import { useAuth } from "@/app/context/AuthContext"
 import { io, Socket } from "socket.io-client"
+import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react'
 
 // Icons
 import { 
   LuMessageCircle, LuX, LuSend, LuSearch, LuChevronLeft, 
-  LuGripHorizontal, LuLoader 
+  LuGripHorizontal, LuLoader, LuImage, LuSmile 
 } from "react-icons/lu"
 
 // UI Components
@@ -22,7 +23,9 @@ interface Mensaje {
   texto: string; 
   autor: "yo" | "otro"; 
   hora: string; 
-  estado?: Estado 
+  estado?: Estado;
+  imagenUrl?: string;
+  tipo?: string;
 }
 
 interface Chat { 
@@ -30,7 +33,7 @@ interface Chat {
   nombre: string; 
   ultimoMensaje?: string; 
   mensajes: Mensaje[]; 
-  avatar?: string;
+  avatar?: string; 
   noLeidos?: number;
   online?: boolean;
 }
@@ -57,8 +60,10 @@ export default function FloatingChat() {
   
   const socketRef = useRef<Socket | null>(null)
 
+  // 1. Conexión Socket
   useEffect(() => {
     if (!token) return
+
     const newSocket = io(URL_BASE, {
       auth: { token },
       transports: ['websocket', 'polling']
@@ -71,6 +76,7 @@ export default function FloatingChat() {
     return () => { newSocket.disconnect() }
   }, [token])
 
+  // 2. Cargar Chats
   const fetchChats = async () => {
     if (!token) return
     try {
@@ -94,9 +100,10 @@ export default function FloatingChat() {
   }
 
   useEffect(() => {
-    if (token) fetchChats()
+    if (token && isOpen) fetchChats()
   }, [token, isOpen])
 
+  // 3. Manejar Mensajes Entrantes
   const handleIncomingMessage = (msgData: any) => {
     const remitenteId = msgData.remitente.id
     const contenido = msgData.tipo === 'imagen' ? '📷 Imagen' : msgData.contenido
@@ -104,7 +111,8 @@ export default function FloatingChat() {
 
     const nuevoMensaje: Mensaje = {
       id: msgData.id,
-      texto: contenido,
+      texto: msgData.tipo === 'imagen' ? '' : msgData.contenido,
+      imagenUrl: msgData.tipo === 'imagen' ? getFullImgUrl(msgData.contenido) : undefined,
       autor: "otro",
       hora: hora,
       estado: "recibido"
@@ -114,11 +122,13 @@ export default function FloatingChat() {
       const chatIndex = prev.findIndex(c => c.id === remitenteId)
       if (chatIndex !== -1) {
         const updated = [...prev]
+        const isChatOpen = isOpen && view === 'chat' && activeChatId === remitenteId
+        
         updated[chatIndex] = {
           ...updated[chatIndex],
           ultimoMensaje: contenido,
           mensajes: [...updated[chatIndex].mensajes, nuevoMensaje],
-          noLeidos: (isOpen && view === 'chat' && activeChatId === remitenteId) ? 0 : (updated[chatIndex].noLeidos || 0) + 1
+          noLeidos: isChatOpen ? 0 : (updated[chatIndex].noLeidos || 0) + 1
         }
         updated.sort((a, b) => (a.id === remitenteId ? -1 : 1))
         return updated
@@ -129,17 +139,15 @@ export default function FloatingChat() {
     })
   }
 
+  // 4. Cargar Mensajes
   const loadMessages = async (chatId: number) => {
     setIsLoading(true)
     const currentChat = chats.find(c => c.id === chatId)
+    
+    // Optimización: si ya tiene mensajes, no recargar (o recargar en background)
     if (currentChat && currentChat.mensajes.length > 0) {
       setIsLoading(false)
-      try {
-        await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}/mark-read`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
-      } catch {}
+      markRead(chatId)
       return
     }
 
@@ -151,20 +159,26 @@ export default function FloatingChat() {
       if (data.ok) {
         const msgs: Mensaje[] = data.mensajes.map((m: any) => ({
           id: m.id,
-          texto: m.tipo === 'imagen' ? '📷 Imagen' : m.contenido,
+          texto: m.tipo === 'imagen' ? '' : m.contenido,
+          imagenUrl: m.tipo === 'imagen' ? getFullImgUrl(m.contenido) : undefined,
           autor: m.remitenteId === user?.id ? 'yo' : 'otro',
           hora: new Date(m.fechaEnvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
           estado: 'leido'
         }))
         setChats(prev => prev.map(c => c.id === chatId ? { ...c, mensajes: msgs, noLeidos: 0 } : c))
-        
-        await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}/mark-read`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
+        markRead(chatId)
       }
     } catch (error) { console.error(error) }
     finally { setIsLoading(false) }
+  }
+
+  const markRead = async (chatId: number) => {
+    try {
+       await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}/mark-read`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+       })
+    } catch(e) {}
   }
 
   const handleSelectChat = (id: number) => {
@@ -174,22 +188,61 @@ export default function FloatingChat() {
     loadMessages(id)
   }
 
-  const handleSend = useCallback((texto: string) => {
-    if (!activeChatId || !token || !texto.trim()) return
+  // 5. Enviar Mensaje (Texto o Imagen)
+  const handleSend = useCallback(async (texto: string, file?: File) => {
+    if (!activeChatId || !token) return
+    if (!texto.trim() && !file) return
+
     const tempId = "tmp-" + Date.now()
     const hora = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     
+    let contenidoFinal = texto
+    let tipoMensaje = 'texto'
+
+    // A. Subir imagen si existe
+    if (file) {
+      try {
+        const formData = new FormData()
+        formData.append('image', file)
+        const res = await fetch(`${URL_BASE}/api/upload/upload-image`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        })
+        const data = await res.json()
+        if (data.ok) {
+           contenidoFinal = data.imageUrl
+           tipoMensaje = 'imagen'
+        }
+      } catch (e) { console.error(e); return; }
+    }
+    
+    // B. Optimistic Update
+    const prevUrl = file ? URL.createObjectURL(file) : undefined;
+
     setChats(prev => prev.map(c => 
       c.id === activeChatId 
-        ? { ...c, ultimoMensaje: texto, mensajes: [...c.mensajes, { id: tempId, texto, autor: 'yo', hora, estado: 'enviando' }] } 
+        ? { 
+            ...c, 
+            ultimoMensaje: tipoMensaje === 'imagen' ? '📷 Imagen' : texto, 
+            mensajes: [...c.mensajes, { 
+                id: tempId, 
+                texto: tipoMensaje === 'imagen' ? '' : texto, 
+                imagenUrl: tipoMensaje === 'imagen' ? (prevUrl || getFullImgUrl(contenidoFinal)) : undefined,
+                autor: 'yo', 
+                hora, 
+                estado: 'enviando' 
+            }] 
+          } 
         : c
     ))
 
+    // C. Emitir Socket
     if (socketRef.current) {
       socketRef.current.emit("send_message", {
         destinatarioId: activeChatId,
-        contenido: texto,
-        tipo: "texto"
+        contenido: contenidoFinal,
+        tipo: tipoMensaje
       })
     }
   }, [activeChatId, token])
@@ -198,7 +251,7 @@ export default function FloatingChat() {
   const totalUnread = chats.reduce((acc, c) => acc + (c.noLeidos || 0), 0)
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-[9999] overflow-hidden">
+    <>
       <AnimatePresence>
         {isOpen && (
           <ChatWindow 
@@ -221,7 +274,7 @@ export default function FloatingChat() {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             onClick={() => setIsOpen(true)}
-            className="pointer-events-auto absolute bottom-6 right-6 shadow-2xl shadow-blue-900/30 bg-gradient-to-br from-blue-600 to-indigo-600 text-white w-14 h-14 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-transform z-50"
+            className="fixed bottom-6 right-6 z-[9999] shadow-2xl shadow-blue-900/40 bg-slate-900 text-white w-14 h-14 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
           >
             <LuMessageCircle size={28} />
             {totalUnread > 0 && (
@@ -232,11 +285,11 @@ export default function FloatingChat() {
           </motion.button>
         )}
       </AnimatePresence>
-    </div>
+    </>
   )
 }
 
-/* --- SUBCOMPONENTES --- */
+/* ===================== SUBCOMPONENTES ===================== */
 
 const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, onClose, isLoading }: any) => {
   const dragControls = useDragControls()
@@ -246,36 +299,33 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
       drag
       dragListener={false}
       dragControls={dragControls}
-      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }} // Limita arrastre excesivo
-      dragElastic={0.1}
-      // ✅ FIX DE ANIMACIÓN: Coordenadas relativas simples
-      initial={{ opacity: 0, scale: 0.9, y: 20, x: 0 }}
-      animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
-      exit={{ opacity: 0, scale: 0.9, y: 20 }}
+      dragMomentum={false}
+      // ✅ FIX ARRASTRE: Restricciones para no perder la ventana
+      dragConstraints={{ left: -window.innerWidth + 350, right: 20, top: -window.innerHeight + 500, bottom: 20 }}
+      initial={{ opacity: 0, scale: 0.9, y: 50 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9, y: 50 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="pointer-events-auto absolute right-4 bottom-24 w-[340px] h-[500px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden"
+      className="fixed right-6 bottom-24 w-[350px] h-[500px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden z-[9999]"
     >
-      {/* Header */}
+      {/* Header Arrastrable */}
       <div 
         onPointerDown={(e) => dragControls.start(e)}
-        className="h-14 bg-slate-50 border-b border-slate-100 flex items-center justify-between px-4 cursor-move touch-none select-none"
+        className="h-12 bg-slate-900 text-white flex items-center justify-between px-3 cursor-move touch-none select-none"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {view === "chat" && (
-            <button onClick={() => setView("list")} className="p-1 hover:bg-white rounded-full transition-colors text-slate-500">
-              <LuChevronLeft size={20} />
+            <button onClick={() => setView("list")} className="p-1 hover:bg-white/20 rounded-full transition-colors">
+              <LuChevronLeft />
             </button>
           )}
-          <div className="flex flex-col">
-             <h3 className="font-bold text-slate-800 text-sm truncate max-w-[180px]">
-               {view === "chat" ? activeChat?.nombre : "Mensajes"}
-             </h3>
-             {view === "chat" && <span className="text-[10px] text-green-600 font-medium">En línea</span>}
-          </div>
+          <h3 className="font-bold text-sm truncate max-w-[200px]">
+            {view === "chat" ? activeChat?.nombre : "Mensajes"}
+          </h3>
         </div>
         <div className="flex items-center gap-2">
-          <LuGripHorizontal className="text-slate-300" size={16} />
-          <button onClick={onClose} className="p-1.5 hover:bg-white rounded-full text-slate-400 hover:text-slate-700 transition-colors">
+          <LuGripHorizontal className="text-slate-400" size={16} />
+          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full text-slate-300 hover:text-white">
             <LuX size={18} />
           </button>
         </div>
@@ -296,34 +346,28 @@ const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, on
 
 const ChatListView = ({ chats, onSelect }: any) => (
   <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="h-full flex flex-col">
-    <div className="p-3 border-b border-slate-50">
+    <div className="p-3 border-b border-slate-100 bg-slate-50">
       <div className="relative">
-        <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
-        <input placeholder="Buscar..." className="w-full bg-slate-50 text-sm pl-9 pr-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
+        <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3 h-3" />
+        <input placeholder="Buscar..." className="w-full bg-white border border-slate-200 text-sm pl-9 pr-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/20 transition-all" />
       </div>
     </div>
     <div className="flex-1 overflow-y-auto">
       {chats.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-40 text-slate-400 text-xs">
-           <LuMessageCircle size={32} className="mb-2 opacity-20" />
-           No tienes mensajes
-        </div>
+        <div className="p-8 text-center text-slate-400 text-xs">No hay conversaciones activas</div>
       ) : (
         chats.map((chat: any) => (
           <div key={chat.id} onClick={() => onSelect(chat.id)} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors">
-            <div className="relative">
-               <Avatar className="h-10 w-10 border border-slate-100">
-                 <AvatarImage src={chat.avatar} className="object-cover" />
-                 <AvatarFallback className="bg-blue-50 text-blue-600 text-xs font-bold">{chat.nombre.charAt(0)}</AvatarFallback>
-               </Avatar>
-               {chat.noLeidos > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full"></span>}
-            </div>
+            <Avatar className="h-10 w-10 border border-slate-100">
+              <AvatarImage src={chat.avatar} className="object-cover" />
+              <AvatarFallback>{chat.nombre.charAt(0)}</AvatarFallback>
+            </Avatar>
             <div className="flex-1 min-w-0">
-              <div className="flex justify-between items-baseline mb-0.5">
-                <h4 className={`text-sm truncate ${chat.noLeidos > 0 ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>{chat.nombre}</h4>
-                {chat.noLeidos > 0 && <span className="text-[10px] font-bold text-blue-600">{chat.noLeidos} nuevos</span>}
+              <div className="flex justify-between items-baseline">
+                <h4 className="font-semibold text-slate-800 text-sm truncate">{chat.nombre}</h4>
+                {chat.noLeidos > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full shadow-sm">{chat.noLeidos}</span>}
               </div>
-              <p className={`text-xs truncate ${chat.noLeidos > 0 ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>{chat.ultimoMensaje}</p>
+              <p className={`text-xs truncate ${chat.noLeidos ? 'text-slate-900 font-medium' : 'text-slate-500'}`}>{chat.ultimoMensaje || 'Imagen enviada'}</p>
             </div>
           </div>
         ))
@@ -334,40 +378,80 @@ const ChatListView = ({ chats, onSelect }: any) => (
 
 const ChatConversationView = ({ chat, onSend, isLoading }: any) => {
   const [text, setText] = useState("")
+  const [showEmoji, setShowEmoji] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
   }, [chat?.mensajes, isLoading])
 
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault()
     if (!text.trim()) return
     onSend(text)
     setText("")
+    setShowEmoji(false)
   }
 
-  if (isLoading) return <div className="h-full flex items-center justify-center"><LuLoader className="animate-spin text-blue-500" /></div>
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) onSend('', e.target.files[0])
+    e.target.value = ''
+  }
+
+  const onEmojiClick = (emojiData: EmojiClickData) => {
+    setText(prev => prev + emojiData.emoji)
+  }
+
+  if (isLoading) return <div className="h-full flex items-center justify-center"><LuLoader className="animate-spin text-slate-400" /></div>
 
   return (
-    <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 20, opacity: 0 }} className="h-full flex flex-col bg-[#F8F9FC]">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
+    <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 20, opacity: 0 }} className="h-full flex flex-col bg-[#f8f9fc]">
+      
+      {/* Mensajes */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2">
         {chat?.mensajes.map((msg: Mensaje) => (
           <div key={msg.id} className={`flex ${msg.autor === "yo" ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
-              msg.autor === "yo" ? "bg-blue-600 text-white rounded-br-sm" : "bg-white text-slate-800 border border-slate-100 rounded-bl-sm"
+              msg.autor === "yo" ? "bg-slate-900 text-white rounded-br-none" : "bg-white text-slate-800 border border-slate-200 rounded-bl-none"
             }`}>
-              <p className="leading-snug break-words whitespace-pre-wrap">{msg.texto}</p>
-              <div className={`text-[9px] mt-1 flex justify-end gap-1 opacity-70`}>
-                {msg.hora}
-              </div>
+              {msg.imagenUrl && (
+                 <img src={msg.imagenUrl} alt="adjunto" className="rounded-lg mb-1 max-h-40 object-cover cursor-pointer" onClick={() => window.open(msg.imagenUrl, '_blank')} />
+              )}
+              {msg.texto && <p className="leading-snug break-words whitespace-pre-wrap">{msg.texto}</p>}
+              <div className={`text-[9px] mt-1 flex justify-end opacity-70`}>{msg.hora}</div>
             </div>
           </div>
         ))}
       </div>
-      <form onSubmit={handleSend} className="p-3 bg-white border-t border-slate-100 flex items-center gap-2">
-        <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Escribe un mensaje..." className="flex-1 h-9 rounded-full text-sm bg-slate-50 border-slate-200 focus:ring-1 focus:ring-blue-500" />
-        <Button type="submit" size="icon" className="h-9 w-9 bg-blue-600 hover:bg-blue-700 rounded-full shadow-sm">
+
+      {/* Emoji Picker Flotante */}
+      {showEmoji && (
+        <div className="absolute bottom-16 left-2 z-50 shadow-xl rounded-xl overflow-hidden border border-slate-200">
+          <EmojiPicker onEmojiClick={onEmojiClick} width={300} height={350} theme={Theme.LIGHT} searchDisabled previewConfig={{showPreview: false}} />
+        </div>
+      )}
+
+      {/* Input Area */}
+      <form onSubmit={handleSubmit} className="p-2 bg-white border-t border-slate-200 flex items-end gap-2">
+        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors">
+          <LuImage size={20} />
+        </button>
+        <button type="button" onClick={() => setShowEmoji(!showEmoji)} className={`p-2 rounded-lg transition-colors ${showEmoji ? 'text-yellow-500 bg-yellow-50' : 'text-slate-400 hover:bg-slate-100'}`}>
+          <LuSmile size={20} />
+        </button>
+        <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={handleFile} />
+        
+        <textarea 
+           value={text} 
+           onChange={(e) => setText(e.target.value)} 
+           onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
+           placeholder="Escribe..." 
+           className="flex-1 bg-slate-50 border-none rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-slate-900/10 resize-none max-h-24"
+           rows={1}
+        />
+        
+        <Button type="submit" size="icon" disabled={!text.trim()} className="bg-slate-900 hover:bg-slate-800 rounded-xl h-10 w-10 shrink-0">
           <LuSend size={16} />
         </Button>
       </form>
