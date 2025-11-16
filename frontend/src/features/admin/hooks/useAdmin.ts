@@ -2,18 +2,41 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
 import type { AdminUser } from '../types/adminUser';
 import type { AdminProduct, AdminProductQuery } from '../types/adminProduct';
 import type { Post } from '@/types/Post';
 
-const BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+// 1. DEFINICIÓN ROBUSTA DE LA URL BASE
+// Si VITE_API_URL no está definida, usará una cadena vacía (lo que causaría error en prod), 
+// pero asumo que ya la tienes configurada en tu .env
+const API_URL = import.meta.env.VITE_API_URL;
+
+// Helper para fetch con Auth
+const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
+  const token = localStorage.getItem('accessToken'); // O como guardes tu token
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...options.headers,
+  };
+
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || `Error ${res.status}: ${res.statusText}`);
+  }
+
+  return res.json();
+};
 
 // ============================================================================
 // 1. GESTIÓN DE USUARIOS (ADMIN USERS)
 // ============================================================================
 
-// Definición de Query Keys
 export const adminUserKeys = {
   all: ['admin', 'users'] as const,
   lists: () => [...adminUserKeys.all, 'list'] as const,
@@ -28,13 +51,11 @@ interface AdminUsersResponse {
 const fetchUsers = async (query: string): Promise<AdminUsersResponse> => {
   const params = new URLSearchParams();
   if (query) params.append('q', query);
-  
   const queryString = params.toString();
-  const url = `/admin/users${queryString ? `?${queryString}` : ''}`;
   
-  const response = await api.get<AdminUsersResponse>(url);
+  // ✅ Ruta completa: API_URL + /api/admin/users...
+  const response = await fetchWithAuth(`/api/admin/users${queryString ? `?${queryString}` : ''}`);
   
-  // Coerción de datos
   const coercedUsers = response.users.map((user: any) => ({
     ...user,
     banned: Boolean(user.banned),
@@ -48,44 +69,33 @@ export function useAdminUsers(query: string) {
   return useQuery<AdminUsersResponse, Error>({
     queryKey: adminUserKeys.list(query),
     queryFn: () => fetchUsers(query),
-    staleTime: 1000 * 60 * 5, // 5 minutos
+    staleTime: 1000 * 60 * 5, 
   });
 }
 
 // --- Mutaciones de Usuarios ---
 
-// DELETE USER
-const deleteUserRequest = async (userId: string) => {
-  console.log('🔄 Eliminando usuario ID:', userId);
-  const response = await api.delete(`/admin/users/${userId}`);
-  return response || { success: true };
-};
-
 export function useDeleteUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: deleteUserRequest,
+    mutationFn: async (userId: string) => {
+      return fetchWithAuth(`/api/admin/users/${userId}`, { method: 'DELETE' });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
     },
   });
 }
 
-// BAN USER (Optimistic Update Completo)
-interface BanRequest {
-  userId: string;
-  banned: boolean;
-}
-
-const toggleBanRequest = async ({ userId, banned }: BanRequest) => {
-  console.log(`🔄 Ban request: ${userId} -> ${banned}`);
-  return await api.patch(`/admin/users/${userId}/ban`, { banned });
-};
-
 export function useBanUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: toggleBanRequest,
+    mutationFn: async ({ userId, banned }: { userId: string, banned: boolean }) => {
+      return fetchWithAuth(`/api/admin/users/${userId}/ban`, {
+        method: 'PATCH',
+        body: JSON.stringify({ banned }),
+      });
+    },
     onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey: adminUserKeys.all });
       const previousQueries = queryClient.getQueriesData(adminUserKeys.all);
@@ -99,7 +109,6 @@ export function useBanUser() {
           )
         };
       });
-      
       return { previousQueries };
     },
     onError: (_err, _vars, context: any) => {
@@ -115,23 +124,15 @@ export function useBanUser() {
   });
 }
 
-// UPDATE ROLE
 export function useUpdateUserRole() {
   const queryClient = useQueryClient();
-  
-  const updateRole = async ({ id, newRole }: { id: string, newRole: string }) => {
-    const res = await fetch(`${BASE}/admin/users/${encodeURIComponent(id)}/role`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ role: newRole }),
-    });
-    if (!res.ok) throw new Error(`Failed to update role (${res.status})`);
-    return res.json();
-  };
-
   return useMutation({
-    mutationFn: updateRole,
+    mutationFn: async ({ id, newRole }: { id: string, newRole: string }) => {
+      return fetchWithAuth(`/api/admin/users/${encodeURIComponent(id)}/role`, {
+        method: 'PATCH',
+        body: JSON.stringify({ role: newRole }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
     }
@@ -143,19 +144,16 @@ export function useUpdateUserRole() {
 // 2. GESTIÓN DE PRODUCTOS (ADMIN PRODUCTS)
 // ============================================================================
 
-function mapPostToAdminProduct(p: Post): AdminProduct {
-  const priceNum = typeof p.price === 'string' ? parseFloat(p.price.replace(/[^0-9.]/g, '')) : (p as any).price;
-  const status = (p as any).status as AdminProduct['status'] | undefined;
-  const createdAt = p.createdAt instanceof Date ? p.createdAt.toISOString() : (p.createdAt as any);
-  
+function mapPostToAdminProduct(p: any): AdminProduct {
+  const priceNum = typeof p.price === 'string' ? parseFloat(p.price.replace(/[^0-9.]/g, '')) : p.price;
   return {
     id: String(p.id),
-    title: p.title,
-    author: p.author,
+    title: p.title || p.nombre, // Ajuste para compatibilidad con tu API
+    author: p.author || p.vendedor?.nombre || 'Desconocido',
     price: typeof priceNum === 'number' && !Number.isNaN(priceNum) ? priceNum : undefined,
-    categoryName: p.categoryName,
-    createdAt,
-    status: status ?? 'published',
+    categoryName: p.categoryName || p.categoria?.nombre,
+    createdAt: p.createdAt || p.fechaAgregado,
+    status: p.status || (p.visible ? 'published' : 'hidden'),
   };
 }
 
@@ -166,44 +164,29 @@ export function useAdminProducts(initialQuery: string = '') {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const buildUrl = (q: string, s?: string) => {
-    const params: string[] = [];
-    if (q) params.push(`q=${encodeURIComponent(q)}`);
-    if (s) params.push(`status=${encodeURIComponent(s)}`);
-    return `${BASE}/admin/products${params.length ? `?${params.join('&')}` : ''}`;
-  };
-
   const fetchProducts = useCallback(async (opts?: Partial<AdminProductQuery>) => {
     setLoading(true);
     setError(null);
     try {
       const q = opts?.q ?? query;
       const s = opts?.status ?? status;
+      
+      const params = new URLSearchParams();
+      if (q) params.append('q', q);
+      if (s) params.append('status', s);
+      
+      // ✅ Ruta completa: API_URL + /api/admin/products...
+      const data = await fetchWithAuth(`/api/admin/products?${params.toString()}`);
+      
+      // Manejo robusto de la respuesta (array directo o envuelto)
+      const rawList = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+      
+      // Mapear a la estructura AdminProduct
+      const list = rawList.map(mapPostToAdminProduct);
+      setProducts(list);
 
-      if (BASE) {
-        const res = await fetch(buildUrl(q, s), { credentials: 'include' });
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
-        setProducts(list);
-      } else {
-        // Fallback Mock
-        const res = await fetch(`/api/posts?limit=1000`);
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-        const data = await res.json();
-        const posts: Post[] = Array.isArray(data?.posts) ? data.posts : [];
-        let list = posts.map(mapPostToAdminProduct);
-        
-        if (q) {
-          const ql = q.toLowerCase();
-          list = list.filter(p => p.title.toLowerCase().includes(ql) || p.author.toLowerCase().includes(ql));
-        }
-        if (s) {
-          list = list.filter(p => (p.status ?? 'published') === s);
-        }
-        setProducts(list);
-      }
     } catch (err: any) {
+      console.error("Error fetching products:", err);
       setError(err?.message ?? 'Error fetching products');
     } finally {
       setLoading(false);
@@ -225,39 +208,18 @@ export function useAdminProducts(initialQuery: string = '') {
 
 export function useHideProduct() {
   const hideProduct = async (id: string) => {
-    const url = BASE 
-      ? `${BASE}/admin/products/${encodeURIComponent(id)}/hide` 
-      : `/api/posts/${encodeURIComponent(id)}`;
-      
-    const method = BASE ? 'PATCH' : 'PUT';
-    const body = BASE ? undefined : JSON.stringify({ status: 'hidden' });
-
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      credentials: BASE ? 'include' : undefined,
-      body
+    return fetchWithAuth(`/api/admin/products/${encodeURIComponent(id)}/hide`, {
+      method: 'PATCH'
     });
-    
-    if (!res.ok) throw new Error(`Hide failed (${res.status})`);
-    return res.json();
   };
   return { hideProduct };
 }
 
 export function useDeleteProduct() {
   const deleteProduct = async (id: string) => {
-    const url = BASE 
-      ? `${BASE}/admin/products/${encodeURIComponent(id)}`
-      : `/api/posts/${encodeURIComponent(id)}`;
-
-    const res = await fetch(url, {
-      method: 'DELETE',
-      credentials: BASE ? 'include' : undefined,
+    return fetchWithAuth(`/api/admin/products/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
     });
-
-    if (!res.ok) throw new Error(`Delete failed (${res.status})`);
-    return res.json();
   };
   return { deleteProduct };
 }
