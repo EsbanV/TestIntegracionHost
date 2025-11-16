@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Heart, ShoppingBag, ArrowRight, Loader2, Search, X, 
+  Heart, ShoppingBag, ArrowRight, Loader2, X, 
   ChevronLeft, ChevronRight, Star, MessageCircle, Send, Check
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 import { useAuth } from '@/app/context/AuthContext';
-import { formatCLP, formatInt } from '@/features/Marketplace/Marketplace.Utils/format';
+import { formatCLP } from '@/features/Marketplace/Marketplace.Utils/format';
 import type { Post } from '@/features/Marketplace/Marketplace.Types/ProductInterfaces';
 
 // --- Configuración ---
@@ -27,7 +27,7 @@ const formatDate = (d?: string | number | Date | null) => {
 
 const getInitials = (name?: string) => name ? name.substring(0, 2).toUpperCase() : "U";
 
-// --- COMPONENTES UI (Replicados del Marketplace para consistencia) ---
+// --- COMPONENTES UI ---
 
 const Badge = ({ children, className, variant = 'default' }: any) => {
   const variants: any = {
@@ -53,7 +53,7 @@ const Button = ({ className, variant = 'default', ...props }: any) => {
   return <button className={cn("inline-flex items-center justify-center rounded-md text-sm font-medium h-9 px-4 py-2 transition-colors disabled:opacity-50", variants[variant], className)} {...props} />;
 };
 
-// Botón de Favorito (Corazón)
+// Botón de Favorito (Corazón Rojo)
 const FavoriteButton = ({ isFavorite, onClick }: { isFavorite: boolean, onClick: () => void }) => (
   <button
     onClick={(e) => { e.stopPropagation(); onClick(); }}
@@ -63,141 +63,38 @@ const FavoriteButton = ({ isFavorite, onClick }: { isFavorite: boolean, onClick:
     )}
   >
     <Heart 
-  className={cn("h-5 w-5 transition-all text-red-500", isFavorite && "fill-red-500 scale-110")} 
-  strokeWidth={2}
-/>
+      className={cn("h-5 w-5 transition-all text-red-500", isFavorite && "fill-red-500 scale-110")} 
+      strokeWidth={2}
+    />
   </button>
 );
 
 // --- CARRUSEL ---
-// ---------------------------------------------------------------------------
-// 3. CARRUSEL DE IMÁGENES (Refactorizado para Múltiples Imágenes)
-// ---------------------------------------------------------------------------
-function ImageCarousel({ 
-  images, 
-  altPrefix, 
-  isFavorite, 
-  onToggleFavorite 
-}: { 
-  images: { id: number; url: string }[] | undefined | null, 
-  altPrefix?: string, 
-  isFavorite?: boolean, 
-  onToggleFavorite?: () => void 
-}) {
+function ImageCarousel({ images, altPrefix }: { images: string[], altPrefix?: string }) {
   const [index, setIndex] = useState(0);
+  const validImages = images?.length ? images : ["/img/placeholder-product.png"];
   
-  // Asegurar que siempre haya al menos un array (aunque sea con placeholder)
-  const validImages = useMemo(() => {
-    if (images && images.length > 0) {
-      return images;
-    }
-    return [{ id: 0, url: "/img/placeholder-product.png" }];
-  }, [images]);
-
-  const thumbRef = useRef<HTMLDivElement>(null);
-
-  // Resetear índice cuando cambian las imágenes (ej: al abrir otro producto)
-  useEffect(() => {
-    setIndex(0);
-  }, [images]);
-
-  // Auto-scroll de miniaturas
-  useEffect(() => {
-    if (thumbRef.current) {
-      const el = thumbRef.current.children[index] as HTMLElement;
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-      }
-    }
-  }, [index]);
-
-  const nextImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIndex((prev) => (prev + 1) % validImages.length);
-  };
-
-  const prevImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIndex((prev) => (prev - 1 + validImages.length) % validImages.length);
-  };
-
   return (
-    <div className="flex flex-col gap-3 relative group">
-      
-      {/* --- VISOR PRINCIPAL --- */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-gray-100 border border-slate-200 shadow-sm">
-        
-        <AnimatePresence mode='wait'>
-          <motion.img 
-            key={validImages[index].id} // Key única para animar el cambio
-            src={validImages[index].url}
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }} 
-            transition={{ duration: 0.2 }}
-            alt={`${altPrefix || 'Producto'} - Imagen ${index + 1}`}
-            className="h-full w-full object-contain bg-white" // object-contain evita recortes
-          />
-        </AnimatePresence>
-        
-        {/* Botón de Favorito (Flotante) */}
-        {onToggleFavorite && (
-          <div className="absolute top-3 right-3 z-20">
-            <FavoriteButton isFavorite={!!isFavorite} onClick={onToggleFavorite} />
-          </div>
-        )}
-        
-        {/* Flechas de Navegación (Solo si hay > 1 imagen) */}
+    <div className="flex flex-col gap-4">
+      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gray-100 border border-slate-100 group">
+        <motion.img 
+          key={index}
+          src={validImages[index]}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="h-full w-full object-contain bg-white"
+        />
         {validImages.length > 1 && (
           <>
-            <button 
-              onClick={prevImage} 
-              className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-slate-800 shadow-md backdrop-blur-sm transition-all hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            
-            <button 
-              onClick={nextImage} 
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-slate-800 shadow-md backdrop-blur-sm transition-all hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100"
-            >
-              <ChevronRight size={20} />
-            </button>
-
-            {/* Indicador de página (puntos) */}
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 px-3 py-1.5 bg-black/20 backdrop-blur-sm rounded-full">
-              {validImages.map((_, i) => (
-                <div 
-                  key={i}
-                  className={cn(
-                    "h-1.5 rounded-full transition-all shadow-sm",
-                    i === index ? "w-4 bg-white" : "w-1.5 bg-white/60"
-                  )}
-                />
-              ))}
-            </div>
+            <button onClick={(e) => { e.stopPropagation(); setIndex((i) => (i - 1 + validImages.length) % validImages.length) }} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 opacity-0 group-hover:opacity-100 transition-all"><ChevronLeft size={20} /></button>
+            <button onClick={(e) => { e.stopPropagation(); setIndex((i) => (i + 1) % validImages.length) }} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 opacity-0 group-hover:opacity-100 transition-all"><ChevronRight size={20} /></button>
           </>
         )}
       </div>
-
-      {/* --- TIRA DE MINIATURAS (THUMBNAILS) --- */}
       {validImages.length > 1 && (
-        <div 
-          ref={thumbRef} 
-          className="flex w-full gap-2 overflow-x-auto pb-2 scrollbar-hide scroll-smooth"
-        >
+        <div className="flex gap-2 overflow-x-auto pb-2">
           {validImages.map((img, i) => (
-            <button
-              key={img.id}
-              onClick={(e) => { e.stopPropagation(); setIndex(i); }}
-              className={cn(
-                "relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all",
-                i === index 
-                  ? "border-slate-900 ring-2 ring-slate-900/10 opacity-100 scale-105" 
-                  : "border-transparent opacity-60 hover:opacity-100"
-              )}
-            >
-              <img src={img.url} alt="" className="h-full w-full object-cover" />
+            <button key={i} onClick={() => setIndex(i)} className={cn("h-14 w-14 rounded-lg overflow-hidden border-2 transition-all", i === index ? "border-slate-900" : "border-transparent opacity-50")}>
+              <img src={img} className="h-full w-full object-cover" />
             </button>
           ))}
         </div>
@@ -209,7 +106,6 @@ function ImageCarousel({
 // --- MODAL DETALLE ---
 function ProductDetailModal({ open, onClose, post, onRemoveFavorite }: { open: boolean, onClose: () => void, post: Post | null, onRemoveFavorite: (id: number) => void }) {
   const navigate = useNavigate();
-  const { token } = useAuth();
   if (!post) return null;
 
   const handleContact = () => {
@@ -229,14 +125,8 @@ function ProductDetailModal({ open, onClose, post, onRemoveFavorite }: { open: b
                  <Button variant="ghost" onClick={onClose}><X size={20} /></Button>
               </div>
               
-              {/* Carrusel con botón de favorito superpuesto */}
               <div className="relative">
-                 <ImageCarousel 
-                  images={post.imagenes} // Pasamos el array de objetos directo
-                  altPrefix={post.nombre}
-                  isFavorite={isFavorite} // Asegúrate de pasar estas props si están disponibles en el modal scope
-                  onToggleFavorite={() => onToggleFavorite(post.id)}
-                />
+                 <ImageCarousel images={post.imagenes?.map(i => i.url || "") || []} />
                  <div className="absolute top-3 right-3 z-20">
                     <FavoriteButton isFavorite={true} onClick={() => { onRemoveFavorite(post.id); onClose(); }} />
                  </div>
@@ -284,19 +174,16 @@ function ProductDetailModal({ open, onClose, post, onRemoveFavorite }: { open: b
   );
 }
 
-// --- TARJETA DE GRID (Idéntica a Marketplace) ---
+// --- TARJETA DE GRID ---
 const ItemCard = ({ post, onClick, onRemove }: { post: Post, onClick: (p: Post) => void, onRemove: (id: number) => void }) => {
-  // En FavoriteCard
-  const image = product.imagenes?.[0]?.url || product.imagenes?.[0]?.urlImagen || "/img/placeholder-product.png";
+  // ✅ CORRECCIÓN AQUÍ: Usamos 'post' en lugar de 'product'
+  const image = post.imagenes?.[0]?.url || post.imagenes?.[0]?.urlImagen || "/img/placeholder-product.png";
 
   return (
     <div onClick={() => onClick(post)} className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm border border-slate-200 transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer">
       <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
-        {image ? (
-          <img src={image} alt={post.nombre} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
-        ) : (
-          <div className="flex h-full items-center justify-center text-slate-300"><ShoppingBag size={48} strokeWidth={1} /></div>
-        )}
+        <img src={image} alt={post.nombre} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+        
         <div className="absolute top-3 left-3"><Badge variant="category">{post.categoria || "Varios"}</Badge></div>
         <div className="absolute top-3 right-3 z-10">
            <FavoriteButton isFavorite={true} onClick={() => onRemove(post.id)} />
@@ -335,10 +222,8 @@ export default function FavoritesPage() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Cargar Favoritos y transformarlos a Post[]
   useEffect(() => {
     if (!token) return;
-
     const fetchFavorites = async () => {
       try {
         const res = await fetch(`${API_URL}/api/favorites?limit=100`, {
@@ -347,7 +232,6 @@ export default function FavoritesPage() {
         const data = await res.json();
         
         if (data.ok) {
-          // Transformar la estructura { id, producto: {...} } a Post[]
           const mappedPosts: Post[] = data.favorites.map((fav: any) => {
              const p = fav.producto;
              return {
@@ -358,7 +242,7 @@ export default function FavoritesPage() {
                cantidad: p.cantidad,
                categoria: p.categoria?.nombre,
                estado: p.estado?.nombre,
-               fechaAgregado: p.fechaAgregado, // O fav.fecha si quieres la fecha que le dio like
+               fechaAgregado: p.fechaAgregado,
                vendedor: p.vendedor,
                imagenes: p.imagenes?.map((img: any) => ({ 
                  id: img.id, 
@@ -368,83 +252,51 @@ export default function FavoritesPage() {
           });
           setPosts(mappedPosts);
         }
-      } catch (error) {
-        console.error("Error cargando favoritos:", error);
-      } finally {
-        setIsLoading(false);
-      }
+      } catch (error) { console.error(error); } 
+      finally { setIsLoading(false); }
     };
-
     fetchFavorites();
   }, [token]);
 
-  // Eliminar Favorito
   const handleRemove = async (productId: number) => {
-    // Optimistic update
     setPosts(prev => prev.filter(p => p.id !== productId));
-    
     try {
       await fetch(`${API_URL}/api/favorites/${productId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-    } catch (error) {
-      console.error("Error eliminando favorito", error);
-    }
+    } catch (error) { console.error(error); }
   };
 
-  // Filtro local
   const filteredPosts = posts.filter(p => p.nombre.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div className="w-full h-full p-4 md:p-8 overflow-y-auto scroll-smooth bg-[#F8FAFC]">
       <div className="max-w-7xl mx-auto space-y-8 pb-20">
-        
-        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-               <Heart className="text-red-500 fill-red-500" /> Mis Favoritos
-             </h1>
+             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2"><Heart className="text-red-500 fill-red-500" /> Mis Favoritos</h1>
              <p className="text-slate-500 text-sm">Productos que te han gustado ({posts.length})</p>
           </div>
           <div className="relative w-full md:w-72">
              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-             <input 
-               type="text" 
-               placeholder="Buscar en favoritos..." 
-               className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-all"
-               value={searchTerm}
-               onChange={(e) => setSearchTerm(e.target.value)}
-             />
+             <input type="text" placeholder="Buscar en favoritos..." className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
         </div>
 
-        {/* Grid */}
-        {isLoading ? (
-          <div className="flex justify-center py-20"><Loader2 className="animate-spin text-slate-400 h-8 w-8" /></div>
-        ) : filteredPosts.length === 0 ? (
+        {isLoading ? <div className="flex justify-center py-20"><Loader2 className="animate-spin text-slate-400 h-8 w-8" /></div> : 
+         filteredPosts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 bg-white rounded-3xl border border-slate-100 shadow-sm text-center">
-            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
-              <Heart size={32} className="text-slate-300" />
-            </div>
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6"><Heart size={32} className="text-slate-300" /></div>
             <h2 className="text-xl font-bold text-slate-900 mb-2">Aún no tienes favoritos</h2>
             <p className="text-slate-500 max-w-xs mx-auto mb-8">Guarda productos para verlos aquí.</p>
-            <button onClick={() => navigate('/home')} className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-all active:scale-95 shadow-lg">
-              Explorar Marketplace <ArrowRight size={18} />
-            </button>
+            <button onClick={() => navigate('/home')} className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-all active:scale-95 shadow-lg">Explorar Marketplace <ArrowRight size={18} /></button>
           </div>
         ) : (
           <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             <AnimatePresence mode='popLayout'>
               {filteredPosts.map((post) => (
-                <motion.div 
-                  key={post.id} 
-                  layout 
-                  initial={{ opacity: 0, scale: 0.8 }} 
-                  animate={{ opacity: 1, scale: 1 }} 
-                  exit={{ opacity: 0, scale: 0.8 }}
-                >
+                <motion.div key={post.id} layout initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
                   <ItemCard post={post} onClick={setSelectedPost} onRemove={handleRemove} />
                 </motion.div>
               ))}
@@ -452,13 +304,7 @@ export default function FavoritesPage() {
           </motion.div>
         )}
       </div>
-
-      <ProductDetailModal 
-        open={!!selectedPost} 
-        onClose={() => setSelectedPost(null)} 
-        post={selectedPost} 
-        onRemoveFavorite={handleRemove}
-      />
+      <ProductDetailModal open={!!selectedPost} onClose={() => setSelectedPost(null)} post={selectedPost} onRemoveFavorite={handleRemove} />
     </div>
   );
 }
