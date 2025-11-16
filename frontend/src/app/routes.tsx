@@ -19,6 +19,9 @@ import TermsPage from '@/features/About.Terms.Help/Terms.UI/TermsPage'
 import AboutPage from '@/features/About.Terms.Help/About.UI/AboutPage'
 import PublicProfilePage from '@/features/Perfil/Perfil.UI/PublicProfilePage'
 import OnboardingPage from '@/features/Onboarding/Onboarding.UI/OnboardingPage'
+import EditarPublicacionPage from '@/features/EditarPublicacion/EditarPublicacion.UI/EditarPublicacionPage'
+import MyPublicationsPage from '@/features/MyPublications/MyPublications.UI/MisPublicacionesPage'
+import ForumPage from '@/features/Forum/ForumPage'
 
 export function AppRoutes() {
   return (
@@ -70,6 +73,9 @@ export function AppRoutes() {
               <Route path="/mis-publicaciones" element={<MyProductsPage />} />
               <Route path="/perfil" element={<PerfilPage />} />
               <Route path="/perfil/public/:id" element={<PublicProfilePage />} />
+              <Route path="/editar" element={<EditarPublicacionPage />} />
+              <Route path="/mis-foros" element={<MyPublicationsPage />} />
+              <Route path="/forums" element={<ForumPage />} />
               
               {/* Rutas pendientes o placeholders */}
               {/* <Route path="/editar" element={<EditarPublicacionPage />} /> */}
