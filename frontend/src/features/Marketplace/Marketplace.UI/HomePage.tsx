@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, X, ChevronLeft, ChevronRight, 
-  ShoppingBag, Star, Filter, Heart, Loader2
+  ShoppingBag, Star, Filter, Heart, Loader2,
+  Send, Check
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -191,6 +192,7 @@ const FavoriteButton = ({ isFavorite, onClick, className }: { isFavorite: boolea
 // ---------------------------------------------------------------------------
 // 3. CARRUSEL DE IMÁGENES (Con Favoritos)
 // ---------------------------------------------------------------------------
+// --- CARRUSEL DE IMÁGENES (CORREGIDO) ---
 function ImageCarousel({ images, altPrefix, isFavorite, onToggleFavorite }: { images: string[], altPrefix?: string, isFavorite?: boolean, onToggleFavorite?: () => void }) {
   const [index, setIndex] = useState(0);
   const validImages = images?.length ? images : ["/img/placeholder-product.png"];
@@ -204,7 +206,7 @@ function ImageCarousel({ images, altPrefix, isFavorite, onToggleFavorite }: { im
   }, [index]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 relative"> {/* relative añadido */}
       <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gray-100 group border border-slate-100">
         <AnimatePresence mode='wait'>
           <motion.img 
@@ -216,14 +218,14 @@ function ImageCarousel({ images, altPrefix, isFavorite, onToggleFavorite }: { im
           />
         </AnimatePresence>
         
-        {/* BOTÓN DE FAVORITOS EN CARRUSEL */}
+        {/* BOTÓN FAVORITO FLOTANTE DENTRO DEL CARRUSEL */}
         {onToggleFavorite && (
-          <div className="absolute top-3 right-3 z-10">
+          <div className="absolute top-3 right-3 z-20">
             <FavoriteButton isFavorite={!!isFavorite} onClick={onToggleFavorite} />
           </div>
         )}
         
-        {/* Flechas de Navegación */}
+        {/* Flechas */}
         {validImages.length > 1 && (
           <>
             <button onClick={(e) => { e.stopPropagation(); setIndex((i) => (i - 1 + validImages.length) % validImages.length) }} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-slate-800 backdrop-blur-md transition-all hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100 shadow-sm">

@@ -22,6 +22,7 @@ import EditarPublicacionPage from '@/features/EditarPublicacion/EditarPublicacio
 import MyProductsPage from '@/features/MyPublications/MyPublications.UI/MisPublicacionesPage'
 import ForumPage from '@/features/Forum/ForumPage'
 import MyPublicationsPage from '@/features/Forum/MyPublications'
+import FavoritesPage from '@/features/Favoritos/FavoritesPage'
 
 
 export function AppRoutes() {
@@ -77,6 +78,7 @@ export function AppRoutes() {
               <Route path="/editar" element={<EditarPublicacionPage />} />
               <Route path="/mis-foros" element={<MyPublicationsPage />} />
               <Route path="/forums" element={<ForumPage />} />
+              <Route path="/favoritos" element={<FavoritesPage />} />
               
               {/* Rutas pendientes o placeholders */}
               {/* <Route path="/editar" element={<EditarPublicacionPage />} /> */}

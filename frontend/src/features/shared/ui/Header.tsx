@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react"
 import { NavLink, useNavigate, useLocation } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "@/app/context/AuthContext"
-import { getImageUrl } from "@/app/imageHelper" // Asegúrate de tener este helper
+import { getImageUrl } from "@/app/imageHelper" 
 
 // UI Components
 import { Button } from "@/components/ui/button"
@@ -21,7 +21,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from 
 // Icons
 import { 
   Menu, Search, Home, PlusSquare, FileText, 
-  HelpCircle, LogOut, User, Loader2, Users 
+  HelpCircle, LogOut, User, Loader2, Users, Heart 
 } from "lucide-react"
 
 // Assets
@@ -29,7 +29,6 @@ import LogoMUCT from "@/assets/img/logoMUCT.png"
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-// Tipo para los resultados de usuarios
 interface SearchUserResult {
   id: number;
   nombre: string;
@@ -51,14 +50,12 @@ export const Header: React.FC = () => {
   const { user, logout, token } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
 
-  // --- 1. EFECTO DE BÚSQUEDA EN VIVO (SOLO USUARIOS) ---
+  // --- 1. EFECTO DE BÚSQUEDA EN VIVO ---
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
-      // Buscar solo si hay más de 1 caracter y el input tiene foco
       if (searchValue.trim().length > 1 && isSearchFocused) {
         setIsSearching(true);
         try {
-          // Solicitamos solo 5 usuarios para el autocompletado rápido
           const res = await fetch(`${API_URL}/api/users/search?query=${encodeURIComponent(searchValue)}&limit=5`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -75,12 +72,11 @@ export const Header: React.FC = () => {
       } else {
         setSearchResults([]);
       }
-    }, 300); // Debounce de 300ms
+    }, 300);
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchValue, isSearchFocused, token]);
 
-  // Cerrar al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
@@ -91,8 +87,6 @@ export const Header: React.FC = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // --- MANEJADORES ---
-
   const handleUserSelect = (userId: number) => {
     navigate(`/perfil/public/${userId}`) 
     setIsSearchFocused(false)
@@ -100,7 +94,6 @@ export const Header: React.FC = () => {
   }
 
   const handleViewAllResults = () => {
-    // Navega a una página dedicada donde se listen todos los resultados
     navigate(`/busqueda-usuarios?q=${encodeURIComponent(searchValue)}`)
     setIsSearchFocused(false)
   }
@@ -122,6 +115,7 @@ export const Header: React.FC = () => {
       case '/home': return 'Marketplace';
       case '/crear': return 'Crear Publicación';
       case '/mis-publicaciones': return 'Mis Publicaciones';
+      case '/favoritos': return 'Mis Favoritos'; // Título para favoritos
       case '/perfil': return 'Mi Perfil';
       case '/chats': return 'Mensajes';
       case '/ayuda': return 'Centro de Ayuda';
@@ -133,9 +127,8 @@ export const Header: React.FC = () => {
     <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white shadow-sm">
       <div className="flex h-16 w-full items-center justify-between px-4 md:px-6 lg:px-8">
         
-        {/* --- IZQUIERDA: LOGO Y MENÚ MÓVIL --- */}
+        {/* --- IZQUIERDA --- */}
         <div className="flex items-center gap-4">
-          {/* Menú Hamburguesa (Móvil) */}
           <div className="lg:hidden">
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
@@ -157,9 +150,10 @@ export const Header: React.FC = () => {
                   <MobileNavLink to="/home" icon={<Home className="h-5 w-5" />} label="Inicio" onClick={() => setIsOpen(false)} />
                   <MobileNavLink to="/crear" icon={<PlusSquare className="h-5 w-5" />} label="Crear" onClick={() => setIsOpen(false)} />
                   <MobileNavLink to="/mis-publicaciones" icon={<FileText className="h-5 w-5" />} label="Mis Posts" onClick={() => setIsOpen(false)} />
+                  {/* Link móvil a favoritos */}
+                  <MobileNavLink to="/favoritos" icon={<Heart className="h-5 w-5" />} label="Favoritos" onClick={() => setIsOpen(false)} />
                   <MobileNavLink to="/ayuda" icon={<HelpCircle className="h-5 w-5" />} label="Ayuda" onClick={() => setIsOpen(false)} />
                 </div>
-                {/* Footer Menú Móvil */}
                 <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-slate-100 bg-slate-50/50">
                   <div className="flex items-center gap-3 mb-4 cursor-pointer" onClick={() => { setIsOpen(false); navigate("/perfil") }}>
                     <Avatar className="h-10 w-10 border border-white shadow-sm">
@@ -179,13 +173,11 @@ export const Header: React.FC = () => {
             </Sheet>
           </div>
 
-          {/* Logo Desktop */}
           <div className="lg:hidden flex items-center gap-2 cursor-pointer" onClick={() => navigate("/home")}>
             <img src={LogoMUCT} alt="Logo" className="h-8 w-auto" />
             <span className="font-bold text-lg text-slate-900">MarketUCT</span>
           </div>
 
-          {/* Título de Página (Desktop) */}
           <div className="hidden lg:block">
             <h2 className="text-xl font-semibold text-slate-800 tracking-tight">
               {getPageTitle()}
@@ -193,18 +185,16 @@ export const Header: React.FC = () => {
           </div>
         </div>
 
-        {/* --- DERECHA: BUSCADOR DE USUARIOS Y PERFIL --- */}
+        {/* --- DERECHA --- */}
         <div className="flex items-center gap-3 md:gap-6">
           
-          {/* 🔍 BUSCADOR DE USUARIOS (AUTOCOMPLETE) */}
+          {/* Buscador */}
           <div 
             ref={searchRef}
             className={`relative hidden md:block transition-all duration-300 ${isSearchFocused ? 'w-80 lg:w-96' : 'w-64'}`}
           >
             <div className="relative">
-              <Search 
-                className={`absolute left-3 top-2.5 h-4 w-4 transition-colors ${isSearchFocused ? 'text-blue-600' : 'text-slate-400'}`} 
-              />
+              <Search className={`absolute left-3 top-2.5 h-4 w-4 transition-colors ${isSearchFocused ? 'text-blue-600' : 'text-slate-400'}`} />
               <Input
                 type="search"
                 placeholder="Buscar usuario..."
@@ -221,7 +211,6 @@ export const Header: React.FC = () => {
               )}
             </div>
 
-            {/* 🔽 LISTA DESPLEGABLE DE RESULTADOS */}
             <AnimatePresence>
               {isSearchFocused && searchValue.trim().length > 0 && (
                 <motion.div
@@ -230,52 +219,31 @@ export const Header: React.FC = () => {
                   exit={{ opacity: 0, y: 8 }}
                   className="absolute top-12 left-0 w-full bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden z-50"
                 >
-                  {/* Lista de usuarios encontrados */}
                   {searchResults.length > 0 ? (
                     <div className="py-2">
                       <p className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Usuarios encontrados</p>
-                      
                       {searchResults.map((u) => (
-                        <div 
-                          key={u.id}
-                          onClick={() => handleUserSelect(u.id)}
-                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors group"
-                        >
+                        <div key={u.id} onClick={() => handleUserSelect(u.id)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors group">
                           <Avatar className="h-9 w-9 border border-slate-100 group-hover:border-blue-200 transition-colors">
                             <AvatarImage src={getImageUrl(u.fotoPerfilUrl)} />
-                            <AvatarFallback className="bg-blue-50 text-blue-600 font-bold text-xs">
-                              {u.usuario.charAt(0).toUpperCase()}
-                            </AvatarFallback>
+                            <AvatarFallback className="bg-blue-50 text-blue-600 font-bold text-xs">{u.usuario.charAt(0).toUpperCase()}</AvatarFallback>
                           </Avatar>
                           <div className="overflow-hidden flex-1">
-                            <p className="text-sm font-medium text-slate-900 truncate flex items-center gap-2">
-                              {u.nombre} {u.apellido}
-                            </p>
+                            <p className="text-sm font-medium text-slate-900 truncate flex items-center gap-2">{u.nombre} {u.apellido}</p>
                             <p className="text-xs text-slate-500 truncate">@{u.usuario}</p>
                           </div>
                         </div>
                       ))}
-
                       <div className="h-px bg-slate-100 my-1 mx-2" />
-                      
-                      {/* Link "Ver más" */}
-                      <div 
-                        onClick={handleViewAllResults}
-                        className="px-4 py-3 text-center cursor-pointer hover:bg-slate-50 transition-colors"
-                      >
-                        <span className="text-sm font-medium text-blue-600 hover:underline">
-                           Ver más resultados para "{searchValue}"
-                        </span>
+                      <div onClick={handleViewAllResults} className="px-4 py-3 text-center cursor-pointer hover:bg-slate-50 transition-colors">
+                        <span className="text-sm font-medium text-blue-600 hover:underline">Ver más resultados</span>
                       </div>
                     </div>
                   ) : (
-                    // Estado Vacío
                     !isSearching && (
                       <div className="p-6 text-center text-slate-500">
-                         <div className="mx-auto w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center mb-2">
-                           <Users className="h-5 w-5 opacity-50" />
-                         </div>
-                         <p className="text-sm">No encontramos usuarios con ese nombre.</p>
+                         <div className="mx-auto w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center mb-2"><Users className="h-5 w-5 opacity-50" /></div>
+                         <p className="text-sm">No encontramos usuarios.</p>
                       </div>
                     )
                   )}
@@ -284,12 +252,11 @@ export const Header: React.FC = () => {
             </AnimatePresence>
           </div>
 
-          {/* Botón búsqueda móvil */}
           <Button variant="ghost" size="icon" className="md:hidden text-slate-600" onClick={() => setIsSearchFocused(true)}>
             <Search className="h-5 w-5" />
           </Button>
 
-          {/* Menú de Usuario (Dropdown) */}
+          {/* --- MENÚ DE USUARIO --- */}
           <div className="hidden md:block">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -310,16 +277,26 @@ export const Header: React.FC = () => {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                
                 <DropdownMenuItem onClick={() => navigate("/perfil")} className="cursor-pointer">
                   <User className="mr-2 h-4 w-4" /> Perfil
                 </DropdownMenuItem>
+                
                 <DropdownMenuItem onClick={() => navigate("/mis-publicaciones")} className="cursor-pointer">
                   <FileText className="mr-2 h-4 w-4" /> Mis Publicaciones
                 </DropdownMenuItem>
+
+                {/* 👇 ENLACE NUEVO A FAVORITOS */}
+                <DropdownMenuItem onClick={() => navigate("/favoritos")} className="cursor-pointer">
+                  <Heart className="mr-2 h-4 w-4" /> Mis Favoritos
+                </DropdownMenuItem>
+
                 <DropdownMenuItem onClick={() => navigate("/ayuda")} className="cursor-pointer">
                   <HelpCircle className="mr-2 h-4 w-4" /> Ayuda
                 </DropdownMenuItem>
+                
                 <DropdownMenuSeparator />
+                
                 <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50">
                   <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
                 </DropdownMenuItem>
