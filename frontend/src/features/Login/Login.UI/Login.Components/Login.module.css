@@ -165,3 +165,57 @@
     display: flex;
     justify-content: center;
 }
+
+/* Clases para centrar elementos */
+.centered {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.googleBtnContainer {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.adminContainer {
+  margin-top: 1rem;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+}
+
+.adminBtn {
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0.5rem;
+}
+
+.adminBtn:hover {
+  color: #374151;
+}
+
+/* Agregar al final de Login.module.css */
+
+.subtitle {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 400;
+  margin-top: 4px;
+}
+
+.form {
+  width: 100%;
+  max-width: 100%;
+}
+
+.errorContainer {
+  margin: 1rem 0;
+  text-align: center;
+}
