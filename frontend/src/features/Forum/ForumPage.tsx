@@ -23,7 +23,7 @@ import {
   LuClock, 
   LuLoader,
   LuMessageCircle,
-  LuAlertCircle
+  LuCircleAlert
 } from "react-icons/lu"
 
 // Assets
@@ -190,7 +190,7 @@ const ForumContent = () => {
           <ForumSkeleton />
         ) : isError ? (
           <div className="p-6 text-center bg-red-50 rounded-xl border border-red-100 text-red-600 flex flex-col items-center gap-2">
-            <LuAlertCircle className="w-8 h-8 opacity-50" />
+            <LuCircleAlert className="w-8 h-8 opacity-50" />
             <p className="font-medium">No se pudieron cargar las discusiones.</p>
             <p className="text-xs opacity-80">{(error as Error)?.message}</p>
             <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="mt-2 border-red-200 hover:bg-red-100 text-red-700">
