@@ -38,89 +38,6 @@ const getInitials = (name?: string) => {
 };
 
 // ---------------------------------------------------------------------------
-// 1. HOOK DE FAVORITOS (Lógica de Backend)
-// ---------------------------------------------------------------------------
-function useFavorites() {
-  const { token } = useAuth();
-  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Cargar favoritos al iniciar
-  useEffect(() => {
-    if (!token) return;
-    
-    const fetchFavorites = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/favorites?limit=100`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.ok) {
-          // Creamos un Set con los IDs de productos que son favoritos
-          const ids = new Set(data.favorites.map((fav: any) => fav.productoId));
-          setFavoriteIds(ids as Set<number>);
-        }
-      } catch (error) {
-        console.error("Error cargando favoritos:", error);
-      }
-    };
-
-    fetchFavorites();
-  }, [token]);
-
-  // Función para dar like/dislike
-  const toggleFavorite = async (productId: number) => {
-    if (!token) return; // O redirigir a login
-
-    const isFav = favoriteIds.has(productId);
-    
-    // 1. Actualización Optimista (UI instantánea)
-    setFavoriteIds(prev => {
-      const newSet = new Set(prev);
-      if (isFav) newSet.delete(productId);
-      else newSet.add(productId);
-      return newSet;
-    });
-
-    try {
-      const method = isFav ? 'DELETE' : 'POST';
-      // La ruta DELETE es /api/favorites/:id, la POST es /api/favorites con body
-      const url = isFav 
-        ? `${API_URL}/api/favorites/${productId}` 
-        : `${API_URL}/api/favorites`;
-      
-      const options: RequestInit = {
-        method,
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      };
-
-      if (!isFav) {
-        options.body = JSON.stringify({ productoId: productId });
-      }
-
-      const res = await fetch(url, options);
-      
-      if (!res.ok) throw new Error("Falló la petición");
-
-    } catch (error) {
-      console.error("Error actualizando favorito:", error);
-      // Revertir cambio si falla
-      setFavoriteIds(prev => {
-        const newSet = new Set(prev);
-        if (isFav) newSet.add(productId);
-        else newSet.delete(productId);
-        return newSet;
-      });
-    }
-  };
-
-  return { favoriteIds, toggleFavorite };
-}
-
-// ---------------------------------------------------------------------------
 // 2. COMPONENTES UI
 // ---------------------------------------------------------------------------
 
@@ -136,15 +53,15 @@ const Badge = ({ children, className, variant = 'default', onClick }: { children
   return (
     <div 
       onClick={onClick}
-      className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs transition-colors focus:outline-none", variants[variant], className)}
+      className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2", variants[variant], className)}
     >
       {children}
     </div>
   );
 };
 
-const Button = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'default' | 'outline' | 'ghost' | 'secondary', size?: 'default' | 'sm' | 'icon' }>(
-  ({ className, variant = 'default', size = 'default', ...props }, ref) => {
+const Button = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'default' | 'outline' | 'ghost' | 'secondary', size?: 'default' | 'sm' | 'icon', loading?: boolean }>(
+  ({ className, variant = 'default', size = 'default', loading, children, ...props }, ref) => {
     const variants = {
       default: "bg-slate-900 text-slate-50 hover:bg-slate-900/90 shadow-sm",
       outline: "border border-slate-200 bg-white hover:bg-slate-100 hover:text-slate-900 shadow-sm",
@@ -157,7 +74,10 @@ const Button = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HT
       icon: "h-9 w-9",
     };
     return (
-      <button ref={ref} className={cn("inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50", variants[variant], sizes[size], className)} {...props} />
+      <button ref={ref} className={cn("inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50", variants[variant], sizes[size], className)} {...props}>
+        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {children}
+      </button>
     );
   }
 );
@@ -169,7 +89,6 @@ const LoadingSpinner = () => (
   </div>
 );
 
-// --- BOTÓN DE CORAZÓN (Reutilizable) ---
 const FavoriteButton = ({ isFavorite, onClick, className }: { isFavorite: boolean, onClick: () => void, className?: string }) => (
   <button
     onClick={(e) => { e.stopPropagation(); onClick(); }}
@@ -190,13 +109,21 @@ const FavoriteButton = ({ isFavorite, onClick, className }: { isFavorite: boolea
 );
 
 // ---------------------------------------------------------------------------
-// 3. CARRUSEL DE IMÁGENES (Con Favoritos)
+// 3. CARRUSEL DE IMÁGENES
 // ---------------------------------------------------------------------------
-// --- CARRUSEL DE IMÁGENES (CORREGIDO) ---
-function ImageCarousel({ images, altPrefix, isFavorite, onToggleFavorite }: { images: string[], altPrefix?: string, isFavorite?: boolean, onToggleFavorite?: () => void }) {
+function ImageCarousel({ images, altPrefix, isFavorite, onToggleFavorite }: { images: { id: number; url: string }[] | undefined | null, altPrefix?: string, isFavorite?: boolean, onToggleFavorite?: () => void }) {
   const [index, setIndex] = useState(0);
-  const validImages = images?.length ? images : ["/img/placeholder-product.png"];
+  
+  const validImages = useMemo(() => {
+    if (images && images.length > 0) return images;
+    return [{ id: 0, url: "/img/placeholder-product.png" }];
+  }, [images]);
+
   const thumbRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setIndex(0);
+  }, [images]);
 
   useEffect(() => {
     if (thumbRef.current) {
@@ -205,52 +132,41 @@ function ImageCarousel({ images, altPrefix, isFavorite, onToggleFavorite }: { im
     }
   }, [index]);
 
+  const nextImage = (e: React.MouseEvent) => { e.stopPropagation(); setIndex((prev) => (prev + 1) % validImages.length); };
+  const prevImage = (e: React.MouseEvent) => { e.stopPropagation(); setIndex((prev) => (prev - 1 + validImages.length) % validImages.length); };
+
   return (
-    <div className="flex flex-col gap-4 relative"> {/* relative añadido */}
-      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gray-100 group border border-slate-100">
+    <div className="flex flex-col gap-3 relative group">
+      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-gray-100 border border-slate-200 shadow-sm">
         <AnimatePresence mode='wait'>
           <motion.img 
-            key={index}
-            src={validImages[index]}
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}
-            alt={`${altPrefix} ${index + 1}`}
-            className="h-full w-full object-cover md:object-contain bg-white"
+            key={validImages[index].id}
+            src={validImages[index].url}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+            alt={`${altPrefix || 'Producto'} - Imagen ${index + 1}`}
+            className="h-full w-full object-contain bg-white"
           />
         </AnimatePresence>
-        
-        {/* BOTÓN FAVORITO FLOTANTE DENTRO DEL CARRUSEL */}
         {onToggleFavorite && (
           <div className="absolute top-3 right-3 z-20">
             <FavoriteButton isFavorite={!!isFavorite} onClick={onToggleFavorite} />
           </div>
         )}
-        
-        {/* Flechas */}
         {validImages.length > 1 && (
           <>
-            <button onClick={(e) => { e.stopPropagation(); setIndex((i) => (i - 1 + validImages.length) % validImages.length) }} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-slate-800 backdrop-blur-md transition-all hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100 shadow-sm">
-              <ChevronLeft size={20} />
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); setIndex((i) => (i + 1) % validImages.length) }} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-slate-800 backdrop-blur-md transition-all hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100 shadow-sm">
-              <ChevronRight size={20} />
-            </button>
+            <button onClick={prevImage} className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-slate-800 shadow-md backdrop-blur-sm transition-all hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100"><ChevronLeft size={20} /></button>
+            <button onClick={nextImage} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-slate-800 shadow-md backdrop-blur-sm transition-all hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100"><ChevronRight size={20} /></button>
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 px-3 py-1.5 bg-black/20 backdrop-blur-sm rounded-full">
+              {validImages.map((_, i) => (<div key={i} className={cn("h-1.5 rounded-full transition-all shadow-sm", i === index ? "w-4 bg-white" : "w-1.5 bg-white/60")} />))}
+            </div>
           </>
         )}
       </div>
-
-      {/* Miniaturas */}
       {validImages.length > 1 && (
-        <div ref={thumbRef} className="flex w-full gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <div ref={thumbRef} className="flex w-full gap-2 overflow-x-auto pb-2 scrollbar-hide scroll-smooth">
           {validImages.map((img, i) => (
-            <button
-              key={i}
-              onClick={() => setIndex(i)}
-              className={cn(
-                "relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all",
-                i === index ? "border-slate-900 ring-2 ring-slate-900/20 opacity-100" : "border-transparent opacity-60 hover:opacity-100"
-              )}
-            >
-              <img src={img} alt="" className="h-full w-full object-cover" />
+            <button key={img.id} onClick={(e) => { e.stopPropagation(); setIndex(i); }} className={cn("relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all", i === index ? "border-slate-900 ring-2 ring-slate-900/10 opacity-100 scale-105" : "border-transparent opacity-60 hover:opacity-100")}>
+              <img src={img.url} alt="" className="h-full w-full object-cover" />
             </button>
           ))}
         </div>
@@ -260,9 +176,9 @@ function ImageCarousel({ images, altPrefix, isFavorite, onToggleFavorite }: { im
 }
 
 // ---------------------------------------------------------------------------
-// 4. MODAL DE DETALLE (Actualizado)
+// 4. MODAL DE DETALLE (Con Transacción Automática)
 // ---------------------------------------------------------------------------
-function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFavorite }: { open: boolean, onClose: () => void, post: Post | null, isFavorite: boolean, onToggleFavorite: (id: number) => void }) {
+function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFavorite, onContact }: { open: boolean, onClose: () => void, post: Post | null, isFavorite: boolean, onToggleFavorite: (id: number) => void, onContact: (post: Post) => void }) {
   const { token, user } = useAuth();
   const navigate = useNavigate();
   
@@ -289,19 +205,49 @@ function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFavorite 
 
   const isOwnProduct = user?.id === post.vendedor?.id;
 
-  const handleSendMessage = async () => {
+  // --- FUNCIÓN PARA CREAR TRANSACCIÓN Y ENVIAR MENSAJE ---
+  const handleSendMessageAndTransact = async () => {
     if (!message.trim() || !token || !post.vendedor) return;
     setIsSending(true);
+    
     try {
-      const res = await fetch(`${API_URL}/api/chat/send`, {
+      // 1. Crear Transacción (Intención de compra)
+      const resTx = await fetch(`${API_URL}/api/transactions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          productId: post.id,
+          quantity: 1 // Por defecto 1 unidad
+        })
+      });
+
+      if (!resTx.ok) {
+        const err = await resTx.json();
+        // Si ya existe una transacción pendiente o error de stock, podríamos decidir continuar o parar.
+        // Aquí continuamos para permitir el chat, pero logueamos el error.
+        console.warn("Aviso de transacción:", err.message);
+      }
+
+      // 2. Enviar el Mensaje
+      const resChat = await fetch(`${API_URL}/api/chat/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ destinatarioId: post.vendedor.id, contenido: message, tipo: 'texto' })
       });
-      if (res.ok) setSentSuccess(true);
-      else alert("Error al enviar mensaje");
-    } catch (error) { console.error("Error enviando mensaje", error); } 
-    finally { setIsSending(false); }
+
+      if (resChat.ok) {
+        setSentSuccess(true);
+      } else {
+        alert("Error al enviar mensaje");
+      }
+    } catch (error) {
+      console.error("Error en proceso de contacto", error);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const goToChat = () => { navigate('/chats', { state: { toUser: post.vendedor } }); onClose(); };
@@ -313,7 +259,6 @@ function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFavorite 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl md:flex-row max-h-[90vh] z-10">
             
-            {/* IZQUIERDA */}
             <div className="flex-1 overflow-y-auto p-6 bg-white">
               <div className="hidden md:flex items-start justify-between mb-6">
                 <h1 className="text-2xl font-extrabold text-slate-900 leading-tight">{post.nombre}</h1>
@@ -321,7 +266,8 @@ function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFavorite 
               </div>
 
               <ImageCarousel 
-                images={post.imagenes?.map(i => i.url || "") || []} 
+                images={post.imagenes} 
+                altPrefix={post.nombre}
                 isFavorite={isFavorite}
                 onToggleFavorite={() => onToggleFavorite(post.id)}
               />
@@ -339,19 +285,15 @@ function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFavorite 
               </div>
             </div>
 
-            {/* DERECHA */}
             <div className="w-full md:w-[380px] bg-slate-50 border-l border-slate-100 p-6 flex flex-col overflow-y-auto shrink-0">
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6">
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Vendedor</div>
-                <div className="flex items-center gap-3">
-                   <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg shrink-0 overflow-hidden">
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex items-center gap-3">
+                 <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg shrink-0 overflow-hidden">
                      {post.vendedor?.fotoPerfilUrl ? <img src={post.vendedor.fotoPerfilUrl} className="w-full h-full object-cover"/> : getInitials(post.vendedor?.nombre)}
-                   </div>
-                   <div>
-                      <div className="font-semibold text-slate-900">{post.vendedor?.nombre || "Usuario"}</div>
-                      <div className="flex items-center gap-1 text-xs text-slate-500"><Star size={12} className="fill-yellow-400 text-yellow-400" /> {post.vendedor?.reputacion ? Number(post.vendedor.reputacion).toFixed(1) : "5.0"}</div>
-                   </div>
-                </div>
+                 </div>
+                 <div>
+                    <div className="font-semibold text-slate-900">{post.vendedor?.nombre || "Usuario"}</div>
+                    <div className="flex items-center gap-1 text-xs text-slate-500"><Star size={12} className="fill-yellow-400 text-yellow-400" /> {post.vendedor?.reputacion ? Number(post.vendedor.reputacion).toFixed(1) : "5.0"}</div>
+                 </div>
               </div>
 
               <div className="space-y-3 mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
@@ -378,7 +320,7 @@ function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFavorite 
                     <div className="relative">
                       <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Escribe tu mensaje aquí..." className="w-full p-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none h-24 bg-white" />
                       <div className="absolute bottom-2 right-2">
-                         <Button size="icon" className={cn("h-8 w-8 rounded-lg transition-all", message ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-200 text-slate-400")} disabled={!message || isSending} onClick={handleSendMessage}>
+                         <Button size="icon" className={cn("h-8 w-8 rounded-lg transition-all", message ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-200 text-slate-400")} disabled={!message || isSending} onClick={handleSendMessageAndTransact}>
                            {isSending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Send size={14} />}
                          </Button>
                       </div>
@@ -386,10 +328,13 @@ function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFavorite 
                     <div className="flex flex-wrap gap-2">
                       {quickReplies.map((reply, i) => <Badge key={i} variant="suggestion" onClick={() => setMessage(reply)}>{reply}</Badge>)}
                     </div>
+                    {/* Botón grande de contactar (hace lo mismo que enviar un mensaje vacío para iniciar chat) */}
+                    <Button className="w-full mt-2 font-bold bg-slate-900 text-white" onClick={() => onContact(post)}>
+                        Ir al Chat Directo
+                    </Button>
                   </div>
                 )}
               </div>
-
             </div>
           </motion.div>
         </div>
@@ -398,93 +343,82 @@ function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFavorite 
   );
 }
 
-// ---------------------------------------------------------------------------
-// 5. TARJETA DEL FEED
-// ---------------------------------------------------------------------------
-function ItemCard({ post, onClick, isFavorite, onToggleFavorite }: { post: Post, onClick: (p: Post) => void, isFavorite: boolean, onToggleFavorite: (id: number) => void }) {
-  const { nombre, precioActual, categoria, imagenes, vendedor, fechaAgregado } = post;
-  const image = imagenes?.[0]?.url;
+// --- HOOK DE FAVORITOS ---
+function useFavorites() {
+  const { token } = useAuth();
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
 
-  return (
-    <div onClick={() => onClick(post)} className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm border border-slate-200 transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer">
-      <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
-        {image ? (
-          <img src={image} alt={nombre} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
-        ) : (
-          <div className="flex h-full items-center justify-center text-slate-300"><ShoppingBag size={48} strokeWidth={1} /></div>
-        )}
-        <div className="absolute top-3 left-3"><Badge variant="category">{categoria || "Varios"}</Badge></div>
-        <div className="absolute top-3 right-3 z-10">
-           {/* Botón Favorito en la Card */}
-           <FavoriteButton isFavorite={isFavorite} onClick={() => onToggleFavorite(post.id)} />
-        </div>
-        <div className="absolute bottom-3 right-3"><Badge variant="price">{formatCLP(precioActual || 0)}</Badge></div>
-      </div>
+  useEffect(() => {
+    if (!token) return;
+    const fetchFavorites = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/favorites?limit=100`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        if (data.ok) setFavoriteIds(new Set(data.favorites.map((fav: any) => fav.productoId)));
+      } catch (error) { console.error(error); }
+    };
+    fetchFavorites();
+  }, [token]);
 
-      <div className="flex flex-1 flex-col p-5">
-        <div className="flex items-center gap-2 mb-2">
-           <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0 overflow-hidden">
-             {vendedor?.fotoPerfilUrl ? <img src={vendedor.fotoPerfilUrl} alt={vendedor.nombre} className="w-full h-full object-cover" /> : getInitials(vendedor?.nombre)}
-           </div>
-           <div className="flex flex-col">
-              <span className="text-xs font-semibold text-slate-700">{vendedor?.nombre}</span>
-              <span className="text-[10px] text-slate-400 leading-none">{formatDate(fechaAgregado)}</span>
-           </div>
-        </div>
-        <h3 className="font-bold text-slate-900 line-clamp-1 mb-1 text-base">{nombre}</h3>
-        <p className="text-sm text-slate-500 line-clamp-2 mb-4 flex-1">{post.descripcion || "Sin descripción."}</p>
-        <div className="mt-auto flex items-center justify-between border-t border-slate-50 pt-3">
-           <div className="flex items-center gap-1 text-slate-400"><Star size={14} className="fill-slate-200 text-slate-200" /><span className="text-xs font-medium">5.0</span></div>
-           <Button variant="secondary" size="sm" className="h-8 text-xs font-semibold">Ver detalle</Button>
-        </div>
-      </div>
-    </div>
-  );
+  const toggleFavorite = async (productId: number) => {
+    if (!token) return;
+    const isFav = favoriteIds.has(productId);
+    setFavoriteIds(prev => { const n = new Set(prev); isFav ? n.delete(productId) : n.add(productId); return n; });
+    try {
+      const method = isFav ? 'DELETE' : 'POST';
+      const url = isFav ? `${API_URL}/api/favorites/${productId}` : `${API_URL}/api/favorites`;
+      await fetch(url, { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: isFav ? undefined : JSON.stringify({ productoId: productId }) });
+    } catch (e) { console.error(e); }
+  };
+  return { favoriteIds, toggleFavorite };
 }
 
-// ---------------------------------------------------------------------------
-// 6. PÁGINA PRINCIPAL
-// ---------------------------------------------------------------------------
+// --- PÁGINA PRINCIPAL ---
 export default function MarketplacePage() {
+  const { token } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  
+  const navigate = useNavigate();
+
   const categories = useMemo(() => ['Electrónicos', 'Libros y Materiales', 'Ropa y Accesorios', 'Deportes', 'Hogar y Jardín', 'Vehículos', 'Servicios'], []);
-  const categoryMap: Record<string, string> = {
-    'Electrónicos': 'electronics', 'Libros y Materiales': 'books', 'Ropa y Accesorios': 'clothing', 
-    'Deportes': 'sports', 'Hogar y Jardín': 'home', 'Vehículos': 'vehicles', 'Servicios': 'services',
-  };
+  const categoryMap: Record<string, string> = { 'Electrónicos': 'electronics', 'Libros y Materiales': 'books', 'Ropa y Accesorios': 'clothing', 'Deportes': 'sports', 'Hogar y Jardín': 'home', 'Vehículos': 'vehicles', 'Servicios': 'services' };
   const selectedCategoryId = selectedCategory ? (categoryMap[selectedCategory] ?? '') : '';
 
-  const { posts, hasNextPage, fetchNextPage, isLoading, isError } = usePostsWithFilters({
-    searchTerm, categoryId: selectedCategoryId
-  });
-
-  // Hook de favoritos
+  const { posts, hasNextPage, fetchNextPage, isLoading, isError } = usePostsWithFilters({ searchTerm, categoryId: selectedCategoryId });
   const { favoriteIds, toggleFavorite } = useFavorites();
-
   const observer = useRef<IntersectionObserver | null>(null);
   
   const lastPostRef = useCallback((node: HTMLDivElement) => {
     if (isLoading) return;
     if (observer.current) observer.current.disconnect();
-    observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasNextPage) fetchNextPage();
-    });
+    observer.current = new IntersectionObserver(entries => { if (entries[0].isIntersecting && hasNextPage) fetchNextPage(); });
     if (node) observer.current.observe(node);
   }, [isLoading, hasNextPage, fetchNextPage]);
+
+  const handleContact = async (post: Post) => {
+    // Función para el botón "Ir al Chat Directo" (Botón grande del sidebar)
+    // También crea transacción para asegurar flujo
+    if (!token) return;
+    try {
+      await fetch(`${API_URL}/api/transactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ productId: post.id, quantity: 1 })
+      });
+    } catch (e) {} // Ignoramos error si ya existe, lo importante es ir al chat
+    navigate('/chats', { state: { toUser: post.vendedor } });
+    setSelectedPost(null);
+  };
 
   return (
     <div className="w-full h-full p-4 md:p-8 overflow-y-auto scroll-smooth">
       <div className="max-w-7xl mx-auto space-y-8 pb-20">
-        
-        {/* Buscador */}
         <div className="sticky top-0 z-20 bg-[#F8FAFC]/95 backdrop-blur-md py-2 -mx-4 px-4 md:mx-0 md:px-0 md:bg-transparent">
           <div className="flex flex-col md:flex-row gap-3 rounded-xl bg-white p-2 shadow-sm border border-slate-200">
             <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input type="text" placeholder="Buscar por título o descripción..." className="h-10 w-full rounded-md bg-transparent px-9 text-sm outline-none placeholder:text-slate-400" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <input type="text" placeholder="Buscar..." className="h-10 w-full rounded-md bg-transparent px-9 text-sm outline-none placeholder:text-slate-400" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
             <div className="h-px w-full bg-slate-100 md:h-auto md:w-px" />
             <div className="relative md:w-64">
@@ -498,45 +432,58 @@ export default function MarketplacePage() {
           {!isLoading && <div className="mt-2 text-xs text-slate-500 font-medium px-1">Mostrando {posts.length} publicaciones</div>}
         </div>
 
-        {/* Grid de Productos */}
-        {isLoading && posts.length === 0 ? (
-          <LoadingSpinner />
-        ) : isError ? (
-          <div className="text-center py-10 text-red-500 bg-red-50 rounded-xl border border-red-100">
-             Error al cargar datos. Revisa tu conexión.
-          </div>
-        ) : posts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-            <ShoppingBag size={64} strokeWidth={1} className="mb-4 opacity-50"/>
-            <p>No se encontraron publicaciones.</p>
-          </div>
-        ) : (
+        {isLoading && posts.length === 0 ? <LoadingSpinner /> : isError ? <div className="text-center py-10 text-red-500">Error al cargar datos.</div> : posts.length === 0 ? <div className="text-center py-20 text-slate-400">No se encontraron publicaciones.</div> : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {posts.map((post, i) => (
               <div key={post.id} ref={i === posts.length - 1 ? lastPostRef : null}>
-                <ItemCard 
-                  post={post} 
-                  onClick={setSelectedPost} 
-                  isFavorite={favoriteIds.has(post.id)}
-                  onToggleFavorite={toggleFavorite}
-                />
+                <ItemCard post={post} onClick={setSelectedPost} isFavorite={favoriteIds.has(post.id)} onToggleFavorite={toggleFavorite} />
               </div>
             ))}
           </div>
         )}
-        
         {isLoading && posts.length > 0 && <LoadingSpinner />}
       </div>
 
-      {selectedPost && (
-        <ProductDetailModal 
-          open={!!selectedPost} 
-          onClose={() => setSelectedPost(null)} 
-          post={selectedPost} 
-          isFavorite={favoriteIds.has(selectedPost.id)}
-          onToggleFavorite={toggleFavorite}
-        />
-      )}
+      <ProductDetailModal 
+        open={!!selectedPost} 
+        onClose={() => setSelectedPost(null)} 
+        post={selectedPost} 
+        isFavorite={favoriteIds.has(selectedPost?.id || 0)}
+        onToggleFavorite={toggleFavorite}
+        onContact={handleContact}
+      />
+    </div>
+  );
+}
+
+// Reutilización de ItemCard (Para no repetir código, idealmente extraelo a un archivo aparte)
+function ItemCard({ post, onClick, isFavorite, onToggleFavorite }: { post: Post, onClick: (p: Post) => void, isFavorite: boolean, onToggleFavorite: (id: number) => void }) {
+  const image = post.imagenes?.[0]?.url;
+  return (
+    <div onClick={() => onClick(post)} className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm border border-slate-200 transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer">
+      <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
+        {image ? <img src={image} alt={post.nombre} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /> : <div className="flex h-full items-center justify-center text-slate-300"><ShoppingBag size={48} strokeWidth={1} /></div>}
+        <div className="absolute top-3 left-3"><Badge variant="category">{post.categoria || "Varios"}</Badge></div>
+        <div className="absolute top-3 right-3 z-10"><FavoriteButton isFavorite={isFavorite} onClick={() => onToggleFavorite(post.id)} /></div>
+        <div className="absolute bottom-3 right-3"><Badge variant="price">{formatCLP(post.precioActual || 0)}</Badge></div>
+      </div>
+      <div className="flex flex-1 flex-col p-5">
+        <div className="flex items-center gap-2 mb-2">
+           <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0 overflow-hidden">
+             {post.vendedor?.fotoPerfilUrl ? <img src={post.vendedor.fotoPerfilUrl} className="w-full h-full object-cover"/> : getInitials(post.vendedor?.nombre)}
+           </div>
+           <div className="flex flex-col">
+              <span className="text-xs font-semibold text-slate-700">{post.vendedor?.nombre}</span>
+              <span className="text-[10px] text-slate-400 leading-none">{formatDate(post.fechaAgregado)}</span>
+           </div>
+        </div>
+        <h3 className="font-bold text-slate-900 line-clamp-1 mb-1 text-base">{post.nombre}</h3>
+        <p className="text-sm text-slate-500 line-clamp-2 mb-4 flex-1">{post.descripcion || "Sin descripción."}</p>
+        <div className="mt-auto flex items-center justify-between border-t border-slate-50 pt-3">
+           <div className="flex items-center gap-1 text-slate-400"><Star size={14} className="fill-slate-200 text-slate-200" /><span className="text-xs font-medium">{post.vendedor?.reputacion ? Number(post.vendedor.reputacion).toFixed(1) : "5.0"}</span></div>
+           <Button variant="secondary" size="sm" className="h-8 text-xs font-semibold">Ver detalle</Button>
+        </div>
+      </div>
     </div>
   );
 }
