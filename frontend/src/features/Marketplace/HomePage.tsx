@@ -20,8 +20,8 @@ import {
 } from '@/features/Marketplace/Home.Components';
 
 // Magic UI
-import { MagicCard } from '@/components/magicui/magic-card';
-import { RetroGrid } from '@/components/magicui/retro-grid';
+import { MagicCard } from '@/components/ui/magic-card';
+import { RetroGrid } from '@/components/ui/retro-grid';
 
 export default function HomePage() {
   const navigate = useNavigate();
