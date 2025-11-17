@@ -10,8 +10,50 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 import { useAuth } from '@/app/context/AuthContext';
-import { formatCLP } from '@/features/Marketplace/Marketplace.Utils/format';
-import type { Post } from '@/features/Marketplace/Marketplace.Types/ProductInterfaces';
+import { formatCLP } from './format';
+
+interface Vendor {
+  id: number;
+  nombre: string;
+  usuario: string;
+  fotoPerfilUrl?: string;
+  reputacion?: number;
+  campus?: string;
+}
+
+// Tipo de Imagen
+interface ProductImage {
+  id: number;
+  url: string;
+}
+
+// Tipo principal de Publicación (Post)
+interface Post {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  precioActual: number;
+  cantidad?: number;
+  categoria?: string;
+  estado?: string; // Nuevo, Usado, etc.
+  fechaAgregado: string;
+  vendedor: Vendor;
+  imagenes?: ProductImage[];
+}
+
+
+interface Post {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  precioActual: number;
+  cantidad?: number;
+  categoria?: string;
+  estado?: string; // Nuevo, Usado, etc.
+  fechaAgregado: string;
+  vendedor: Vendedor;
+  imagenes?: ProductImage[];
+}
 
 // --- Configuración ---
 const API_URL = import.meta.env.VITE_API_URL;
