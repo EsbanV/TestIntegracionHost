@@ -5,7 +5,8 @@ import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 // Icons
 import { 
   LuSearch, LuCheck, LuCheckCheck, LuImage, LuSmile, LuLoader, LuSend,
-  LuShoppingBag, LuTruck, LuPackageCheck, LuStar, LuCircleAlert, LuChevronLeft, LuX, LuGripHorizontal
+  LuShoppingBag, LuTruck, LuPackageCheck, LuStar, LuCircleAlert, LuChevronLeft, LuX, LuGripHorizontal,
+  LuMessageCircle
 } from "react-icons/lu";
 
 // UI Components
