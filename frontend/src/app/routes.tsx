@@ -10,7 +10,7 @@ import PageLayout from '@/features/shared/ui/PageLayout'
 import LoginPage from '@/features/Login/Login.UI/LoginPage'
 import RegisterTest from '@/features/Login/Login.UI/RegisterTest'
 import LoginTest from '@/features/Login/Login.UI/LoginTest'
-import HomePage from '@/features/Marketplace/Marketplace.UI/HomePage'
+import HomePage from '@/features/Marketplace/HomePage'
 import CreateProductPage from '@/features/CrearPublicacion/CrearPublicacion.UI/CrearPublicacionPage' // Corregí el nombre del archivo según el último paso
 import PerfilPage from '@/features/Perfil/Perfil.UI/PerfilPage'
 import ChatPage from '@/features/DM/ChatPage'
