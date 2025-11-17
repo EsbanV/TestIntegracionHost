@@ -51,7 +51,7 @@ interface Post {
   categoria?: string;
   estado?: string; // Nuevo, Usado, etc.
   fechaAgregado: string;
-  vendedor: Vendedor;
+  vendedor: Vendor;
   imagenes?: ProductImage[];
 }
 

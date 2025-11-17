@@ -7,7 +7,7 @@ import AdminRoute from '../components/auth/AdminRoute';
 import PageLayout from '@/features/shared/ui/PageLayout'
 
 // Pages
-import LoginPage from '@/features/Login/Login.UI/LoginPage'
+import LoginPage from '@/features/Login/LoginPage'
 import RegisterTest from '@/features/Login/Login.UI/RegisterTest'
 import LoginTest from '@/features/Login/Login.UI/LoginTest'
 import HomePage from '@/features/Marketplace/HomePage'
@@ -42,6 +42,7 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterTest />} />
       <Route path="/login-test" element={<LoginTest />} />
+      <Route path="/about" element={<AboutPage />} />
 
       {/* =========================================
           2. RUTAS PÚBLICAS CON LAYOUT
@@ -49,7 +50,6 @@ export function AppRoutes() {
       <Route element={<PageLayout showHeader={true} showSidebar={true} />}>
         <Route path="/ayuda" element={<AyudaPage />} />
         <Route path="/terminos" element={<TermsPage />} />
-        <Route path="/about" element={<AboutPage />} />
       </Route>
 
       {/* =========================================

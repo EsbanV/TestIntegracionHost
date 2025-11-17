@@ -1,235 +1,246 @@
-import { useState } from 'react';
-import LoginFooter from './About.Components/footer';
-import './AboutPage.css';
+import React from 'react';
+import { motion } from 'framer-motion';
+import { 
+  BookOpen, MessageSquare, Star, Palette, Users, ShieldCheck, Lightbulb, Rocket 
+} from 'lucide-react';
+
+// UI Components
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import LoginFooter from './About.Components/footer'; // O tu footer global
 import Header from '@/features/shared/ui/Header';
 
-export default function AboutPage() {
-  const [hoveredCard, setHoveredCard] = useState<number | null>(null);
-  const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
+// --- CONFIGURACIÓN DE ANIMACIONES ---
+const fadeIn = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+};
 
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15
+    }
+  }
+};
+
+const scaleIn = {
+  hidden: { scale: 0.9, opacity: 0 },
+  visible: { scale: 1, opacity: 1, transition: { type: "spring", stiffness: 100 } }
+};
+
+export default function AboutPage() {
+  
   const features = [
     {
-      icon: '📚',
+      icon: <BookOpen className="w-8 h-8 text-blue-600" />,
       title: 'Recursos Educativos',
-      description: 'Publicaciones de recursos y materiales educativos de alta calidad.',
-      color: 'from-blue-500 to-blue-600'
+      description: 'Comparte y encuentra materiales de estudio de alta calidad creados por la comunidad.',
+      color: 'bg-blue-50 border-blue-100'
     },
     {
-      icon: '💬',
-      title: 'Mensajería Instantánea',
-      description: 'Comunicación en tiempo real entre estudiantes y profesores.',
-      color: 'from-green-500 to-green-600'
+      icon: <MessageSquare className="w-8 h-8 text-indigo-600" />,
+      title: 'Chat en Tiempo Real',
+      description: 'Conecta instantáneamente con vendedores y compradores para cerrar tratos rápidos.',
+      color: 'bg-indigo-50 border-indigo-100'
     },
     {
-      icon: '⭐',
-      title: 'Sistema de Reputación',
-      description: 'Calificaciones y reseñas para mantener la calidad del contenido.',
-      color: 'from-yellow-500 to-yellow-600'
+      icon: <Star className="w-8 h-8 text-yellow-500" />,
+      title: 'Reputación Transparente',
+      description: 'Sistema de valoraciones confiable para asegurar una comunidad segura y honesta.',
+      color: 'bg-yellow-50 border-yellow-100'
     },
     {
-      icon: '🎨',
-      title: 'Interfaz Intuitiva',
-      description: 'Diseño moderno y fácil de usar para todos los usuarios.',
-      color: 'from-purple-500 to-purple-600'
+      icon: <Palette className="w-8 h-8 text-pink-600" />,
+      title: 'Diseño Intuitivo',
+      description: 'Una interfaz moderna y fácil de usar, pensada para la vida universitaria.',
+      color: 'bg-pink-50 border-pink-100'
     }
   ];
 
   const stats = [
-    { value: '1000+', label: 'Estudiantes Activos', icon: '👥' },
-    { value: '500+', label: 'Recursos Compartidos', icon: '📖' },
-    { value: '50+', label: 'Profesores', icon: '👨‍🏫' },
-    { value: '4.8/5', label: 'Calificación Promedio', icon: '⭐' }
+    { value: '1000+', label: 'Estudiantes' },
+    { value: '500+', label: 'Publicaciones' },
+    { value: '4.8', label: 'Calificación' },
+    { value: '24/7', label: 'Disponible' },
   ];
 
-  const team = [
-    { name: 'Equipo de Desarrollo', role: 'Ingeniería de Software', description: 'Creando soluciones innovadoras' },
-    { name: 'Equipo de Diseño', role: 'UX/UI Design', description: 'Diseñando experiencias excepcionales' },
-    { name: 'Equipo de Soporte', role: 'Atención al Usuario', description: 'Siempre disponibles para ayudar' }
+  const values = [
+    { icon: <Users size={24} />, title: "Colaboración", desc: "Crecemos juntos compartiendo conocimiento." },
+    { icon: <ShieldCheck size={24} />, title: "Seguridad", desc: "Tu confianza es nuestra prioridad #1." },
+    { icon: <Lightbulb size={24} />, title: "Innovación", desc: "Siempre buscando mejores soluciones." },
+    { icon: <Rocket size={24} />, title: "Excelencia", desc: "Calidad en cada detalle de la plataforma." }
   ];
-
 
   return (
-    <div className="min-h-screen flex flex-col bg-transparent about-page-root">
-      <Header/>
-      {/* Hero Section con animación de entrada */}
-      <header className="text-center py-12 md:py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-        {/* Elementos decorativos animados */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-10 sm:top-20 left-5 sm:left-10 w-48 h-48 sm:w-72 sm:h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
-          <div className="absolute top-20 sm:top-40 right-5 sm:right-10 w-48 h-48 sm:w-72 sm:h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
-          <div className="absolute -bottom-4 sm:-bottom-8 left-10 sm:left-20 w-48 h-48 sm:w-72 sm:h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
+    <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900">
+      <Header />
+      
+      {/* --- HERO SECTION --- */}
+      <section className="relative overflow-hidden pt-20 pb-32 lg:pt-32">
+        {/* Background Decorativo */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
+           <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-blue-400/20 blur-[100px]" />
+           <div className="absolute bottom-0 left-[-10%] w-[600px] h-[600px] rounded-full bg-indigo-400/20 blur-[120px]" />
         </div>
 
-        <div className="relative z-10 animate-fade-in-down">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 mb-4 md:mb-6 animate-gradient px-2">
-            Acerca de Nosotros
-          </h1>
-          <p className="text-base sm:text-lg md:text-xl text-gray-700 max-w-3xl mx-auto leading-relaxed px-4">
-            Bienvenido a <span className="font-semibold text-blue-600">Marketplace UCT</span>. Somos una plataforma innovadora 
-            dedicada a conectar estudiantes y profesores para compartir recursos, ideas y oportunidades 
-            en un entorno colaborativo y seguro.
-          </p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <motion.div 
+            initial="hidden" 
+            whileInView="visible" 
+            viewport={{ once: true }} 
+            variants={fadeIn}
+            className="max-w-3xl mx-auto space-y-6"
+          >
+            <Badge variant="secondary" className="px-4 py-1.5 text-sm font-medium bg-white border-slate-200 shadow-sm text-blue-700">
+              🚀 La plataforma oficial de la comunidad
+            </Badge>
+            
+            <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-900 leading-tight">
+              Conectando la <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Vida Universitaria</span>
+            </h1>
+            
+            <p className="text-lg md:text-xl text-slate-600 leading-relaxed">
+              MarketUCT no es solo un marketplace. Es el punto de encuentro digital donde estudiantes y profesores intercambian recursos, ideas y oportunidades.
+            </p>
+
+            <div className="flex justify-center gap-4 pt-4">
+              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 text-base px-8 h-12 rounded-full">
+                Explorar Marketplace
+              </Button>
+              <Button size="lg" variant="outline" className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 text-base px-8 h-12 rounded-full">
+                Saber más
+              </Button>
+            </div>
+          </motion.div>
         </div>
-      </header>
+      </section>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 md:pb-20 relative z-10">
-        {/* Estadísticas animadas */}
-        <section className="mb-12 md:mb-20">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-            {stats.map((stat, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-lg md:rounded-xl shadow-lg p-4 sm:p-6 text-center transform transition-all duration-500 hover:scale-105 md:hover:scale-110 hover:shadow-2xl hover:-translate-y-2 cursor-pointer animate-fade-in-up"
-                style={{ animationDelay: `${index * 100}ms` }}
-                onMouseEnter={() => setHoveredCard(index)}
-                onMouseLeave={() => setHoveredCard(null)}
-              >
-                <div className={`text-3xl sm:text-4xl mb-2 sm:mb-3 transition-transform duration-300 ${hoveredCard === index ? 'scale-125 rotate-12' : ''}`}>
-                  {stat.icon}
-                </div>
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 mb-1 sm:mb-2">{stat.value}</div>
-                <div className="text-xs sm:text-sm text-gray-600">{stat.label}</div>
-              </div>
-            ))}
+      {/* --- STATS SECTION --- */}
+      <section className="py-10 bg-white border-y border-slate-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-slate-100">
+             {stats.map((stat, idx) => (
+               <motion.div 
+                 key={idx}
+                 initial={{ opacity: 0, y: 20 }}
+                 whileInView={{ opacity: 1, y: 0 }}
+                 viewport={{ once: true }}
+                 transition={{ delay: idx * 0.1 }}
+                 className="p-4"
+               >
+                 <div className="text-4xl md:text-5xl font-black text-slate-900 mb-2">{stat.value}</div>
+                 <div className="text-sm font-bold text-slate-500 uppercase tracking-wider">{stat.label}</div>
+               </motion.div>
+             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Misión y Visión con efectos */}
-        <section className="mb-12 md:mb-20 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl md:rounded-2xl p-6 md:p-8 shadow-xl transform transition-all duration-500 hover:scale-105 hover:shadow-2xl md:hover:rotate-1 animate-slide-in-left">
-            <div className="flex items-center mb-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 rounded-full flex items-center justify-center mr-3 sm:mr-4 animate-pulse flex-shrink-0">
-                <span className="text-xl sm:text-2xl">🎯</span>
-              </div>
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800">Nuestra Misión</h2>
-            </div>
-            <p className="text-gray-700 leading-relaxed text-sm sm:text-base md:text-lg">
-              Facilitar la colaboración y el intercambio de conocimientos dentro de la comunidad universitaria. 
-              Creemos en el poder de la educación y la tecnología para transformar vidas, impulsar el aprendizaje 
-              continuo y construir un futuro mejor para todos los miembros de nuestra comunidad académica.
-            </p>
-          </div>
+      {/* --- FEATURES SECTION --- */}
+      <section className="py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+           <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Todo lo que necesitas en un solo lugar</h2>
+              <p className="text-slate-500 max-w-2xl mx-auto text-lg">Herramientas diseñadas específicamente para mejorar tu experiencia académica y facilitar el intercambio.</p>
+           </div>
 
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl md:rounded-2xl p-6 md:p-8 shadow-xl transform transition-all duration-500 hover:scale-105 hover:shadow-2xl md:hover:-rotate-1 animate-slide-in-right">
-            <div className="flex items-center mb-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-600 rounded-full flex items-center justify-center mr-3 sm:mr-4 animate-pulse animation-delay-1000 flex-shrink-0">
-                <span className="text-xl sm:text-2xl">🚀</span>
-              </div>
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800">Nuestra Visión</h2>
-            </div>
-            <p className="text-gray-700 leading-relaxed text-sm sm:text-base md:text-lg">
-              Ser la plataforma líder en intercambio académico, creando un ecosistema digital donde cada 
-              estudiante y profesor pueda contribuir, aprender y crecer. Aspiramos a democratizar el acceso 
-              al conocimiento y fomentar una cultura de colaboración sin fronteras.
-            </p>
-          </div>
-        </section>
+           <motion.div 
+             variants={staggerContainer}
+             initial="hidden"
+             whileInView="visible"
+             viewport={{ once: true }}
+             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+           >
+             {features.map((feature, idx) => (
+               <motion.div key={idx} variants={scaleIn}>
+                 <Card className={`h-full border-2 hover:border-blue-500/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-white ${feature.color}`}>
+                   <CardHeader>
+                     <div className="mb-4 p-3 bg-white rounded-2xl w-fit shadow-sm border border-slate-100">
+                        {feature.icon}
+                     </div>
+                     <CardTitle className="text-xl font-bold text-slate-900">{feature.title}</CardTitle>
+                   </CardHeader>
+                   <CardContent>
+                     <CardDescription className="text-slate-600 text-base leading-relaxed">
+                       {feature.description}
+                     </CardDescription>
+                   </CardContent>
+                 </Card>
+               </motion.div>
+             ))}
+           </motion.div>
+        </div>
+      </section>
 
-        {/* Características principales con cards mejoradas */}
-        <section className="mb-12 md:mb-20">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center text-gray-800 mb-8 md:mb-12 animate-fade-in px-4">
-            Características Principales
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            {features.map((feature, index) => (
-              <div
-                key={index}
-                className="group relative bg-white rounded-lg md:rounded-xl shadow-lg overflow-hidden transform transition-all duration-500 hover:scale-105 hover:shadow-2xl cursor-pointer animate-fade-in-up"
-                style={{ animationDelay: `${index * 150}ms` }}
-                onMouseEnter={() => setHoveredFeature(index)}
-                onMouseLeave={() => setHoveredFeature(null)}
-              >
-                {/* Gradiente de fondo animado */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}></div>
-                
-                {/* Contenido */}
-                <div className="relative p-5 md:p-6 z-10">
-                  <div className={`text-4xl md:text-5xl mb-3 md:mb-4 transition-all duration-500 ${hoveredFeature === index ? 'scale-125 rotate-12' : ''}`}>
-                    {feature.icon}
-                  </div>
-                  <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-2 md:mb-3 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-purple-600 transition-all duration-300">
-                    {feature.title}
-                  </h3>
-                  <p className="text-sm md:text-base text-gray-600 leading-relaxed">
-                    {feature.description}
+      {/* --- MISION & VALORES --- */}
+      <section className="py-24 bg-slate-900 text-white relative overflow-hidden">
+         {/* Patrón de fondo sutil */}
+         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#4f46e5 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
+         
+         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="grid md:grid-cols-2 gap-16 items-center">
+               <motion.div 
+                 initial={{ opacity: 0, x: -30 }}
+                 whileInView={{ opacity: 1, x: 0 }}
+                 viewport={{ once: true }}
+                 transition={{ duration: 0.6 }}
+               >
+                  <h2 className="text-3xl md:text-5xl font-bold mb-6 leading-tight">
+                    Nuestra misión es <span className="text-blue-400">democratizar</span> el acceso a recursos.
+                  </h2>
+                  <p className="text-slate-300 text-lg leading-relaxed mb-8">
+                    Creemos que la educación no debería tener barreras. Facilitamos un entorno donde cada libro, apunte o herramienta pueda encontrar una segunda vida en manos de otro estudiante.
                   </p>
-                </div>
+                  <Button variant="secondary" size="lg" className="rounded-full font-bold text-slate-900">
+                    Únete a la comunidad
+                  </Button>
+               </motion.div>
 
-                {/* Borde animado */}
-                <div className="absolute inset-0 border-2 border-transparent group-hover:border-blue-500 rounded-lg md:rounded-xl transition-all duration-500"></div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Equipo */}
-        <section className="mb-12 md:mb-20">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center text-gray-800 mb-8 md:mb-12 animate-fade-in px-4">
-            Nuestro Equipo
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8">
-            {team.map((member, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-lg md:rounded-xl shadow-lg p-6 md:p-8 text-center transform transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:-translate-y-3 animate-fade-in-up"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto mb-3 md:mb-4 flex items-center justify-center text-2xl sm:text-3xl animate-bounce-slow">
-                  {index === 0 ? '💻' : index === 1 ? '🎨' : '🤝'}
-                </div>
-                <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-2">{member.name}</h3>
-                <p className="text-blue-600 font-semibold mb-2 md:mb-3 text-sm md:text-base">{member.role}</p>
-                <p className="text-gray-600 text-xs md:text-sm">{member.description}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Valores */}
-        <section className="mb-12 md:mb-20">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center text-gray-800 mb-8 md:mb-12 animate-fade-in px-4">
-            Nuestros Valores
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            {[
-              { icon: '🤝', title: 'Colaboración', desc: 'Trabajamos juntos para crecer' },
-              { icon: '🎓', title: 'Excelencia', desc: 'Compromiso con la calidad' },
-              { icon: '🔒', title: 'Seguridad', desc: 'Protegemos tu información' },
-              { icon: '🌟', title: 'Innovación', desc: 'Siempre mejorando' }
-            ].map((value, index) => (
-              <div
-                key={index}
-                className="bg-gradient-to-br from-gray-50 to-white rounded-lg md:rounded-xl p-4 md:p-6 shadow-lg text-center transform transition-all duration-500 hover:scale-105 md:hover:scale-110 hover:shadow-2xl md:hover:rotate-3 animate-fade-in-up"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="text-3xl md:text-4xl mb-2 md:mb-3 animate-pulse">{value.icon}</div>
-                <h3 className="text-base md:text-lg font-bold text-gray-800 mb-1 md:mb-2">{value.title}</h3>
-                <p className="text-xs md:text-sm text-gray-600">{value.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Sección de contacto mejorada */}
-        <section className="mb-8 md:mb-12">
-          <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-xl md:rounded-2xl shadow-2xl p-6 sm:p-8 md:p-12 text-center text-white transform transition-all duration-500 hover:scale-105 hover:shadow-3xl animate-fade-in">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 md:mb-6">¿Necesitas Ayuda?</h2>
-            <p className="text-sm sm:text-base md:text-xl mb-6 md:mb-8 leading-relaxed max-w-2xl mx-auto px-2">
-              Nuestro equipo de soporte está siempre disponible para resolver tus dudas y ayudarte 
-              a aprovechar al máximo nuestra plataforma.
-            </p>
-            <div className="flex flex-col md:flex-row gap-3 md:gap-4 justify-center items-center">
-              <a
-                href="mailto:soporte@uct.cl"
-                className="bg-white text-blue-600 px-6 sm:px-8 py-3 sm:py-4 rounded-full font-bold text-sm sm:text-base md:text-lg shadow-lg transform transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:bg-gray-100 w-full sm:w-auto"
-              >
-                📧 soporte@uct.cl
-              </a>
-              <div className="text-sm sm:text-base md:text-lg">o visita nuestra página de soporte</div>
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {values.map((val, i) => (
+                    <motion.div 
+                      key={i}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: i * 0.1 }}
+                      className="bg-white/5 backdrop-blur-sm border border-white/10 p-6 rounded-2xl hover:bg-white/10 transition-colors"
+                    >
+                       <div className="text-blue-400 mb-3">{val.icon}</div>
+                       <h4 className="font-bold text-lg mb-1">{val.title}</h4>
+                       <p className="text-sm text-slate-400">{val.desc}</p>
+                    </motion.div>
+                  ))}
+               </div>
             </div>
-          </div>
-        </section>
-      </main>
+         </div>
+      </section>
+
+      {/* --- CONTACTO CTA --- */}
+      <section className="py-20">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+           <Card className="bg-gradient-to-br from-blue-600 to-indigo-700 border-none shadow-2xl text-white overflow-hidden relative">
+              <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+              <CardContent className="p-12 relative z-10">
+                 <h2 className="text-3xl font-bold mb-4">¿Tienes dudas o sugerencias?</h2>
+                 <p className="text-blue-100 mb-8 text-lg">
+                   Nuestro equipo de soporte está siempre listo para ayudarte a sacar el máximo provecho de MarketUCT.
+                 </p>
+                 <a 
+                   href="mailto:soporte@uct.cl" 
+                   className="inline-flex items-center justify-center px-8 py-4 text-base font-bold text-blue-700 bg-white rounded-full hover:bg-blue-50 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1"
+                 >
+                   Contactar Soporte
+                 </a>
+              </CardContent>
+           </Card>
+        </div>
+      </section>
 
       <LoginFooter />
     </div>
