@@ -23,7 +23,7 @@ const AboutHeader = () => (
   >
     <div className="flex items-center gap-2.5 cursor-default">
        {/* Isotipo */}
-       <div className="h-9 w-9 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+       <div className="h-9 w-9 bg-gradient-to-br from-white-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-white-500/20">
           <span className="text-white font-bold text-lg">
               <img 
                   src={LogoMUCT} 
