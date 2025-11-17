@@ -178,7 +178,7 @@ export const ItemCard = ({ post, onClick, isFavorite, onToggleFavorite }: { post
         <h3 className="font-bold text-slate-900 line-clamp-1 mb-1 text-base">{post.nombre}</h3>
         <p className="text-sm text-slate-500 line-clamp-2 mb-4 flex-1">{post.descripcion || "Sin descripción."}</p>
         <div className="mt-auto flex items-center justify-between border-t border-slate-50 pt-3">
-           <div className="flex items-center gap-1 text-slate-400"><Star size={14} className="fill-slate-200 text-slate-200" /><span className="text-xs font-medium">{post.vendedor?.reputacion ? Number(post.vendedor.reputacion).toFixed(1) : "5.0"}</span></div>
+           <div className="flex items-center gap-1 text-slate-400"><Star size={14} className="fill-slate-200 text-slate-200" /><span className="text-xs font-medium">{post.vendedor?.reputacion ? Number(post.vendedor.reputacion).toFixed(1) : "0.0"}</span></div>
            <Button variant="secondary" size="sm" className="h-8 text-xs font-semibold">Ver detalle</Button>
         </div>
       </div>
@@ -308,7 +308,7 @@ export function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFa
                  </div>
                  <div>
                     <div className="font-semibold text-slate-900">{post.vendedor?.usuario || "Usuario"}</div>
-                    <div className="flex items-center gap-1 text-xs text-slate-500"><Star size={12} className="fill-yellow-400 text-yellow-400" /> {post.vendedor?.reputacion ? Number(post.vendedor.reputacion).toFixed(1) : "5.0"}</div>
+                    <div className="flex items-center gap-1 text-xs text-slate-500"><Star size={12} className="fill-yellow-400 text-yellow-400" /> {post.vendedor?.reputacion ? Number(post.vendedor.reputacion).toFixed(1) : "0.0"}</div>
                  </div>
               </div>
 
