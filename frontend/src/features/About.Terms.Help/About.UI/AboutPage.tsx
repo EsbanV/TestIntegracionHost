@@ -14,6 +14,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import LoginFooter from './About.Components/footer';
 
+const scaleIn = {
+  hidden: { scale: 0.9, opacity: 0 }, // Inicial (oculto y pequeño)
+  visible: { scale: 1, opacity: 1, transition: { type: "spring", stiffness: 100 } } // Estado final (normal y visible)
+};
+
 /* ======================= FONDO AURORA (Optimizado) ======================= */
 
 const AuroraBackground = () => (
