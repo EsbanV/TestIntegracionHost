@@ -17,7 +17,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // Icons
 import {
-  LayoutDashboard,
   MessageSquare,
   FileText,
   Users,
@@ -29,9 +28,9 @@ import {
   PlusCircle
 } from "lucide-react";
 
-// Assets - IMPORTACIÓN DEL LOGO
-import LogoMUCT from "@/assets/img/logoMUCT.png"; 
-import UserDefault from "@/assets/img/user_default.png";
+// Assets
+import LogoMUCT from "@/assets/img/logoMUCT.png";
+// import UserDefault from "@/assets/img/user_default.png"; // Si lo necesitas
 
 interface SidebarProps {
   className?: string;
@@ -72,10 +71,12 @@ export function Sidebar({ className }: SidebarProps) {
         animate={isCollapsed ? "collapsed" : "expanded"}
         variants={sidebarVariants}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className={`relative h-screen sticky top-0 flex flex-col text-slate-100 border-r border-slate-800 shadow-xl z-50 bg-slate-900 ${className}`}
+        // ✅ CAMBIO AQUÍ: Eliminado bg-slate-900 para mantener la transparencia original
+        className={`relative h-screen sticky top-0 flex flex-col text-slate-100 border-r border-slate-800 shadow-xl z-50 ${className}`}
       >
         {/* --- HEADER CON LOGO --- */}
-        <div className="flex items-center justify-between p-4 h-16 border-b border-slate-800/50 bg-slate-950/20">
+        {/* ✅ CAMBIO AQUÍ: Eliminado bg-slate-950/20 */}
+        <div className="flex items-center justify-between p-4 h-16 border-b border-slate-800/50">
           <AnimatePresence mode="wait">
             {!isCollapsed ? (
               <motion.div
@@ -85,14 +86,14 @@ export function Sidebar({ className }: SidebarProps) {
                 exit={{ opacity: 0, x: -20 }}
                 className="flex items-center gap-3 overflow-hidden whitespace-nowrap"
               >
-                {/* Imagen del Logo */}
+                {/* Logo Original (sin filtro de color para que se vea el azul/amarillo) */}
                 <img 
                   src={LogoMUCT} 
                   alt="MarketUCT" 
                   className="h-8 w-auto object-contain" 
                 />
                 <span className="font-bold text-lg tracking-tight text-slate-100">
-                  Market<span className="text-blue-500">UCT</span>
+                  Market<span className="text-yellow-500">UCT</span>
                 </span>
               </motion.div>
             ) : (
@@ -103,7 +104,6 @@ export function Sidebar({ className }: SidebarProps) {
                  exit={{ opacity: 0, scale: 0 }}
                  className="mx-auto"
               >
-                {/* Logo versión ícono (solo la imagen) */}
                  <img 
                   src={LogoMUCT} 
                   alt="M" 
@@ -113,7 +113,6 @@ export function Sidebar({ className }: SidebarProps) {
             )}
           </AnimatePresence>
           
-          {/* Botón Colapsar (Solo visible si está expandido para no tapar el logo centrado) */}
           {!isCollapsed && (
             <Button
                 variant="ghost"
@@ -125,7 +124,6 @@ export function Sidebar({ className }: SidebarProps) {
             </Button>
           )}
           
-          {/* Botón Expandir (Si está colapsado, aparece abajo o usamos el header como trigger) */}
           {isCollapsed && (
              <Button
                 variant="ghost"
@@ -138,7 +136,7 @@ export function Sidebar({ className }: SidebarProps) {
           )}
         </div>
 
-        {/* --- RESTO DEL CONTENIDO (Navegación) --- */}
+        {/* --- NAVEGACIÓN --- */}
         <nav className="flex-1 flex flex-col gap-2 p-3 overflow-y-auto overflow-x-hidden scrollbar-hide">
           <div className="space-y-1">
             <SidebarItem icon={<Store size={20} />} label="Marketplace" to="/home" isCollapsed={isCollapsed} isActive={location.pathname === "/home"} />
@@ -153,7 +151,7 @@ export function Sidebar({ className }: SidebarProps) {
           </div>
         </nav>
 
-        {/* Footer Usuario */}
+        {/* --- FOOTER --- */}
         <div className="p-3 border-t border-slate-800 bg-slate-950/30">
           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} gap-3`}>
             <AnimatePresence>
@@ -185,10 +183,9 @@ export function Sidebar({ className }: SidebarProps) {
   );
 }
 
-// ... (SidebarItem component se mantiene igual)
+// Subcomponente SidebarItem
 function SidebarItem({ icon, label, to, isCollapsed, isActive }: any) {
-    // ... (Tu código existente de SidebarItem)
-    return (
+  return (
     <Tooltip>
       <TooltipTrigger asChild>
         <NavLink
@@ -197,7 +194,7 @@ function SidebarItem({ icon, label, to, isCollapsed, isActive }: any) {
             relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group
             ${isActive 
               ? "bg-blue-600 text-white shadow-md shadow-blue-900/20" 
-              : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+              : "text-slate-400 hover:text-slate-100 hover:bg-slate-400/10" /* Ajuste hover transparente */
             }
             ${isCollapsed ? "justify-center" : ""}
           `}
