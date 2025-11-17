@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/app/context/AuthContext";
-import { usePostsWithFilters } from '@/features/Marketplace/home.hooks';
 import type { 
   UserProfile, 
   UpdateProfileData, 
@@ -198,68 +197,55 @@ export const useProfile = (profileIdParam?: string) => {
 
 // --- HOOK DE PUBLICACIONES (Feed) ---
 
+// --- FETCHERS (NUEVO) ---
+const fetchUserProductsRequest = async (userId: number) => {
+  // Esta ruta YA EXISTE en tu backend (products.js) y filtra por vendedorId
+  const res = await fetch(`${URL_BASE}/api/products/user/${userId}?limit=50`); 
+  const data = await res.json();
+  if (!res.ok) throw new Error("Error al cargar productos del usuario");
+  return data.products || [];
+};
+
+// --- HOOK DE PUBLICACIONES DEL PERFIL (CORREGIDO) ---
 export const usePublicationsFeed = ({ 
-  searchTerm = '', 
-  selectedCategoryId = '', 
-  authorId,
-  onlyMine = true 
+  authorId, // Este ID es clave
 }: UsePublicationsFeedProps) => {
   
-  const observer = useRef<IntersectionObserver | null>(null);
-  const lastPostElementRef = useRef<HTMLDivElement | null>(null);
+  // Si no hay authorId, no podemos cargar nada
+  const userId = authorId ? parseInt(authorId) : null;
 
-  const {
-    posts,
-    hasNextPage,
-    fetchNextPage,
-    isFetchingNextPage,
-    isLoading,
-    isError,
-    error
-  } = usePostsWithFilters({
-    searchTerm: searchTerm.trim(),
-    categoryId: selectedCategoryId,
-    authorId, 
-    onlyMine
-  } as any);
+  const { data: posts = [], isLoading, isError, error } = useQuery({
+    queryKey: ["user-products", userId],
+    queryFn: () => fetchUserProductsRequest(userId!),
+    enabled: !!userId, // Solo se ejecuta si tenemos un ID válido
+  });
 
-  // Calcular resultados manualmente ya que usePostsWithFilters devuelve el array directo
-  const hasResults = posts && posts.length > 0;
-  const totalResults = posts ? posts.length : 0;
+  const hasResults = posts.length > 0;
+  const totalResults = posts.length;
 
-  useEffect(() => {
-    if (isLoading || isFetchingNextPage) return;
-    if (observer.current) observer.current.disconnect();
-    
-    observer.current = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      },
-      { threshold: 0.5, rootMargin: '200px' }
-    );
-    
-    if (lastPostElementRef.current) observer.current.observe(lastPostElementRef.current);
-    
-    return () => observer.current?.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, posts?.length]);
-
-  const items: PublicationItem[] = (posts || []).map((post: any) => ({
+  // Mapeo de datos al formato UI
+  const items: PublicationItem[] = posts.map((post: any) => ({
       id: post.id,
       title: post.nombre,
-      image: post.imagenes?.[0]?.url,
+      image: post.imagenUrl, // Ojo: tu ruta /user/:id devuelve 'imagenUrl', no 'imagenes' array
       price: parseFloat(String(post.precioActual)),
-      author: post.vendedor?.usuario || post.vendedor?.nombre,
-      avatar: post.vendedor?.fotoPerfilUrl,
-      description: post.descripcion,
-      timeAgo: post.fechaAgregado,
-      categoryName: post.categoryName,
-      rating: post.vendedor?.reputacion ?? 0,
-      sales: post.vendedor?.stats?.ventas ?? 0
+      categoryName: post.categoria,
+      rating: 0, // El endpoint simple no trae rating del vendedor por producto
+      sales: 0
   }));
 
   return {
-      items, isLoading, isError, error, hasResults, hasNextPage, isFetchingNextPage, totalResults, lastPostElementRef
+      items,
+      isLoading,
+      isError,
+      error,
+      hasResults,
+      // En este endpoint simple no hay paginación infinita por ahora,
+      // así que desactivamos la carga de "siguiente página"
+      hasNextPage: false, 
+      isFetchingNextPage: false,
+      fetchNextPage: () => {}, 
+      totalResults,
+      lastPostElementRef: { current: null } // No necesitamos ref de scroll infinito aquí por ahora
   };
 };
