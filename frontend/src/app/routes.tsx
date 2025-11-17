@@ -12,12 +12,11 @@ import RegisterTest from '@/features/Login/Login.UI/RegisterTest'
 import LoginTest from '@/features/Login/Login.UI/LoginTest'
 import HomePage from '@/features/Marketplace/HomePage'
 import CreateProductPage from '@/features/CrearPublicacion/CrearPublicacion.UI/CrearPublicacionPage' // Corregí el nombre del archivo según el último paso
-import PerfilPage from '@/features/Perfil/Perfil.UI/PerfilPage'
+import PerfilPage from '@/features/Perfil/PerfilPage'
 import ChatPage from '@/features/DM/ChatPage'
 import AyudaPage from '@/features/About.Terms.Help/Help.UI/AyudaPage'
 import TermsPage from '@/features/About.Terms.Help/Terms.UI/TermsPage'
 import AboutPage from '@/features/About.Terms.Help/About.UI/AboutPage'
-import PublicProfilePage from '@/features/Perfil/Perfil.UI/PublicProfilePage'
 import OnboardingPage from '@/features/Onboarding/OnboardingPage'
 import EditarPublicacionPage from '@/features/EditarPublicacion/EditarPublicacion.UI/EditarPublicacionPage'
 import MyProductsPage from '@/features/MyPublications/MyPublications.UI/MisPublicacionesPage'
@@ -81,8 +80,8 @@ export function AppRoutes() {
               <Route path="/home" element={<HomePage />} />
               <Route path="/crear" element={<CreateProductPage />} />
               <Route path="/mis-publicaciones" element={<MyProductsPage />} />
-              <Route path="/perfil" element={<PerfilPage />} />
-              <Route path="/perfil/public/:id" element={<PublicProfilePage />} />
+              <Route path="/perfil/" element={<PerfilPage />} />
+              <Route path="/perfil/:id" element={<PerfilPage />} />
               <Route path="/editar" element={<EditarPublicacionPage />} />
               <Route path="/mis-foros" element={<MyPublicationsPage />} />
               <Route path="/forums" element={<ForumPage />} />
