@@ -73,8 +73,8 @@ export const usePosts = (searchTerm: string, categoryId: string) => {
              vendedor: {
                 id: p.vendedor.id,
                 nombre: p.vendedor.nombre,
-                usuario: p.vendedor.usuario,
-                fotoPerfilUrl: p.vendedor.fotoPerfilUrl || p.vendedor.avatar, // Ajustar según tu API
+                usuario: p.vendedor.usuario, // Este es el dato clave
+                fotoPerfilUrl: p.vendedor.fotoPerfilUrl, // Ahora sí vendrá lleno
                 campus: p.vendedor.campus,
                 reputacion: p.vendedor.reputacion
              },

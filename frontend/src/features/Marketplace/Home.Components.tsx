@@ -168,10 +168,10 @@ export const ItemCard = ({ post, onClick, isFavorite, onToggleFavorite }: { post
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-center gap-2 mb-2">
            <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0 overflow-hidden">
-             {post.vendedor?.fotoPerfilUrl ? <img src={post.vendedor.fotoPerfilUrl} className="w-full h-full object-cover"/> : getInitials(post.vendedor?.nombre)}
+             {post.vendedor?.fotoPerfilUrl ? <img src={post.vendedor.fotoPerfilUrl} className="w-full h-full object-cover"/> : getInitials(post.vendedor?.usuario)}
            </div>
            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-slate-700">{post.vendedor?.nombre}</span>
+              <span className="text-xs font-semibold text-slate-700">{post.vendedor?.usuario}</span>
               <span className="text-[10px] text-slate-400 leading-none">{formatDate(post.fechaAgregado)}</span>
            </div>
         </div>
@@ -304,10 +304,10 @@ export function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFa
             <div className="w-full md:w-[380px] bg-slate-50 border-l border-slate-100 p-6 flex flex-col overflow-y-auto shrink-0">
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex items-center gap-3">
                  <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg shrink-0 overflow-hidden">
-                     {post.vendedor?.fotoPerfilUrl ? <img src={post.vendedor.fotoPerfilUrl} className="w-full h-full object-cover"/> : getInitials(post.vendedor?.nombre)}
+                     {post.vendedor?.fotoPerfilUrl ? <img src={post.vendedor.fotoPerfilUrl} className="w-full h-full object-cover"/> : getInitials(post.vendedor?.usuario)}
                  </div>
                  <div>
-                    <div className="font-semibold text-slate-900">{post.vendedor?.nombre || "Usuario"}</div>
+                    <div className="font-semibold text-slate-900">{post.vendedor?.usuario || "Usuario"}</div>
                     <div className="flex items-center gap-1 text-xs text-slate-500"><Star size={12} className="fill-yellow-400 text-yellow-400" /> {post.vendedor?.reputacion ? Number(post.vendedor.reputacion).toFixed(1) : "5.0"}</div>
                  </div>
               </div>
