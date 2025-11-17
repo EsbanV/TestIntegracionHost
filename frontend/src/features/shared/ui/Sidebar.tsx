@@ -1,19 +1,19 @@
-import { useState, useEffect } from "react"
-import { NavLink, useNavigate, useLocation } from "react-router-dom"
-import { motion, AnimatePresence } from "framer-motion"
-import { useAuth } from "@/app/context/AuthContext"
+import { useState, useEffect } from "react";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/app/context/AuthContext";
 import { getImageUrl } from "@/app/imageHelper";
 
 // UI Components (Shadcn)
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { Separator } from "@/components/ui/separator"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+} from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // Icons
 import {
@@ -27,44 +27,43 @@ import {
   Store,
   HelpCircle,
   PlusCircle
-} from "lucide-react"
+} from "lucide-react";
 
-// Assets
-import LogoMUCT from "@/assets/img/logoMUCT.png" // Asegúrate de que la ruta sea correcta
-import UserDefault from "@/assets/img/user_default.png"
+// Assets - IMPORTACIÓN DEL LOGO
+import LogoMUCT from "@/assets/img/logoMUCT.png"; 
+import UserDefault from "@/assets/img/user_default.png";
 
 interface SidebarProps {
-  className?: string
-  active?: string // Mantenemos la prop por compatibilidad, aunque usaremos useLocation
+  className?: string;
+  active?: string;
 }
 
 export function Sidebar({ className }: SidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
-  const location = useLocation()
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Ajustar automáticamente en pantallas pequeñas al cargar
+  // Ajuste responsive inicial
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 1024) setIsCollapsed(true)
-      else setIsCollapsed(false)
-    }
-    window.addEventListener("resize", handleResize)
-    handleResize() // Check initial
-    return () => window.removeEventListener("resize", handleResize)
-  }, [])
+      if (window.innerWidth < 1024) setIsCollapsed(true);
+      else setIsCollapsed(false);
+    };
+    window.addEventListener("resize", handleResize);
+    handleResize();
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleLogout = () => {
-    logout()
-    navigate("/login", { replace: true })
-  }
+    logout();
+    navigate("/login", { replace: true });
+  };
 
-  // Variantes de animación para el contenedor
   const sidebarVariants = {
     expanded: { width: "260px" },
     collapsed: { width: "80px" },
-  }
+  };
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -73,158 +72,123 @@ export function Sidebar({ className }: SidebarProps) {
         animate={isCollapsed ? "collapsed" : "expanded"}
         variants={sidebarVariants}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className={`relative h-screen sticky top-0 flex flex-col text-slate-100 border-r border-slate-800 shadow-xl z-50 ${className}`}
+        className={`relative h-screen sticky top-0 flex flex-col text-slate-100 border-r border-slate-800 shadow-xl z-50 bg-slate-900 ${className}`}
       >
-        {/* --- HEADER: LOGO & TOGGLE --- */}
-        <div className="flex items-center justify-between p-4 h-16 border-b border-slate-800/50">
+        {/* --- HEADER CON LOGO --- */}
+        <div className="flex items-center justify-between p-4 h-16 border-b border-slate-800/50 bg-slate-950/20">
           <AnimatePresence mode="wait">
-            {!isCollapsed && (
+            {!isCollapsed ? (
               <motion.div
+                key="logo-expanded"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="flex items-center gap-2 overflow-hidden whitespace-nowrap"
+                className="flex items-center gap-3 overflow-hidden whitespace-nowrap"
               >
-                <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/20">
-                  <img src={LogoMUCT} alt="Logo" className="h-5 w-auto brightness-0 invert" />
-                </div>
+                {/* Imagen del Logo */}
+                <img 
+                  src={LogoMUCT} 
+                  alt="MarketUCT" 
+                  className="h-8 w-auto object-contain" 
+                />
                 <span className="font-bold text-lg tracking-tight text-slate-100">
-                  Market<span className="text-yellow-600">UCT</span>
+                  Market<span className="text-blue-500">UCT</span>
                 </span>
+              </motion.div>
+            ) : (
+              <motion.div
+                 key="logo-collapsed"
+                 initial={{ opacity: 0, scale: 0 }}
+                 animate={{ opacity: 1, scale: 1 }}
+                 exit={{ opacity: 0, scale: 0 }}
+                 className="mx-auto"
+              >
+                {/* Logo versión ícono (solo la imagen) */}
+                 <img 
+                  src={LogoMUCT} 
+                  alt="M" 
+                  className="h-8 w-8 object-contain" 
+                />
               </motion.div>
             )}
           </AnimatePresence>
           
-          {/* Botón Colapsar (Centrado si está colapsado) */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`text-slate-400 hover:text-white hover:bg-slate-800 transition-all ${isCollapsed ? 'mx-auto' : ''}`}
-          >
-            {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-          </Button>
+          {/* Botón Colapsar (Solo visible si está expandido para no tapar el logo centrado) */}
+          {!isCollapsed && (
+            <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsCollapsed(true)}
+                className="text-slate-400 hover:text-white hover:bg-slate-800 transition-all h-8 w-8"
+            >
+                <ChevronLeft size={18} />
+            </Button>
+          )}
+          
+          {/* Botón Expandir (Si está colapsado, aparece abajo o usamos el header como trigger) */}
+          {isCollapsed && (
+             <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsCollapsed(false)}
+                className="absolute right-[-12px] top-6 bg-slate-800 border border-slate-700 rounded-full h-6 w-6 shadow-md z-50 flex items-center justify-center text-slate-300 hover:text-white hover:bg-blue-600 hover:border-blue-500 transition-all"
+            >
+                <ChevronRight size={14} />
+            </Button>
+          )}
         </div>
 
-        {/* --- NAV LINKS --- */}
+        {/* --- RESTO DEL CONTENIDO (Navegación) --- */}
         <nav className="flex-1 flex flex-col gap-2 p-3 overflow-y-auto overflow-x-hidden scrollbar-hide">
-          
           <div className="space-y-1">
-            <SidebarItem
-              icon={<Store size={20} />}
-              label="Marketplace"
-              to="/home"
-              isCollapsed={isCollapsed}
-              isActive={location.pathname === "/home"}
-            />
-            <SidebarItem
-              icon={<PlusCircle size={20} />}
-              label="Crear Publicación"
-              to="/crear"
-              isCollapsed={isCollapsed}
-              isActive={location.pathname === "/crear"}
-            />
-            <SidebarItem
-              icon={<MessageSquare size={20} />}
-              label="Chats"
-              to="/chats"
-              isCollapsed={isCollapsed}
-              isActive={location.pathname === "/chats"}
-            />
-            <SidebarItem
-              icon={<Users size={20} />}
-              label="Foro Comunidad"
-              to="/forums"
-              isCollapsed={isCollapsed}
-              isActive={location.pathname === "/forums"}
-            />
+            <SidebarItem icon={<Store size={20} />} label="Marketplace" to="/home" isCollapsed={isCollapsed} isActive={location.pathname === "/home"} />
+            <SidebarItem icon={<PlusCircle size={20} />} label="Crear Publicación" to="/crear" isCollapsed={isCollapsed} isActive={location.pathname === "/crear"} />
+            <SidebarItem icon={<MessageSquare size={20} />} label="Chats" to="/chats" isCollapsed={isCollapsed} isActive={location.pathname === "/chats"} />
+            <SidebarItem icon={<Users size={20} />} label="Foro Comunidad" to="/forums" isCollapsed={isCollapsed} isActive={location.pathname === "/forums"} />
           </div>
-
           <Separator className="bg-slate-800/50 my-2" />
-
           <div className="space-y-1">
-            <SidebarItem
-              icon={<FileText size={20} />}
-              label="Términos y Condiciones"
-              to="/terminos"
-              isCollapsed={isCollapsed}
-              isActive={location.pathname === "/terminos"}
-            />
-            <SidebarItem
-              icon={<HelpCircle size={20} />}
-              label="Ayuda"
-              to="/ayuda"
-              isCollapsed={isCollapsed}
-              isActive={location.pathname === "/ayuda"}
-            />
+            <SidebarItem icon={<FileText size={20} />} label="Términos y Condiciones" to="/terminos" isCollapsed={isCollapsed} isActive={location.pathname === "/terminos"} />
+            <SidebarItem icon={<HelpCircle size={20} />} label="Ayuda" to="/ayuda" isCollapsed={isCollapsed} isActive={location.pathname === "/ayuda"} />
           </div>
         </nav>
 
-        {/* --- FOOTER: USER PROFILE & LOGOUT --- */}
+        {/* Footer Usuario */}
         <div className="p-3 border-t border-slate-800 bg-slate-950/30">
           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} gap-3`}>
-            
-            {/* User Info (Solo visible expandido) */}
             <AnimatePresence>
               {!isCollapsed && (
-                <motion.div 
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: "auto" }}
-                  exit={{ opacity: 0, width: 0 }}
-                  className="flex items-center gap-3 overflow-hidden"
-                >
+                <motion.div initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: "auto" }} exit={{ opacity: 0, width: 0 }} className="flex items-center gap-3 overflow-hidden">
                   <Avatar className="h-9 w-9 border border-slate-700">
-                    <AvatarImage src={getImageUrl(user.fotoPerfilUrl)} />
-                    <AvatarFallback className="bg-slate-800 text-slate-400">
-                      {user?.usuario?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
+                    <AvatarImage src={getImageUrl(user?.fotoPerfilUrl)} />
+                    <AvatarFallback className="bg-slate-800 text-slate-400">{user?.usuario?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col truncate">
-                    <span className="text-sm font-medium text-slate-200 truncate max-w-[120px]">
-                      {user?.usuario}
-                    </span>
-                    <span className="text-xs text-slate-500 truncate max-w-[120px]">
-                      {user?.role}
-                    </span>
+                    <span className="text-sm font-medium text-slate-200 truncate max-w-[120px]">{user?.usuario}</span>
+                    <span className="text-xs text-slate-500 truncate max-w-[120px]">{user?.role}</span>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
-
-            {/* Logout Button */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  onClick={handleLogout}
-                  variant="ghost"
-                  size={isCollapsed ? "icon" : "sm"}
-                  className={`${isCollapsed ? '' : 'ml-auto'} text-red-400 hover:text-red-300 hover:bg-red-500/10`}
-                >
+                <Button onClick={handleLogout} variant="ghost" size={isCollapsed ? "icon" : "sm"} className={`${isCollapsed ? '' : 'ml-auto'} text-red-400 hover:text-red-300 hover:bg-red-500/10`}>
                   <LogOut size={20} />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right" className="bg-slate-800 text-slate-200 border-slate-700">
-                <p>Cerrar Sesión</p>
-              </TooltipContent>
+              <TooltipContent side="right" className="bg-slate-800 text-slate-200 border-slate-700"><p>Cerrar Sesión</p></TooltipContent>
             </Tooltip>
           </div>
         </div>
       </motion.aside>
     </TooltipProvider>
-  )
+  );
 }
 
-// --- SUBCOMPONENTE: ITEM DE NAVEGACIÓN ---
-interface SidebarItemProps {
-  icon: React.ReactNode
-  label: string
-  to: string
-  isCollapsed: boolean
-  isActive: boolean
-}
-
-function SidebarItem({ icon, label, to, isCollapsed, isActive }: SidebarItemProps) {
-  return (
+// ... (SidebarItem component se mantiene igual)
+function SidebarItem({ icon, label, to, isCollapsed, isActive }: any) {
+    // ... (Tu código existente de SidebarItem)
+    return (
     <Tooltip>
       <TooltipTrigger asChild>
         <NavLink
@@ -233,17 +197,14 @@ function SidebarItem({ icon, label, to, isCollapsed, isActive }: SidebarItemProp
             relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group
             ${isActive 
               ? "bg-blue-600 text-white shadow-md shadow-blue-900/20" 
-              : "text-slate-400 hover:text-slate-100 hover:bg-slate-400"
+              : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
             }
             ${isCollapsed ? "justify-center" : ""}
           `}
         >
-          {/* Icono */}
           <span className={`flex-shrink-0 transition-colors ${isActive ? "text-white" : "text-slate-400 group-hover:text-slate-100"}`}>
             {icon}
           </span>
-
-          {/* Texto (Animado) */}
           <AnimatePresence>
             {!isCollapsed && (
               <motion.span
@@ -257,18 +218,11 @@ function SidebarItem({ icon, label, to, isCollapsed, isActive }: SidebarItemProp
               </motion.span>
             )}
           </AnimatePresence>
-
-          {/* Indicador Activo (Barra lateral) */}
           {isActive && !isCollapsed && (
-            <motion.div
-              layoutId="activeSidebarItem"
-              className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white/30 rounded-r-full"
-            />
+            <motion.div layoutId="activeSidebarItem" className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white/30 rounded-r-full" />
           )}
         </NavLink>
       </TooltipTrigger>
-      
-      {/* Tooltip solo cuando está colapsado */}
       {isCollapsed && (
         <TooltipContent side="right" className="bg-slate-800 text-slate-200 border-slate-700 ml-2 font-medium">
           {label}
@@ -277,5 +231,3 @@ function SidebarItem({ icon, label, to, isCollapsed, isActive }: SidebarItemProp
     </Tooltip>
   )
 }
-
-export default Sidebar
