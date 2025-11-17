@@ -22,7 +22,7 @@ import OnboardingPage from '@/features/Onboarding/OnboardingPage'
 import EditarPublicacionPage from '@/features/EditarPublicacion/EditarPublicacion.UI/EditarPublicacionPage'
 import MyProductsPage from '@/features/MyPublications/MyPublications.UI/MisPublicacionesPage'
 import ForumPage from '@/features/Forum/ForumPage'
-import MyPublicationsPage from '@/features/Forum/MyPublications'
+import MyPublicationsPage from '@/features/Forum/MyPublicationsPage'
 import FavoritesPage from '@/features/Favoritos/FavoritesPage'
 
 import UsersPage from '../features/admin/pages/UsersPage';
