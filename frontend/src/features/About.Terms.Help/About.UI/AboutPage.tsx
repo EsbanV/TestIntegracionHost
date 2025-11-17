@@ -5,6 +5,9 @@ import {
   BookOpen, MessageSquare, Star, Palette, Users, ShieldCheck, Lightbulb, Rocket, LogIn, Zap 
 } from 'lucide-react';
 
+import loginBg from '@/assets/img/FondoOscuro.png'; 
+const BACKGROUND_IMAGE = loginBg;
+
 // UI Components
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,11 +18,22 @@ import LoginFooter from './About.Components/footer';
 
 // 1. Fondo Aurora (Animación CSS pura con Tailwind)
 const AuroraBackground = () => (
-  <div className="absolute inset-0 -z-10 overflow-hidden bg-slate-950">
+  <div className="absolute inset-0 -z-10 overflow-hidden">
+    {/* Imagen de fondo a pantalla completa */}
+    <div
+      className="absolute inset-0 bg-slate-950 bg-cover bg-center"
+      style={{ backgroundImage: `url(${BACKGROUND_IMAGE})` }}
+    />
+
+    {/* Capa oscura encima para que el texto se lea bien (opcional) */}
+    <div className="absolute inset-0 bg-slate-950/70" />
+
+    {/* Tus blobs/auroras */}
     <div className="absolute -top-[50%] left-[50%] h-[50vw] w-[50vw] -translate-x-1/2 rounded-full bg-blue-500/20 blur-[100px] animate-pulse-slow" />
     <div className="absolute top-[20%] left-[10%] h-[30vw] w-[30vw] rounded-full bg-purple-500/20 blur-[120px] animate-blob" />
     <div className="absolute bottom-[10%] right-[10%] h-[40vw] w-[40vw] rounded-full bg-indigo-500/20 blur-[120px] animate-blob animation-delay-2000" />
-    {/* Grid Pattern Overlay */}
+
+    {/* Grid por encima */}
     <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
   </div>
 );
@@ -71,8 +85,9 @@ const AboutHeader = () => (
 );
 
 export default function AboutPage() {
-  return (
+  return (    
     <div className="relative min-h-screen font-sans text-slate-100 selection:bg-blue-500/30">
+      
       <AuroraBackground />
       <AboutHeader />
       
