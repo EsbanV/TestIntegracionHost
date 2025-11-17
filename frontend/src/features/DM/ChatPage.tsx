@@ -1,20 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { LuX, LuStar, LuMessageCircle } from 'react-icons/lu';
+import { useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
+import { LuX, LuStar, LuMessageCircle, LuClock, LuCircleAlert } from 'react-icons/lu';
 
 import { useAuth } from '@/app/context/AuthContext';
 import RateUserModal from '@/features/DM/Chat.Components/RateUserModal';
 
-// --- 1. HOOKS ROBUSTOS (Nuevos Nombres) ---
+// --- HOOKS ---
 import { 
   useChatSocket, 
-  useChatList,        // Antes useChatListInfinite
-  useChatMessages,    // Antes parte de useConversation
-  useChatTransaction, // Antes parte de useConversation
-  useChatActions      // Nuevo hook de acciones
+  useChatList, 
+  useChatMessages, 
+  useChatTransaction, 
+  useChatActions 
 } from '@/features/DM/chat.hooks';
 
-// --- 2. COMPONENTES UI ---
+import { useRateLimiter } from '@/features/DM/chat.hooks'; // Asegúrate de tener este archivo creado
+
+// --- COMPONENTES UI ---
 import { 
   ChatListSidebar, 
   ChatMessagesArea, 
@@ -25,65 +29,63 @@ import {
 import type { Chat } from '@/features/DM/chat.types';
 
 export default function ChatPage() {
-  const { user } = useAuth(); // Ya no necesitamos 'token' aquí, los hooks lo manejan
+  const { user } = useAuth();
   const location = useLocation();
   
-  // --- ESTADOS LOCALES ---
+  // --- ESTADOS ---
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
-  
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
   const [pendingRatingData, setPendingRatingData] = useState<{sellerId: number, sellerName: string, transactionId: number} | null>(null);
 
-  // --- 3. DATOS (Usando los hooks nuevos) ---
+  // --- 1. LIMITADOR DE VELOCIDAD (Anti-Spam) ---
+  const { isLimited, timeLeft, checkRateLimit } = useRateLimiter({
+    maxRequests: 5,      // Máximo 5 mensajes...
+    windowMs: 5000,      // ...en 5 segundos
+    cooldownMs: 10000    // Castigo: 10 segundos de espera
+  });
 
-  // A. Lista de Chats (Paginada)
+  // --- 2. DATOS ---
   const { 
       data: chatListData, 
       fetchNextPage, 
       hasNextPage, 
       isFetchingNextPage 
-  } = useChatList(true); // isOpen = true
+  } = useChatList(true);
 
   const chats = chatListData?.allChats || [];
 
-  // B. Conversación Activa (Mensajes)
   const { data: messagesData } = useChatMessages(activeChatId, true);
   const messages = messagesData?.allMessages || [];
 
-  // C. Transacción Activa
   const { data: transaction } = useChatTransaction(activeChatId, true);
 
-  // D. Información del Usuario Activo
   const activeChatInfo = chats.find(c => c.id === activeChatId);
-  
-  // Fallback visual si el chat no está en la lista inicial
   const displayChatInfo = activeChatInfo || (activeChatId ? { 
       nombre: "Cargando usuario...", 
       id: activeChatId, 
       mensajes: [], 
       noLeidos: 0, 
-      online: false, 
       avatar: undefined 
   } as unknown as Chat : null);
 
-  // --- 4. SOCKETS & ACCIONES ---
-  
-  // Inicializar Socket (maneja invalidaciones internamente)
+  // --- 3. SOCKETS & ACCIONES ---
   useChatSocket(activeChatId);
-
-  // Importar acciones encapsuladas
   const { sendMessage, markAsRead, confirmTransaction, isSending } = useChatActions();
 
   // --- HANDLERS ---
 
   const handleSend = async (texto: string, file?: File) => {
+      // 1. Verificar Spam antes de intentar enviar
+      if (!checkRateLimit()) return; 
+
       if (!activeChatId) return;
+      
       try {
           await sendMessage({ chatId: activeChatId, text: texto, file });
       } catch (e) {
-          console.error("Error al enviar:", e);
-          alert("No se pudo enviar el mensaje");
+          console.error(e);
+          // Si el error viene del backend (filtro de groserías), ya lanzará la alerta.
       }
   };
 
@@ -96,7 +98,6 @@ export default function ChatPage() {
       if (!transaction || !displayChatInfo) return;
       try { 
           await confirmTransaction({ txId: transaction.id, type: 'receipt' }); 
-          // Abrir modal al confirmar recepción
           setPendingRatingData({ 
               sellerId: activeChatId!, 
               sellerName: displayChatInfo.nombre, 
@@ -106,29 +107,23 @@ export default function ChatPage() {
       } catch (e) {}
   };
 
-  // Efecto: Navegación externa
+  // Efectos de navegación y lectura
   useEffect(() => {
       const state = location.state as { toUser?: any };
-      if (state?.toUser) { 
-          setActiveChatId(state.toUser.id); 
-          setMobileView('chat'); 
-      }
+      if (state?.toUser) { setActiveChatId(state.toUser.id); setMobileView('chat'); }
   }, [location]);
 
-  // Efecto: Marcar leído al abrir
   useEffect(() => {
-      if (activeChatId) {
-          markAsRead(activeChatId);
-      }
-  }, [activeChatId, messages.length]); // Se ejecuta al cambiar de chat o recibir mensajes nuevos
+      if (activeChatId) markAsRead(activeChatId);
+  }, [activeChatId, messages.length]);
 
 
   return (
     <div className="flex h-[calc(100vh-4rem)] bg-slate-50 overflow-hidden rounded-xl border border-slate-200 shadow-sm m-4 md:m-6">
       
-      {/* SIDEBAR (Lista) */}
+      {/* SIDEBAR */}
       <div className={`${mobileView === 'list' ? 'flex' : 'hidden md:flex'} w-full md:w-80 lg:w-96 flex-col border-r border-slate-200 bg-white z-20`}>
-         <div className="p-4 border-b border-slate-100 font-bold text-lg text-slate-800 sticky top-0 bg-white z-20">
+         <div className="p-4 border-b border-slate-100 font-bold text-lg text-slate-800 sticky top-0 bg-white z-10">
              Mensajes
          </div>
          <div className="flex-1 overflow-hidden">
@@ -143,7 +138,7 @@ export default function ChatPage() {
          </div>
       </div>
       
-      {/* AREA PRINCIPAL (Conversación) */}
+      {/* AREA DE CHAT */}
       <div className={`${mobileView === 'chat' ? 'flex' : 'hidden md:flex'} flex-1 flex-col bg-slate-50/50 relative`}>
         {activeChatId && displayChatInfo ? (
           <>
@@ -159,7 +154,6 @@ export default function ChatPage() {
                  </div>
               </div>
               
-              {/* Botón Calificar Manual */}
               {transaction?.estadoId === 2 && transaction.esComprador && (
                   <button 
                     onClick={() => { 
@@ -168,12 +162,12 @@ export default function ChatPage() {
                     }} 
                     className="flex items-center gap-2 text-amber-600 bg-amber-50 px-4 py-1.5 rounded-full text-sm font-bold hover:bg-amber-100 transition-colors"
                   >
-                      <LuStar size={16} className="fill-amber-600" /> Calificar Vendedor
+                      <LuStar size={16} className="fill-amber-600" /> Calificar
                   </button>
               )}
             </div>
             
-            {/* Barra Estado */}
+            {/* Barra de Transacción */}
             {transaction && (
                 <TransactionStatusBar 
                     tx={transaction}
@@ -192,11 +186,31 @@ export default function ChatPage() {
                 currentUserId={user?.id || 0} 
             />
             
-            {/* Input */}
-            <ChatInputArea 
-                onSend={handleSend} 
-                isLoading={isSending} 
-            />
+            {/* Zona de Input con Alerta de Spam */}
+            <div className="relative">
+                <AnimatePresence>
+                    {isLimited && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }} 
+                            animate={{ opacity: 1, y: 0 }} 
+                            exit={{ opacity: 0, y: 10 }}
+                            className="absolute bottom-full left-0 right-0 mx-4 mb-2 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 z-20"
+                        >
+                            <div className="bg-red-100 p-1.5 rounded-full"><LuClock className="w-4 h-4 text-red-600 animate-pulse" /></div>
+                            <div className="flex-1">
+                                <p className="font-bold text-xs uppercase tracking-wide">Estás escribiendo muy rápido</p>
+                                <p className="text-sm">Por favor espera <b>{timeLeft}s</b> para enviar más mensajes.</p>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <ChatInputArea 
+                    onSend={handleSend} 
+                    // Bloqueamos el input si está enviando O si está limitado por spam
+                    isLoading={isSending || isLimited} 
+                />
+            </div>
           </>
         ) : (
            <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50">
@@ -204,11 +218,9 @@ export default function ChatPage() {
                   <LuMessageCircle size={48} className="text-slate-200" />
               </div>
               <p className="font-medium text-lg text-slate-500">Selecciona un chat para comenzar</p>
-              <p className="text-sm text-slate-400">O busca un usuario nuevo en el panel izquierdo</p>
            </div>
         )}
 
-        {/* Modal */}
         {pendingRatingData && (
             <RateUserModal 
                 isOpen={isRateModalOpen}

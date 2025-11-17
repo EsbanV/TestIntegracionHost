@@ -271,3 +271,59 @@ export const useChatActions = () => {
     isConfirming: confirmTransactionMutation.isPending
   };
 };
+
+// ============================================================================
+// 4. RATE LIMITER (Mutaciones)
+// ============================================================================
+
+interface RateLimiterOptions {
+  maxRequests: number; // Ej: 5 mensajes
+  windowMs: number;    // Ej: en 5000ms (5 segundos)
+  cooldownMs: number;  // Ej: Bloquear por 10000ms (10 segundos) si se excede
+}
+
+export function useRateLimiter({ maxRequests, windowMs, cooldownMs }: RateLimiterOptions) {
+  const [isLimited, setIsLimited] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+  
+  // Usamos useRef para no provocar re-renders innecesarios con el historial de tiempos
+  const timestamps = useRef<number[]>([]);
+
+  const checkRateLimit = useCallback(() => {
+    const now = Date.now();
+    
+    // 1. Filtrar timestamps antiguos (fuera de la ventana de tiempo)
+    timestamps.current = timestamps.current.filter(t => now - t < windowMs);
+
+    // 2. Verificar si estamos bloqueados
+    if (isLimited) return false;
+
+    // 3. Verificar si excedimos el límite
+    if (timestamps.current.length >= maxRequests) {
+      // ACTIVAR BLOQUEO
+      setIsLimited(true);
+      setTimeLeft(cooldownMs / 1000);
+
+      // Iniciar cuenta regresiva para desbloquear
+      const interval = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setIsLimited(false);
+            timestamps.current = []; // Resetear historial al desbloquear
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return false; // Bloquear acción actual
+    }
+
+    // 4. Si todo ok, registrar este intento
+    timestamps.current.push(now);
+    return true; // Permitir acción
+  }, [isLimited, maxRequests, windowMs, cooldownMs]);
+
+  return { isLimited, timeLeft, checkRateLimit };
+}
