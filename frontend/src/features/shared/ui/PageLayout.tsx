@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom'
-import FloatingChat from './FloatingChat'
+import FloatingChat from '@/features/DM/FloatingChat'
 import Header from './Header'
 import { Sidebar } from './Sidebar'
 
