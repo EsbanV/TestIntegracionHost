@@ -378,8 +378,8 @@ export default function MarketplacePage() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const navigate = useNavigate();
 
-  const categories = useMemo(() => ['Electrónicos', 'Libros y Materiales', 'Ropa y Accesorios', 'Deportes', 'Hogar y Jardín', 'Vehículos', 'Servicios'], []);
-  const categoryMap: Record<string, string> = { 'Electrónicos': 'electronics', 'Libros y Materiales': 'books', 'Ropa y Accesorios': 'clothing', 'Deportes': 'sports', 'Hogar y Jardín': 'home', 'Vehículos': 'vehicles', 'Servicios': 'services' };
+  const categories = useMemo(() => ['Electrónica', 'Libros y Apuntes', 'Muebles', 'Ropa', 'Otros'], []);
+  const categoryMap: Record<string, string> = { 'Electrónica': 'electronics', 'Libros y Apuntes': 'books', 'Muebles': 'furniture', 'Ropa': 'clothing', 'Otros': 'others' };
   const selectedCategoryId = selectedCategory ? (categoryMap[selectedCategory] ?? '') : '';
 
   const { posts, hasNextPage, fetchNextPage, isLoading, isError } = usePostsWithFilters({ searchTerm, categoryId: selectedCategoryId });
