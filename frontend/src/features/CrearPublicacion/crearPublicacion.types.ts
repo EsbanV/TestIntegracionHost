@@ -22,4 +22,4 @@ export const CATEGORY_MAP: CategoryMap = {
   'Otros': 5
 };
 
-export const CAMPUS_OPTIONS = ["San Francisco", "San Juan Pablo II", "Norte"];
+export const CAMPUS_OPTIONS = ["San Francisco", "San Juan Pablo II"];
