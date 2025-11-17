@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useScroll, useMotionValueEvent } from "framer-motion";
 import { 
   Search, X, ChevronLeft, ChevronRight, 
   ShoppingBag, Star, Filter, Heart, Loader2,
@@ -194,35 +195,70 @@ export const SearchFiltersBar = ({
   categories, 
   totalPosts, 
   isLoading 
-}: any) => (
-  <div className="sticky top-0 z-20 bg-[#F8FAFC]/95 backdrop-blur-md py-2 -mx-4 px-4 md:mx-0 md:px-0 md:bg-transparent">
-    <div className="flex flex-col md:flex-row gap-3 rounded-xl bg-white p-2 shadow-sm border border-slate-200">
-      <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input 
-              type="text" 
-              placeholder="Buscar productos, apuntes..." 
-              className="h-10 w-full rounded-md bg-transparent px-9 text-sm outline-none placeholder:text-slate-400" 
-              value={searchTerm} 
-              onChange={(e) => setSearchTerm(e.target.value)} 
-          />
+}: any) => {
+  
+  // --- LÓGICA DE SCROLL ---
+  const { scrollY } = useScroll();
+  const [hidden, setHidden] = useState(false);
+
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    const previous = scrollY.getPrevious() ?? 0;
+    // Si bajamos más de 100px y estamos scrolleando hacia abajo -> Ocultar
+    if (latest > previous && latest > 100) {
+      setHidden(true);
+    } else {
+      // Si subimos -> Mostrar
+      setHidden(false);
+    }
+  });
+
+  return (
+    <motion.div 
+      variants={{
+        visible: { y: 0 },
+        hidden: { y: -100 },
+      }}
+      animate={hidden ? "hidden" : "visible"}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
+      className="sticky top-0 z-20 py-2 px-4 md:px-0 pointer-events-none" // pointer-events-none permite clickear atrás si es transparente
+    >
+      {/* Contenedor interno con fondo y pointer-events-auto para que sea clickeable */}
+      <div className="pointer-events-auto bg-white/95 backdrop-blur-md rounded-xl shadow-sm border border-slate-200 p-2">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input 
+                  type="text" 
+                  placeholder="Buscar productos, apuntes..." 
+                  className="h-10 w-full rounded-md bg-slate-50 px-9 text-sm outline-none placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all" 
+                  value={searchTerm} 
+                  onChange={(e) => setSearchTerm(e.target.value)} 
+              />
+          </div>
+          <div className="hidden md:block w-px bg-slate-200 mx-1 my-1" />
+          <div className="relative md:w-64">
+              <select 
+                  className="h-10 w-full appearance-none rounded-md bg-slate-50 px-3 text-sm font-medium text-slate-600 outline-none cursor-pointer hover:bg-slate-100 focus:bg-white transition-all" 
+                  value={selectedCategory} 
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+              >
+                <option value="">Todas las categorías</option>
+                {categories.map((c: string) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          </div>
+        </div>
+        
+        {!isLoading && (
+           <div className="mt-2 px-1 flex items-center justify-between text-xs text-slate-500 font-medium border-t border-slate-100 pt-2">
+              <span>Resultados: {totalPosts}</span>
+              {/* Aquí podrías poner filtros rápidos o tags */}
+           </div>
+        )}
       </div>
-      <div className="h-px w-full bg-slate-100 md:h-auto md:w-px" />
-      <div className="relative md:w-64">
-          <select 
-              className="h-10 w-full appearance-none rounded-md bg-transparent px-3 text-sm font-medium text-slate-600 outline-none cursor-pointer hover:bg-slate-50" 
-              value={selectedCategory} 
-              onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            <option value="">Todas las categorías</option>
-            {categories.map((c: string) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-      </div>
-    </div>
-    {!isLoading && <div className="mt-2 text-xs text-slate-500 font-medium px-1">Mostrando {totalPosts} publicaciones</div>}
-  </div>
-);
+    </motion.div>
+  );
+};
 
 // ============================================================================
 // 5. MODAL DE DETALLE DE PRODUCTO
