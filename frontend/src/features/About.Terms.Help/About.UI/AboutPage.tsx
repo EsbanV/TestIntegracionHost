@@ -17,15 +17,15 @@ import LoginFooter from './About.Components/footer';
 /* ======================= FONDO AURORA + IMAGEN ======================= */
 
 const AuroraBackground = () => (
-  <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-    {/* Imagen de fondo a pantalla completa (igual idea que en LoginPage) */}
+  <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+    {/* 1. IMAGEN DE FONDO (Fixed para cubrir todo el viewport) */}
     <img
       src={BACKGROUND_IMAGE}
       alt="Fondo MarketUCT"
-      className="w-full h-full object-cover"
+      className="w-full h-full object-cover fixed" // FIX: Usa fixed para cubrir
     />
 
-    {/* Capa oscura encima para mejorar contraste del texto */}
+    {/* 2. Capa oscura y Blur */}
     <div className="absolute inset-0 bg-slate-950/70" />
 
     {/* Blobs / auroras */}
@@ -33,7 +33,7 @@ const AuroraBackground = () => (
     <div className="absolute top-[20%] left-[10%] h-[30vw] w-[30vw] rounded-full bg-purple-500/20 blur-[120px] animate-blob" />
     <div className="absolute bottom-[10%] right-[10%] h-[40vw] w-[40vw] rounded-full bg-indigo-500/20 blur-[120px] animate-blob animation-delay-2000" />
 
-    {/* Grid por encima */}
+    {/* Grid Pattern Overlay */}
     <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
   </div>
 );
@@ -46,7 +46,7 @@ const MagicText = ({ text }: { text: string }) => (
   </span>
 );
 
-/* ======================= TARJETAS BENTO ======================= */
+/* ======================= TARJETAS BENTO ======================== */
 
 const BentoCard = ({ icon, title, desc, className }: any) => (
   <motion.div 
@@ -96,7 +96,7 @@ const AboutHeader = () => (
 
 export default function AboutPage() {
   return (    
-    <div className="relative min-h-screen font-sans text-slate-100 selection:bg-blue-500/30 overflow-hidden">
+    <div className="relative min-h-screen font-sans bg-slate-950 text-slate-100 selection:bg-blue-500/30 overflow-hidden">
       {/* Fondo a pantalla completa por debajo del contenido */}
       <AuroraBackground />
 
@@ -164,7 +164,7 @@ export default function AboutPage() {
         </section>
 
         {/* STATS */}
-        <section className="py-20 border-y border-white/5 bg-white/5 backdrop-blur-sm">
+        <section className="py-10 bg-white/5 backdrop-blur-sm border-y border-white/10">
           <div className="max-w-6xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
               { label: "Usuarios Activos", value: "1.2k+" },
