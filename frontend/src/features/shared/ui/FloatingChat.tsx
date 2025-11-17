@@ -17,12 +17,12 @@ import { Button } from "@/components/ui/button"
 import RateUserModal from "@/features/DM/DM.UI/DM.Components/RateUserModal"
 
 // --- TIPOS ---
-type Estado = "enviando" | "enviado" | "recibido" | "leido"
+type Estado = "enviando" | "enviado" | "recibido" | "leido" | "error" // Agregado 'error'
 
 interface Mensaje { 
   id: number | string; 
   texto: string; 
-  autor: "yo" | "otro" | "sistema"; // Agregado 'sistema'
+  autor: "yo" | "otro" | "sistema";
   hora: string; 
   estado?: Estado;
   imagenUrl?: string;
@@ -48,7 +48,7 @@ interface Chat {
   avatar?: string; 
   noLeidos?: number;
   online?: boolean;
-  transaccion?: TransaccionActiva | null; // Agregado
+  transaccion?: TransaccionActiva | null;
 }
 
 type ViewState = "list" | "chat"
@@ -70,6 +70,7 @@ export default function FloatingChat() {
   const [chats, setChats] = useState<Chat[]>([])
   const [activeChatId, setActiveChatId] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isSending, setIsSending] = useState(false) // Nuevo estado de envío
   
   // Estado para calificación
   const [isRateModalOpen, setIsRateModalOpen] = useState(false)
@@ -89,8 +90,6 @@ export default function FloatingChat() {
 
     newSocket.on("connect", () => console.log("🟢 MiniChat conectado"))
     newSocket.on("new_message", (msg: any) => handleIncomingMessage(msg))
-    
-    // Escuchar actualizaciones de transacción
     newSocket.on("transaction_event", (data: any) => handleTransactionUpdate(data))
 
     return () => { newSocket.disconnect() }
@@ -138,7 +137,7 @@ export default function FloatingChat() {
       id: msgData.id,
       texto: msgData.tipo === 'imagen' ? '' : contenido,
       imagenUrl: msgData.tipo === 'imagen' ? getFullImgUrl(msgData.contenido) : undefined,
-      autor: "otro", // El sistema también cuenta como "otro" para visualización simple
+      autor: "otro",
       hora: hora,
       estado: "recibido",
       tipo: msgData.tipo,
@@ -168,7 +167,6 @@ export default function FloatingChat() {
 
   const handleTransactionUpdate = (data: any) => {
     if (!activeChatId) return;
-
     setChats((prev: Chat[]) => prev.map((c): Chat => {
         if (c.id === activeChatId && c.transaccion?.id === data.transactionId) {
             const currentTx = c.transaccion!; 
@@ -178,7 +176,7 @@ export default function FloatingChat() {
                 txUpdate.confirmacionVendedor = true;
             } else if (data.type === 'RECEIPT_CONFIRMED') {
                 txUpdate.confirmacionComprador = true;
-                txUpdate.estadoId = 2; // Completado
+                txUpdate.estadoId = 2;
             }
             return { ...c, transaccion: txUpdate };
         }
@@ -186,24 +184,23 @@ export default function FloatingChat() {
     }));
   };
 
-  // 4. Cargar Mensajes y Transacción al abrir chat
+  // 4. Cargar Datos del Chat
   const loadChatData = async (chatId: number) => {
     setIsLoading(true)
     try {
-      // A. Mensajes
+      // Mensajes
       const resMsg = await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const dataMsg = await resMsg.json()
       
-      // B. Transacción Activa
+      // Transacción
       let transaccionActiva = null;
       try {
            const resTx = await fetch(`${URL_BASE}/api/transactions/check-active/${chatId}`, {
                headers: { 'Authorization': `Bearer ${token}` }
            });
            const dataTx = await resTx.json();
-           
            if(dataTx.ok && dataTx.transaction) {
                transaccionActiva = {
                    id: dataTx.transaction.id,
@@ -240,7 +237,6 @@ export default function FloatingChat() {
             transaccion: transaccionActiva
         } : c))
         
-        // Marcar leídos
         await fetch(`${URL_BASE}/api/chat/conversacion/${chatId}/mark-read`, {
           method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
         })
@@ -255,23 +251,19 @@ export default function FloatingChat() {
     loadChatData(id)
   }
 
-  // 5. Acciones de Transacción
+  // 5. Acciones
   const handleConfirmDelivery = async (txId: number) => {
       if(!token) return;
       try {
           const res = await fetch(`${URL_BASE}/api/transactions/${txId}/confirm-delivery`, {
               method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` }
           });
-          
           if(res.ok) {
               setChats(prev => prev.map(c => c.id === activeChatId ? {
                   ...c,
                   transaccion: c.transaccion ? { ...c.transaccion, confirmacionVendedor: true } : null
               } : c));
-              
               socketRef.current?.emit('transaction_event', { toUserId: activeChatId, type: 'DELIVERY_CONFIRMED', transactionId: txId });
-              
-              // Mensaje de sistema
               const sysMsg = JSON.stringify({ type: 'SYSTEM_EVENT', text: '📦 El vendedor marcó como entregado.' });
               socketRef.current?.emit('send_message', { destinatarioId: activeChatId, contenido: sysMsg, tipo: 'sistema' });
           }
@@ -284,86 +276,127 @@ export default function FloatingChat() {
           const res = await fetch(`${URL_BASE}/api/transactions/${txId}/confirm-receipt`, {
               method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` }
           });
-
           if(res.ok) {
               const activeChat = chats.find(c => c.id === activeChatId);
               setChats(prev => prev.map(c => c.id === activeChatId ? {
                   ...c,
                   transaccion: c.transaccion ? { ...c.transaccion, confirmacionComprador: true, estadoId: 2 } : null
               } : c));
-
               socketRef.current?.emit('transaction_event', { toUserId: activeChatId, type: 'RECEIPT_CONFIRMED', transactionId: txId });
-
               const sysMsg = JSON.stringify({ type: 'SYSTEM_EVENT', text: '✅ El comprador confirmó recepción.' });
               socketRef.current?.emit('send_message', { destinatarioId: activeChatId, contenido: sysMsg, tipo: 'sistema' });
-
               if (activeChat) {
-                  setPendingRatingData({ 
-                      sellerId: activeChat.id, 
-                      sellerName: activeChat.nombre,
-                      transactionId: txId 
-                  });
+                  setPendingRatingData({ sellerId: activeChat.id, sellerName: activeChat.nombre, transactionId: txId });
                   setIsRateModalOpen(true);
               }
           }
       } catch(e) { console.error(e); }
   }
 
-  // 6. Enviar Mensaje
+  // 6. ENVIAR MENSAJE (REFACTORIZADO CON API Y FILTRO)
   const handleSend = useCallback(async (texto: string, file?: File) => {
     if (!activeChatId || !token) return
     if (!texto.trim() && !file) return
 
+    setIsSending(true);
     const tempId = "tmp-" + Date.now()
     const hora = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    
     let contenidoFinal = texto
     let tipoMensaje = 'texto'
 
-    if (file) {
-      try {
-        const formData = new FormData()
-        formData.append('image', file)
-        const res = await fetch(`${URL_BASE}/api/upload/upload-image`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: formData
-        })
-        const data = await res.json()
-        if (data.ok) {
-           contenidoFinal = data.imageUrl
-           tipoMensaje = 'imagen'
-        }
-      } catch (e) { console.error(e); return; }
-    }
-    
+    // A. Optimistic Update (Mostrar mensaje inmediatamente)
     const prevUrl = file ? URL.createObjectURL(file) : undefined;
-
+    
     setChats(prev => prev.map(c => 
       c.id === activeChatId 
         ? { 
             ...c, 
-            ultimoMensaje: tipoMensaje === 'imagen' ? '📷 Imagen' : texto, 
+            ultimoMensaje: file ? '📷 Imagen' : texto, 
             mensajes: [...c.mensajes, { 
                 id: tempId, 
-                texto: tipoMensaje === 'imagen' ? '' : texto, 
-                imagenUrl: tipoMensaje === 'imagen' ? (prevUrl || getFullImgUrl(contenidoFinal)) : undefined,
+                texto: file ? '' : texto, 
+                imagenUrl: file ? prevUrl : undefined,
                 autor: 'yo', 
                 hora, 
                 estado: 'enviando' 
             }] 
           } 
         : c
-    ))
+    ));
 
-    if (socketRef.current) {
-      socketRef.current.emit("send_message", {
-        destinatarioId: activeChatId,
-        contenido: contenidoFinal,
-        tipo: tipoMensaje
-      })
+    try {
+        // B. Subir imagen si existe
+        if (file) {
+            const formData = new FormData()
+            formData.append('image', file)
+            const resImg = await fetch(`${URL_BASE}/api/upload/upload-image`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            })
+            const dataImg = await resImg.json()
+            if (!dataImg.ok) throw new Error('Error subiendo imagen');
+            contenidoFinal = dataImg.imageUrl;
+            tipoMensaje = 'imagen';
+        }
+
+        // C. Enviar al API (Aquí actúa el filtro de groserías)
+        const res = await fetch(`${URL_BASE}/api/chat/send`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                destinatarioId: activeChatId,
+                contenido: contenidoFinal,
+                tipo: tipoMensaje
+            })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            // 🔴 ERROR (Filtro o Server): Revertir mensaje
+            throw new Error(data.message || "Error al enviar mensaje");
+        }
+
+        // D. Éxito: Emitir Socket para el destinatario
+        if (socketRef.current) {
+            socketRef.current.emit("send_message", {
+                destinatarioId: activeChatId,
+                contenido: contenidoFinal,
+                tipo: tipoMensaje,
+                remitente: { id: user?.id } // Para que el otro sepa quién lo envió
+            });
+        }
+
+        // Actualizar estado visual a 'enviado'
+        setChats(prev => prev.map(c => 
+            c.id === activeChatId 
+            ? { 
+                ...c, 
+                mensajes: c.mensajes.map(m => m.id === tempId ? { ...m, id: data.mensaje.id, estado: 'enviado', imagenUrl: tipoMensaje === 'imagen' ? getFullImgUrl(contenidoFinal) : undefined } : m)
+              }
+            : c
+        ));
+
+    } catch (error: any) {
+        console.error("Error envío:", error);
+        
+        // Revertir el mensaje de la UI si falló (por grosería u otro)
+        setChats(prev => prev.map(c => 
+            c.id === activeChatId 
+            ? { ...c, mensajes: c.mensajes.filter(m => m.id !== tempId) } 
+            : c
+        ));
+
+        alert(error.message || "No se pudo enviar el mensaje.");
+    } finally {
+        setIsSending(false);
     }
-  }, [activeChatId, token])
+
+  }, [activeChatId, token, user?.id])
 
   const activeChat = chats.find((c) => c.id === activeChatId)
   const totalUnread = chats.reduce((acc, c) => acc + (c.noLeidos || 0), 0)
@@ -381,6 +414,7 @@ export default function FloatingChat() {
             onSend={handleSend}
             onClose={() => setIsOpen(false)}
             isLoading={isLoading}
+            isSending={isSending}
             onConfirmDelivery={handleConfirmDelivery}
             onConfirmReceipt={handleConfirmReceipt}
             openRating={() => {
@@ -412,7 +446,6 @@ export default function FloatingChat() {
         )}
       </AnimatePresence>
 
-      {/* Modal Calificación */}
       {pendingRatingData && (
         <RateUserModal 
             isOpen={isRateModalOpen}
@@ -427,281 +460,70 @@ export default function FloatingChat() {
 }
 
 /* ===================== SUBCOMPONENTES ===================== */
-
-const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, onClose, isLoading, onConfirmDelivery, onConfirmReceipt, openRating }: any) => {
+const ChatWindow = ({ view, setView, chats, activeChat, onSelectChat, onSend, onClose, isLoading, isSending, onConfirmDelivery, onConfirmReceipt, openRating }: any) => {
   const dragControls = useDragControls()
-
   return (
     <motion.div
-      drag
-      dragListener={false}
-      dragControls={dragControls}
-      dragMomentum={false}
+      drag dragListener={false} dragControls={dragControls} dragMomentum={false}
       dragConstraints={{ left: -window.innerWidth + 400, right: 20, top: -window.innerHeight + 500, bottom: 20 }}
-      initial={{ opacity: 0, scale: 0.9, y: 50 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9, y: 50 }}
+      initial={{ opacity: 0, scale: 0.9, y: 50 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 50 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
       className="fixed right-6 bottom-24 w-[380px] h-[550px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden z-[9999]"
     >
-      {/* Header */}
-      <div 
-        onPointerDown={(e) => dragControls.start(e)}
-        className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 cursor-move touch-none select-none"
-      >
+      <div onPointerDown={(e) => dragControls.start(e)} className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 cursor-move touch-none select-none">
         <div className="flex items-center gap-3 overflow-hidden">
-          {view === "chat" && (
-            <button onClick={() => setView("list")} className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500 transition-colors shrink-0">
-              <LuChevronLeft size={20} />
-            </button>
-          )}
-          
-          {view === "chat" && activeChat && (
-             <Avatar className="h-8 w-8 border border-slate-100 shrink-0">
-               <AvatarImage src={activeChat.avatar} />
-               <AvatarFallback className="text-xs bg-slate-100">{activeChat.nombre.charAt(0)}</AvatarFallback>
-             </Avatar>
-          )}
-
+          {view === "chat" && <button onClick={() => setView("list")} className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500 transition-colors shrink-0"><LuChevronLeft size={20} /></button>}
+          {view === "chat" && activeChat && <Avatar className="h-8 w-8 border border-slate-100 shrink-0"><AvatarImage src={activeChat.avatar} /><AvatarFallback className="text-xs bg-slate-100">{activeChat.nombre.charAt(0)}</AvatarFallback></Avatar>}
           <div className="flex flex-col min-w-0">
-             <h3 className="font-bold text-slate-800 text-sm truncate">
-               {view === "chat" ? activeChat?.nombre : "Mensajes"}
-             </h3>
+             <h3 className="font-bold text-slate-800 text-sm truncate">{view === "chat" ? activeChat?.nombre : "Mensajes"}</h3>
              {view === "chat" && <span className="text-[10px] text-green-600 font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> En línea</span>}
           </div>
         </div>
-
         <div className="flex items-center gap-1 shrink-0">
-          <div className="p-2 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing transition-colors">
-             <LuGripHorizontal size={18} />
-          </div>
-          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all">
-            <LuX size={18} />
-          </button>
+          <div className="p-2 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing transition-colors"><LuGripHorizontal size={18} /></div>
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all"><LuX size={18} /></button>
         </div>
       </div>
 
-      {/* Mini Transaction Bar (Solo en vista de chat) */}
       {view === "chat" && activeChat?.transaccion && activeChat.transaccion.estadoId !== 3 && (
-         <MiniTransactionBar 
-            tx={activeChat.transaccion} 
-            onConfirmDelivery={() => onConfirmDelivery(activeChat.transaccion.id)}
-            onConfirmReceipt={() => onConfirmReceipt(activeChat.transaccion.id)}
-            onRate={openRating}
-         />
+         <MiniTransactionBar tx={activeChat.transaccion} onConfirmDelivery={() => onConfirmDelivery(activeChat.transaccion.id)} onConfirmReceipt={() => onConfirmReceipt(activeChat.transaccion.id)} onRate={openRating} />
       )}
 
       <div className="flex-1 overflow-hidden bg-white relative">
         <AnimatePresence mode="wait">
-          {view === "list" ? (
-            <ChatListView key="list" chats={chats} onSelect={onSelectChat} />
-          ) : (
-            <ChatConversationView key="chat" chat={activeChat} onSend={onSend} isLoading={isLoading} chatAvatar={activeChat?.avatar} />
-          )}
+          {view === "list" ? <ChatListView key="list" chats={chats} onSelect={onSelectChat} /> : <ChatConversationView key="chat" chat={activeChat} onSend={onSend} isLoading={isLoading} isSending={isSending} chatAvatar={activeChat?.avatar} />}
         </AnimatePresence>
       </div>
     </motion.div>
   )
 }
 
-// --- COMPONENTE: BARRA DE TRANSACCIÓN MINI ---
 const MiniTransactionBar = ({ tx, onConfirmDelivery, onConfirmReceipt, onRate }: any) => {
-    // Estado 1: Pendiente
-    if (tx.estadoId === 1 && !tx.confirmacionVendedor) {
-        return (
-            <div className="bg-blue-50 border-b border-blue-100 p-2 px-3 flex items-center justify-between">
-                <div className="flex items-center gap-2 overflow-hidden">
-                    <LuShoppingBag className="text-blue-600 flex-shrink-0" size={16} />
-                    <span className="text-xs text-slate-700 truncate">Venta: <b>{tx.producto.nombre}</b></span>
-                </div>
-                {tx.esVendedor ? (
-                    <button onClick={onConfirmDelivery} className="bg-blue-600 text-white px-2 py-1 rounded text-[10px] font-bold hover:bg-blue-700 whitespace-nowrap">Entregar</button>
-                ) : (
-                    <span className="text-[10px] text-slate-400 italic whitespace-nowrap">Esperando envío</span>
-                )}
-            </div>
-        )
-    }
-    // Estado 2: Enviado
-    if (tx.estadoId === 1 && tx.confirmacionVendedor && !tx.confirmacionComprador) {
-        return (
-            <div className="bg-amber-50 border-b border-amber-100 p-2 px-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <LuTruck className="text-amber-600" size={16} />
-                    <span className="text-xs text-slate-700">En camino</span>
-                </div>
-                {tx.esComprador ? (
-                    <button onClick={onConfirmReceipt} className="bg-green-600 text-white px-2 py-1 rounded text-[10px] font-bold hover:bg-green-700 whitespace-nowrap">Recibí</button>
-                ) : (
-                    <span className="text-[10px] text-slate-400 italic whitespace-nowrap">Esperando confirmación</span>
-                )}
-            </div>
-        )
-    }
-    // Estado 3: Completado
-    if (tx.estadoId === 2) {
-        return (
-            <div className="bg-green-50 border-b border-green-100 p-2 px-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <LuCheckCheck className="text-green-600" size={16} />
-                    <span className="text-xs text-green-700 font-medium">Completado</span>
-                </div>
-                {tx.esComprador && (
-                    <button onClick={onRate} className="flex items-center gap-1 text-[10px] bg-white border border-amber-200 text-amber-600 px-2 py-0.5 rounded-full hover:bg-amber-50">
-                        <LuStar size={10} /> Calificar
-                    </button>
-                )}
-            </div>
-        )
-    }
+    if (tx.estadoId === 1 && !tx.confirmacionVendedor) return <div className="bg-blue-50 border-b border-blue-100 p-2 px-3 flex items-center justify-between"><div className="flex items-center gap-2 overflow-hidden"><LuShoppingBag className="text-blue-600 flex-shrink-0" size={16} /><span className="text-xs text-slate-700 truncate">Venta: <b>{tx.producto.nombre}</b></span></div>{tx.esVendedor ? <button onClick={onConfirmDelivery} className="bg-blue-600 text-white px-2 py-1 rounded text-[10px] font-bold hover:bg-blue-700 whitespace-nowrap">Entregar</button> : <span className="text-[10px] text-slate-400 italic whitespace-nowrap">Esperando envío</span>}</div>
+    if (tx.estadoId === 1 && tx.confirmacionVendedor && !tx.confirmacionComprador) return <div className="bg-amber-50 border-b border-amber-100 p-2 px-3 flex items-center justify-between"><div className="flex items-center gap-2"><LuTruck className="text-amber-600" size={16} /><span className="text-xs text-slate-700">En camino</span></div>{tx.esComprador ? <button onClick={onConfirmReceipt} className="bg-green-600 text-white px-2 py-1 rounded text-[10px] font-bold hover:bg-green-700 whitespace-nowrap">Recibí</button> : <span className="text-[10px] text-slate-400 italic whitespace-nowrap">Esperando confirmación</span>}</div>
+    if (tx.estadoId === 2) return <div className="bg-green-50 border-b border-green-100 p-2 px-3 flex items-center justify-between"><div className="flex items-center gap-2"><LuCheckCheck className="text-green-600" size={16} /><span className="text-xs text-green-700 font-medium">Completado</span></div>{tx.esComprador && <button onClick={onRate} className="flex items-center gap-1 text-[10px] bg-white border border-amber-200 text-amber-600 px-2 py-0.5 rounded-full hover:bg-amber-50"><LuStar size={10} /> Calificar</button>}</div>
     return null;
 }
 
 const ChatListView = ({ chats, onSelect }: any) => (
   <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="h-full flex flex-col">
-    <div className="p-3 border-b border-slate-50 bg-white">
-      <div className="relative">
-        <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
-        <input placeholder="Buscar..." className="w-full bg-slate-50 text-sm pl-9 pr-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all" />
-      </div>
-    </div>
-    <div className="flex-1 overflow-y-auto">
-      {chats.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-40 text-slate-400 text-xs">
-           <LuMessageCircle size={32} className="mb-2 opacity-20" />
-           No hay conversaciones
-        </div>
-      ) : (
-        chats.map((chat: any) => (
-          <div key={chat.id} onClick={() => onSelect(chat.id)} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors group">
-            <div className="relative">
-               <Avatar className="h-10 w-10 border border-slate-100">
-                 <AvatarImage src={chat.avatar} className="object-cover" />
-                 <AvatarFallback className="bg-blue-50 text-blue-600 text-xs font-bold">{chat.nombre.charAt(0)}</AvatarFallback>
-               </Avatar>
-               {chat.noLeidos > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex justify-between items-baseline mb-0.5">
-                <h4 className={`text-sm truncate ${chat.noLeidos > 0 ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>{chat.nombre}</h4>
-                {chat.noLeidos > 0 && <span className="bg-blue-600 text-white text-[10px] px-1.5 rounded-full font-bold">{chat.noLeidos}</span>}
-              </div>
-              <p className={`text-xs truncate ${chat.noLeidos ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>{chat.ultimoMensaje || 'Imagen enviada'}</p>
-            </div>
-          </div>
-        ))
-      )}
-    </div>
+    <div className="p-3 border-b border-slate-50 bg-white"><div className="relative"><LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" /><input placeholder="Buscar..." className="w-full bg-slate-50 text-sm pl-9 pr-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all" /></div></div>
+    <div className="flex-1 overflow-y-auto">{chats.length === 0 ? <div className="flex flex-col items-center justify-center h-40 text-slate-400 text-xs"><LuMessageCircle size={32} className="mb-2 opacity-20" />No hay conversaciones</div> : chats.map((chat: any) => (<div key={chat.id} onClick={() => onSelect(chat.id)} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors group"><div className="relative"><Avatar className="h-10 w-10 border border-slate-100"><AvatarImage src={chat.avatar} className="object-cover" /><AvatarFallback className="bg-blue-50 text-blue-600 text-xs font-bold">{chat.nombre.charAt(0)}</AvatarFallback></Avatar>{chat.noLeidos > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>}</div><div className="flex-1 min-w-0"><div className="flex justify-between items-baseline mb-0.5"><h4 className={`text-sm truncate ${chat.noLeidos > 0 ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>{chat.nombre}</h4>{chat.noLeidos > 0 && <span className="bg-blue-600 text-white text-[10px] px-1.5 rounded-full font-bold">{chat.noLeidos}</span>}</div><p className={`text-xs truncate ${chat.noLeidos ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>{chat.ultimoMensaje || 'Imagen enviada'}</p></div></div>))}</div>
   </motion.div>
 )
 
-const ChatConversationView = ({ chat, onSend, isLoading, chatAvatar }: any) => {
-  const [text, setText] = useState("")
-  const [showEmoji, setShowEmoji] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-  }, [chat?.mensajes, isLoading])
-
-  const handleSubmit = (e?: React.FormEvent) => {
-    e?.preventDefault()
-    if (!text.trim()) return
-    onSend(text)
-    setText("")
-    setShowEmoji(false)
-  }
-
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) onSend('', e.target.files[0])
-    e.target.value = ''
-  }
-
-  const onEmojiClick = (emojiData: EmojiClickData) => {
-    setText(prev => prev + emojiData.emoji)
-  }
-
+const ChatConversationView = ({ chat, onSend, isLoading, isSending, chatAvatar }: any) => {
+  const [text, setText] = useState(""); const [showEmoji, setShowEmoji] = useState(false); const fileInputRef = useRef<HTMLInputElement>(null); const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight }, [chat?.mensajes, isLoading]);
+  const handleSubmit = (e?: React.FormEvent) => { e?.preventDefault(); if (!text.trim()) return; onSend(text); setText(""); setShowEmoji(false); };
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) onSend('', e.target.files[0]); e.target.value = ''; };
+  const onEmojiClick = (emojiData: EmojiClickData) => { setText(prev => prev + emojiData.emoji) };
   if (isLoading) return <div className="h-full flex items-center justify-center"><LuLoader className="animate-spin text-slate-400" /></div>
-
   return (
     <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 20, opacity: 0 }} className="h-full flex flex-col bg-[#F8F9FC]">
-      
-      {/* Mensajes */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
-        {chat?.mensajes.map((msg: Mensaje) => {
-          const isMe = msg.autor === "yo";
-          const isSystem = msg.tipo === 'sistema' || msg.autor === 'sistema';
-
-          if (isSystem) {
-              return (
-                <div key={msg.id} className="flex justify-center my-2">
-                    <span className="bg-slate-100 text-slate-500 text-[10px] px-3 py-1 rounded-full border border-slate-200">
-                        {msg.texto}
-                    </span>
-                </div>
-              )
-          }
-
-          return (
-            <div key={msg.id} className={`flex w-full gap-2 ${isMe ? "justify-end" : "justify-start"}`}>
-              
-              {/* Avatar para mensajes recibidos */}
-              {!isMe && (
-                 <Avatar className="h-6 w-6 mt-auto mb-1 shadow-sm border border-slate-200 shrink-0">
-                   <AvatarImage src={chatAvatar} />
-                   <AvatarFallback className="text-[9px] bg-white text-slate-500 font-bold">{chat?.nombre?.charAt(0)}</AvatarFallback>
-                 </Avatar>
-              )}
-
-              <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
-                isMe 
-                  ? "bg-blue-600 text-white rounded-br-sm" 
-                  : "bg-white text-slate-800 border border-slate-200 rounded-bl-sm"
-              }`}>
-                {msg.imagenUrl && (
-                   <img src={msg.imagenUrl} alt="adjunto" className="rounded-lg mb-1 max-h-40 object-cover cursor-pointer bg-black/10" onClick={() => window.open(msg.imagenUrl, '_blank')} />
-                )}
-                {msg.texto && <p className="leading-snug break-words whitespace-pre-wrap">{msg.texto}</p>}
-                <div className={`text-[9px] mt-1 flex justify-end gap-1 ${isMe ? 'text-blue-200' : 'text-slate-400'}`}>
-                  {msg.hora}
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Emoji Picker */}
-      {showEmoji && (
-        <div className="absolute bottom-16 left-2 z-50 shadow-xl rounded-xl overflow-hidden border border-slate-200">
-          <EmojiPicker onEmojiClick={onEmojiClick} width={300} height={350} theme={Theme.LIGHT} searchDisabled previewConfig={{showPreview: false}} />
-        </div>
-      )}
-
-      {/* Input Area */}
-      <form onSubmit={handleSubmit} className="p-2 bg-white border-t border-slate-200 flex items-end gap-1.5">
-        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors">
-          <LuImage size={20} />
-        </button>
-        <button type="button" onClick={() => setShowEmoji(!showEmoji)} className={`p-2 rounded-lg transition-colors ${showEmoji ? 'text-yellow-500 bg-yellow-50' : 'text-slate-400 hover:bg-slate-100'}`}>
-          <LuSmile size={20} />
-        </button>
-        <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={handleFile} />
-        
-        <textarea 
-           value={text} 
-           onChange={(e) => setText(e.target.value)} 
-           onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
-           placeholder="Escribe..." 
-           className="flex-1 bg-slate-50 border-none rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 resize-none max-h-24 min-h-[36px]"
-           rows={1}
-        />
-        
-        <Button type="submit" size="icon" disabled={!text.trim()} className="bg-blue-600 hover:bg-blue-700 rounded-xl h-9 w-9 shrink-0 shadow-sm">
-          <LuSend size={16} />
-        </Button>
-      </form>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">{chat?.mensajes.map((msg: Mensaje) => { const isMe = msg.autor === "yo"; const isSystem = msg.tipo === 'sistema' || msg.autor === 'sistema'; if (isSystem) return (<div key={msg.id} className="flex justify-center my-2"><span className="bg-slate-100 text-slate-500 text-[10px] px-3 py-1 rounded-full border border-slate-200">{msg.texto}</span></div>); return (<div key={msg.id} className={`flex w-full gap-2 ${isMe ? "justify-end" : "justify-start"}`}>{!isMe && <Avatar className="h-6 w-6 mt-auto mb-1 shadow-sm border border-slate-200 shrink-0"><AvatarImage src={chatAvatar} /><AvatarFallback className="text-[9px] bg-white text-slate-500 font-bold">{chat?.nombre?.charAt(0)}</AvatarFallback></Avatar>}<div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-sm ${isMe ? "bg-blue-600 text-white rounded-br-sm" : "bg-white text-slate-800 border border-slate-200 rounded-bl-sm"}`}>{msg.imagenUrl && <img src={msg.imagenUrl} alt="adjunto" className="rounded-lg mb-1 max-h-40 object-cover cursor-pointer bg-black/10" onClick={() => window.open(msg.imagenUrl, '_blank')} />}{msg.texto && <p className="leading-snug break-words whitespace-pre-wrap">{msg.texto}</p>}<div className={`text-[9px] mt-1 flex justify-end gap-1 ${isMe ? 'text-blue-200' : 'text-slate-400'}`}>{msg.hora}</div></div></div>) })}</div>
+      {showEmoji && <div className="absolute bottom-16 left-2 z-50 shadow-xl rounded-xl overflow-hidden border border-slate-200"><EmojiPicker onEmojiClick={onEmojiClick} width={300} height={350} theme={Theme.LIGHT} searchDisabled previewConfig={{showPreview: false}} /></div>}
+      <form onSubmit={handleSubmit} className="p-2 bg-white border-t border-slate-200 flex items-end gap-1.5"><button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors"><LuImage size={20} /></button><button type="button" onClick={() => setShowEmoji(!showEmoji)} className={`p-2 rounded-lg transition-colors ${showEmoji ? 'text-yellow-500 bg-yellow-50' : 'text-slate-400 hover:bg-slate-100'}`}><LuSmile size={20} /></button><input type="file" hidden ref={fileInputRef} accept="image/*" onChange={handleFile} /><textarea value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }} placeholder="Escribe..." className="flex-1 bg-slate-50 border-none rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 resize-none max-h-24 min-h-[36px]" rows={1} /><Button type="submit" size="icon" disabled={!text.trim() && !isSending} className="bg-blue-600 hover:bg-blue-700 rounded-xl h-9 w-9 shrink-0 shadow-sm">{isSending ? <LuLoader className="animate-spin" size={16} /> : <LuSend size={16} />}</Button></form>
     </motion.div>
   )
 }
