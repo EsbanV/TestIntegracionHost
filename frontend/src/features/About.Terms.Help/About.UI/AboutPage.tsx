@@ -17,23 +17,23 @@ import LoginFooter from './About.Components/footer';
 /* ======================= FONDO AURORA + IMAGEN ======================= */
 
 const AuroraBackground = () => (
-  <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-    {/* 1. IMAGEN DE FONDO (Fixed para cubrir todo el viewport) */}
+  <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+    {/* Imagen de fondo a pantalla completa (igual idea que en LoginPage) */}
     <img
       src={BACKGROUND_IMAGE}
       alt="Fondo MarketUCT"
-      className="w-full h-full object-cover fixed" // FIX: Usa fixed para cubrir
+      className="w-full h-full object-cover"
     />
 
-    {/* 2. Capa oscura y Blur */}
-    <div className="absolute inset-0 bg-slate-900/2" />
+    {/* Capa oscura encima para mejorar contraste del texto */}
+    <div className="absolute inset-0 bg-slate-950/70" />
 
     {/* Blobs / auroras */}
     <div className="absolute -top-[50%] left-1/2 h-[50vw] w-[50vw] -translate-x-1/2 rounded-full bg-blue-500/20 blur-[100px] animate-pulse-slow" />
     <div className="absolute top-[20%] left-[10%] h-[30vw] w-[30vw] rounded-full bg-purple-500/20 blur-[120px] animate-blob" />
     <div className="absolute bottom-[10%] right-[10%] h-[40vw] w-[40vw] rounded-full bg-indigo-500/20 blur-[120px] animate-blob animation-delay-2000" />
 
-    {/* Grid Pattern Overlay */}
+    {/* Grid por encima */}
     <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
   </div>
 );
@@ -46,7 +46,7 @@ const MagicText = ({ text }: { text: string }) => (
   </span>
 );
 
-/* ======================= TARJETAS BENTO ======================== */
+/* ======================= TARJETAS BENTO ======================= */
 
 const BentoCard = ({ icon, title, desc, className }: any) => (
   <motion.div 
@@ -73,7 +73,7 @@ const AboutHeader = () => (
     transition={{ type: "spring", stiffness: 100 }}
     className="fixed top-6 left-0 right-0 z-50 mx-auto max-w-5xl px-6"
   >
-    <div className="flex items-center justify-between rounded-full border border-white/10 bg-slate-900/2 px-6 py-3 backdrop-blur-xl shadow-2xl shadow-black/50">
+    <div className="flex items-center justify-between rounded-full border border-white/10 bg-slate-900/70 px-6 py-3 backdrop-blur-xl shadow-2xl shadow-black/50">
       <div className="flex items-center gap-3">
         <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">
           M
@@ -96,12 +96,12 @@ const AboutHeader = () => (
 
 export default function AboutPage() {
   return (    
-    <div className="relative min-h-screen font-sans bg-slate-950 text-slate-100 selection:bg-blue-500/30 overflow-hidden">
+    <div className="relative min-h-screen overflow-hidden bg-transparent font-sans text-slate-100 selection:bg-blue-500/30 ">
       {/* Fondo a pantalla completa por debajo del contenido */}
       <AuroraBackground />
 
       {/* Todo el contenido encima del fondo */}
-      <div className="relative z-10">
+      <div className="relative z-40">
         <AboutHeader />
         
         {/* HERO */}
@@ -163,8 +163,8 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* sSTATS */}
-        <section className="py-10 bg-white/5 backdrop-blur-sm border-y border-white/10">
+        {/* STATS */}
+        <section className="py-20 border-y border-white/5 bg-white/5 backdrop-blur-sm">
           <div className="max-w-6xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
               { label: "Usuarios Activos", value: "1.2k+" },
