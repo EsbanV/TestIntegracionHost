@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { LuInfo, LuMapPin, LuPhone, LuLayoutGrid, LuStar, LuMessageCircle, LuGhost } from "react-icons/lu";
 
 // --- LÓGICA (Hooks Unificados) ---
