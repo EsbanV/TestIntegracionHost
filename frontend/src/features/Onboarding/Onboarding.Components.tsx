@@ -22,7 +22,7 @@ export const StepOneBasicInfo = ({ formData, setFormData }: StepProps) => (
     </div>
 
     <div className="space-y-1">
-      <label className="text-sm font-bold text-slate-700">Teléfono</label>
+      <label className="text-sm font-bold text-slate-700">Teléfono (Opcional)</label>
       <div className="relative">
          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
          <input 

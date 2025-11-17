@@ -11,7 +11,7 @@ import LoginPage from '@/features/Login/LoginPage'
 import RegisterTest from '@/features/Login/Login.UI/RegisterTest'
 import LoginTest from '@/features/Login/Login.UI/LoginTest'
 import HomePage from '@/features/Marketplace/HomePage'
-import CreateProductPage from '@/features/CrearPublicacion/CrearPublicacion.UI/CrearPublicacionPage' // Corregí el nombre del archivo según el último paso
+import CreateProductPage from '@/features/CrearPublicacion/CrearPublicacionPage' // Corregí el nombre del archivo según el último paso
 import PerfilPage from '@/features/Perfil/PerfilPage'
 import ChatPage from '@/features/DM/ChatPage'
 import AyudaPage from '@/features/About.Terms.Help/Help.UI/AyudaPage'
