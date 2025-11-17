@@ -1,31 +1,34 @@
-import { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/app/context/AuthContext";
-import type { UserProfile, Review, UpdateProfileData, ReviewsData, PublicationItem, UsePublicationsFeedProps } from "./perfil.types";
-
-// Importamos el hook base de Marketplace (Ajusta la ruta si es necesario)
+import type { UserProfile, UpdateProfileData, ReviewsData, PublicationItem, UsePublicationsFeedProps } from "./perfil.types";
+import { useRef } from 'react';
 import { usePostsWithFilters } from '@/features/Marketplace/home.hooks';
 
 const URL_BASE = import.meta.env.VITE_API_URL;
 
-// --- FETCHERS (Lógica de Perfil) ---
+// --- FETCHERS ---
 
-const fetchProfileRequest = async (token: string | null): Promise<UserProfile> => {
+// 1. Perfil Privado (Mi cuenta)
+const fetchMyProfileRequest = async (token: string | null): Promise<UserProfile> => {
   if (!token) throw new Error("No token");
   const res = await fetch(`${URL_BASE}/api/users/profile`, {
-    method: 'GET',
-    headers: { 
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}` 
-    },
-    credentials: 'include'
+    headers: { 'Authorization': `Bearer ${token}` }
   });
   if (!res.ok) throw new Error("Error al cargar perfil");
   const data = await res.json();
   return data.data;
 };
 
-const fetchMyReviewsRequest = async (userId: number): Promise<ReviewsData> => {
+// 2. Perfil Público (Otro usuario)
+const fetchPublicProfileRequest = async (userId: number): Promise<UserProfile> => {
+  const res = await fetch(`${URL_BASE}/api/users/public/${userId}`);
+  if (!res.ok) throw new Error("Usuario no encontrado");
+  const data = await res.json();
+  return data.data; // El backend devuelve la misma estructura básica en 'data'
+};
+
+const fetchReviewsRequest = async (userId: number): Promise<ReviewsData> => {
   const res = await fetch(`${URL_BASE}/api/users/reviews/user/${userId}`);
   if (!res.ok) return { reviews: [], stats: { total: 0, promedio: "0" } };
   return await res.json();
@@ -35,11 +38,7 @@ const updateProfileRequest = async (data: UpdateProfileData, token: string | nul
   if (!token) throw new Error("No token");
   const res = await fetch(`${URL_BASE}/api/users/profile`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    credentials: 'include',
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify(data),
   });
   const result = await res.json();
@@ -49,53 +48,63 @@ const updateProfileRequest = async (data: UpdateProfileData, token: string | nul
 
 const uploadProfilePhotoRequest = async (file: File, token: string | null) => {
   if (!token) throw new Error("No token");
-  
   const formData = new FormData();
   formData.append('photo', file);
-
   const res = await fetch(`${URL_BASE}/api/upload/profile-photo`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
-    credentials: 'include',
     body: formData,
   });
-  
   const result = await res.json();
   if (!res.ok) throw new Error(result.message || "Error al subir imagen");
   return result;
 };
 
-// --- HOOK PRINCIPAL DEL PERFIL ---
+// --- HOOK PRINCIPAL ---
 
-export const useProfile = () => {
-  const { token, user: contextUser } = useAuth();
+export const useProfile = (profileIdParam?: string) => {
+  const { token, user: sessionUser } = useAuth();
   const queryClient = useQueryClient();
   
+  // Determinar si es mi perfil o estoy viendo a otro
+  // Si no hay param en URL, es mi perfil. Si hay param y coincide con mi ID, es mi perfil.
+  const isOwnProfile = !profileIdParam || (sessionUser && String(sessionUser.id) === profileIdParam);
+  
+  // El ID efectivo a buscar
+  const targetUserId = isOwnProfile ? sessionUser?.id : Number(profileIdParam);
+
+  // Estados Locales
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<UpdateProfileData>({
     nombre: "", usuario: "", campus: "", telefono: "", direccion: "",
   });
 
-  // 1. Cargar Perfil
+  // 1. Cargar Perfil (Inteligente: usa endpoint privado o público según corresponda)
   const profileQuery = useQuery({
-    queryKey: ["userProfile"],
-    queryFn: () => fetchProfileRequest(token),
-    enabled: !!token,
-    initialData: contextUser as any,
+    queryKey: ["userProfile", targetUserId],
+    queryFn: () => {
+        if (!targetUserId) return null;
+        return isOwnProfile 
+            ? fetchMyProfileRequest(token) 
+            : fetchPublicProfileRequest(targetUserId);
+    },
+    enabled: !!targetUserId,
+    // Si es mi perfil, uso los datos de sesión como placeholder inicial
+    initialData: isOwnProfile ? (sessionUser as any) : undefined, 
   });
 
   const user = profileQuery.data;
 
-  // 2. Cargar Reseñas
+  // 2. Cargar Reseñas del usuario objetivo
   const reviewsQuery = useQuery({
-    queryKey: ["myReviews", user?.id],
-    queryFn: () => fetchMyReviewsRequest(user!.id),
-    enabled: !!user?.id,
+    queryKey: ["reviews", targetUserId],
+    queryFn: () => fetchReviewsRequest(targetUserId!),
+    enabled: !!targetUserId,
   });
 
-  // Sincronizar form
+  // Sincronizar form cuando llega la data (solo si es editable)
   useEffect(() => {
-    if (user) {
+    if (user && isOwnProfile) {
       setFormData({
         nombre: user.nombre || "",
         usuario: user.usuario || "",
@@ -104,9 +113,9 @@ export const useProfile = () => {
         direccion: user.direccion || "",
       });
     }
-  }, [user]);
+  }, [user, isOwnProfile]);
 
-  // 3. Mutaciones
+  // 3. Mutaciones (Solo funcionan si tienes token, el backend protege la seguridad real)
   const updateMutation = useMutation({
     mutationFn: (data: UpdateProfileData) => updateProfileRequest(data, token),
     onSuccess: () => {
@@ -125,10 +134,19 @@ export const useProfile = () => {
   return {
     user,
     isLoadingProfile: profileQuery.isLoading,
+    isErrorProfile: profileQuery.isError,
+    
     reviewData: reviewsQuery.data,
     isLoadingReviews: reviewsQuery.isLoading,
-    isEditing, setIsEditing,
-    formData, setFormData,
+    
+    // Propiedades de UI
+    isOwnProfile, // Bandera clave para la UI
+    isEditing, 
+    setIsEditing,
+    formData, 
+    setFormData,
+    
+    // Acciones
     saveProfile: updateMutation.mutate,
     isSaving: updateMutation.isPending,
     uploadPhoto: photoMutation.mutate,
@@ -136,8 +154,7 @@ export const useProfile = () => {
   };
 };
 
-// --- HOOK DEL FEED DE PUBLICACIONES (Corregido) ---
-
+// --- HOOK DE PUBLICACIONES (Sin cambios mayores, solo reexportar) ---
 export const usePublicationsFeed = ({ 
   searchTerm = '', 
   selectedCategoryId = '', 
@@ -148,11 +165,12 @@ export const usePublicationsFeed = ({
   const observer = useRef<IntersectionObserver | null>(null);
   const lastPostElementRef = useRef<HTMLDivElement | null>(null);
 
-  // 1. Llamamos al hook base
   const {
-    posts, // <--- Este es el array de posts
-    hasNextPage,
+    posts,
+    hasResults,
+    totalResults,
     fetchNextPage,
+    hasNextPage,
     isFetchingNextPage,
     isLoading,
     isError,
@@ -164,11 +182,6 @@ export const usePublicationsFeed = ({
     onlyMine
   } as any);
 
-  // 2. 🔥 CORRECCIÓN: Creamos las variables que faltaban
-  const hasResults = posts.length > 0;
-  const totalResults = posts.length;
-
-  // 3. Lógica de Scroll Infinito (Sin cambios)
   useEffect(() => {
     if (isLoading || isFetchingNextPage) return;
     if (observer.current) observer.current.disconnect();
@@ -187,13 +200,12 @@ export const usePublicationsFeed = ({
     return () => observer.current?.disconnect();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, posts.length]);
 
-  // 4. Mapeo de datos (Sin cambios)
   const items: PublicationItem[] = posts.map((post: any) => ({
       id: post.id,
-      title: post.nombre, // Mapeamos 'nombre' a 'title'
+      title: post.nombre,
       image: post.imagenes?.[0]?.url,
       price: parseFloat(String(post.precioActual)),
-      author: post.vendedor?.usuario, // Usamos 'usuario'
+      author: post.vendedor?.usuario,
       avatar: post.vendedor?.fotoPerfilUrl,
       description: post.descripcion,
       timeAgo: post.fechaAgregado,
@@ -202,16 +214,7 @@ export const usePublicationsFeed = ({
       sales: post.vendedor?.stats?.ventas ?? 0
   }));
 
-  // 5. Retornamos el objeto completo (Ahora sí incluye hasResults y totalResults)
   return {
-      items,
-      isLoading,
-      isError,
-      error,
-      hasResults,
-      hasNextPage,
-      isFetchingNextPage,
-      totalResults,
-      lastPostElementRef
+      items, isLoading, isError, error, hasResults, hasNextPage, isFetchingNextPage, totalResults, lastPostElementRef
   };
 };

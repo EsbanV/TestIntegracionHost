@@ -72,7 +72,7 @@ interface HeroProps {
   onUploadPhoto: (file: File) => void;
 }
 
-export const ProfileHero = ({ user, isEditing, setIsEditing, isSaving, onSave, isUploadingPhoto, onUploadPhoto }: HeroProps) => {
+export const ProfileHero = ({ user, isEditing, setIsEditing, readOnly = false, isSaving, onSave, isUploadingPhoto, onUploadPhoto }: HeroProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,6 +122,10 @@ export const ProfileHero = ({ user, isEditing, setIsEditing, isSaving, onSave, i
                 </div>
 
                 <div className="flex gap-2 w-full md:w-auto">
+                {/* Solo mostramos botones si NO es readOnly */}
+     {!readOnly && (
+        <div className="flex gap-2 w-full md:w-auto">
+           {/* ... Botones Editar/Guardar ... */}
                   {!isEditing ? (
                     <Button onClick={() => setIsEditing(true)} variant="outline" className="gap-2 w-full md:w-auto border-blue-200 text-blue-700 hover:bg-blue-50">
                       <LuPencil className="w-4 h-4" /> Editar Perfil
@@ -134,6 +138,9 @@ export const ProfileHero = ({ user, isEditing, setIsEditing, isSaving, onSave, i
                       </Button>
                     </div>
                   )}
+                      </div>
+     )}
+     
                 </div>
               </div>
             </div>
