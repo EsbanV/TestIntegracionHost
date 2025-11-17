@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import LoginFooter from './About.Components/footer';
 
+import LogoMUCT from "@/assets/img/logoMUCT.png";
+
 // --- HEADER EXCLUSIVO PARA ABOUT ---
 const AboutHeader = () => (
   <motion.nav 
@@ -22,11 +24,17 @@ const AboutHeader = () => (
     <div className="flex items-center gap-2.5 cursor-default">
        {/* Isotipo */}
        <div className="h-9 w-9 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-          <span className="text-white font-bold text-lg">M</span>
+          <span className="text-white font-bold text-lg">
+              <img 
+                  src={LogoMUCT} 
+                  alt="MarketUCT" 
+                  className="h-8 w-auto object-contain" 
+                />
+                </span>
        </div>
        {/* Logotipo */}
        <span className="font-bold text-xl tracking-tight text-slate-900">
-          Market<span className="text-blue-600">UCT</span>
+          Market<span className="text-yellow-600">UCT</span>
        </span>
     </div>
     
