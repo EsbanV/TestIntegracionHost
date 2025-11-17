@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Star, X, Loader2 } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 
-// UI Components (Estilo consistente con tu app)
+// UI Components (Estilo consistente con tu app) ?
 const Button = ({ children, className, onClick, disabled, variant = 'primary' }: any) => {
   const base = "w-full py-3 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2";
   const variants = {
