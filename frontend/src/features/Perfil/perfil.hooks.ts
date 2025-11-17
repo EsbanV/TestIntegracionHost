@@ -1,9 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/app/context/AuthContext";
-import type { UserProfile, UpdateProfileData, ReviewsData, PublicationItem, UsePublicationsFeedProps } from "./perfil.types";
-import { useRef } from 'react';
 import { usePostsWithFilters } from '@/features/Marketplace/home.hooks';
+import type { 
+  UserProfile, 
+  UpdateProfileData, 
+  ReviewsData, 
+  ProfileApiResponse,
+  PublicationItem,
+  UsePublicationsFeedProps
+} from "./perfil.types";
 
 const URL_BASE = import.meta.env.VITE_API_URL;
 
@@ -12,51 +18,91 @@ const URL_BASE = import.meta.env.VITE_API_URL;
 // 1. Perfil Privado (Mi cuenta)
 const fetchMyProfileRequest = async (token: string | null): Promise<UserProfile> => {
   if (!token) throw new Error("No token");
+  
   const res = await fetch(`${URL_BASE}/api/users/profile`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
-  if (!res.ok) throw new Error("Error al cargar perfil");
-  const data = await res.json();
-  return data.data;
+  
+  const data: ProfileApiResponse = await res.json();
+  
+  if (!res.ok || !data.success) {
+    throw new Error("Error al cargar perfil");
+  }
+
+  // Normalizar datos: Convertir 'resumen' a 'stats' para la UI
+  const { resumen, ...userData } = data.data;
+  return {
+    ...userData,
+    stats: {
+      ventas: resumen?.totalVentas || 0,
+      publicaciones: resumen?.totalProductos || 0,
+      compras: resumen?.totalCompras || 0
+    }
+  };
 };
 
 // 2. Perfil Público (Otro usuario)
 const fetchPublicProfileRequest = async (userId: number): Promise<UserProfile> => {
   const res = await fetch(`${URL_BASE}/api/users/public/${userId}`);
-  if (!res.ok) throw new Error("Usuario no encontrado");
-  const data = await res.json();
-  return data.data; // El backend devuelve la misma estructura básica en 'data'
+  
+  const data: ProfileApiResponse = await res.json();
+  
+  if (!res.ok || !data.success) {
+    throw new Error("Usuario no encontrado");
+  }
+  
+  // En la ruta pública ya viene 'stats', pero nos aseguramos
+  return data.data; 
 };
 
 const fetchReviewsRequest = async (userId: number): Promise<ReviewsData> => {
   const res = await fetch(`${URL_BASE}/api/users/reviews/user/${userId}`);
-  if (!res.ok) return { reviews: [], stats: { total: 0, promedio: "0" } };
-  return await res.json();
+  const data = await res.json();
+  
+  // La ruta de reviews usa 'ok' en lugar de 'success'
+  if (!res.ok || !data.ok) {
+      return { ok: false, reviews: [], stats: { total: 0, promedio: "0" } };
+  }
+  return data;
 };
 
 const updateProfileRequest = async (data: UpdateProfileData, token: string | null) => {
   if (!token) throw new Error("No token");
+  
   const res = await fetch(`${URL_BASE}/api/users/profile`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    credentials: 'include',
     body: JSON.stringify(data),
   });
+  
   const result = await res.json();
-  if (!res.ok) throw new Error(result.message || "Error al actualizar");
+  
+  // La ruta de update usa 'ok'
+  if (!res.ok || !result.ok) {
+      throw new Error(result.message || "Error al actualizar");
+  }
   return result.user;
 };
 
 const uploadProfilePhotoRequest = async (file: File, token: string | null) => {
   if (!token) throw new Error("No token");
+  
   const formData = new FormData();
   formData.append('photo', file);
+
   const res = await fetch(`${URL_BASE}/api/upload/profile-photo`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
+    credentials: 'include',
     body: formData,
   });
+  
   const result = await res.json();
-  if (!res.ok) throw new Error(result.message || "Error al subir imagen");
+  if (!res.ok || !result.ok) throw new Error(result.message || "Error al subir imagen");
   return result;
 };
 
@@ -66,20 +112,16 @@ export const useProfile = (profileIdParam?: string) => {
   const { token, user: sessionUser } = useAuth();
   const queryClient = useQueryClient();
   
-  // Determinar si es mi perfil o estoy viendo a otro
-  // Si no hay param en URL, es mi perfil. Si hay param y coincide con mi ID, es mi perfil.
+  // Determinar si es mi perfil
   const isOwnProfile = !profileIdParam || (sessionUser && String(sessionUser.id) === profileIdParam);
-  
-  // El ID efectivo a buscar
   const targetUserId = isOwnProfile ? sessionUser?.id : Number(profileIdParam);
 
-  // Estados Locales
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<UpdateProfileData>({
     nombre: "", usuario: "", campus: "", telefono: "", direccion: "",
   });
 
-  // 1. Cargar Perfil (Inteligente: usa endpoint privado o público según corresponda)
+  // 1. Query Perfil
   const profileQuery = useQuery({
     queryKey: ["userProfile", targetUserId],
     queryFn: () => {
@@ -89,20 +131,24 @@ export const useProfile = (profileIdParam?: string) => {
             : fetchPublicProfileRequest(targetUserId);
     },
     enabled: !!targetUserId,
-    // Si es mi perfil, uso los datos de sesión como placeholder inicial
-    initialData: isOwnProfile ? (sessionUser as any) : undefined, 
+    // Datos iniciales optimistas si es mi propio perfil
+    initialData: isOwnProfile && sessionUser ? {
+        ...sessionUser,
+        // Mock stats temporal mientras carga lo real
+        stats: { ventas: 0, publicaciones: 0 } 
+    } as any : undefined, 
   });
 
   const user = profileQuery.data;
 
-  // 2. Cargar Reseñas del usuario objetivo
+  // 2. Query Reseñas
   const reviewsQuery = useQuery({
     queryKey: ["reviews", targetUserId],
     queryFn: () => fetchReviewsRequest(targetUserId!),
     enabled: !!targetUserId,
   });
 
-  // Sincronizar form cuando llega la data (solo si es editable)
+  // Sincronizar formulario
   useEffect(() => {
     if (user && isOwnProfile) {
       setFormData({
@@ -115,7 +161,7 @@ export const useProfile = (profileIdParam?: string) => {
     }
   }, [user, isOwnProfile]);
 
-  // 3. Mutaciones (Solo funcionan si tienes token, el backend protege la seguridad real)
+  // 3. Mutaciones
   const updateMutation = useMutation({
     mutationFn: (data: UpdateProfileData) => updateProfileRequest(data, token),
     onSuccess: () => {
@@ -139,14 +185,10 @@ export const useProfile = (profileIdParam?: string) => {
     reviewData: reviewsQuery.data,
     isLoadingReviews: reviewsQuery.isLoading,
     
-    // Propiedades de UI
-    isOwnProfile, // Bandera clave para la UI
-    isEditing, 
-    setIsEditing,
-    formData, 
-    setFormData,
+    isOwnProfile,
+    isEditing, setIsEditing,
+    formData, setFormData,
     
-    // Acciones
     saveProfile: updateMutation.mutate,
     isSaving: updateMutation.isPending,
     uploadPhoto: photoMutation.mutate,
@@ -154,7 +196,8 @@ export const useProfile = (profileIdParam?: string) => {
   };
 };
 
-// --- HOOK DE PUBLICACIONES (Sin cambios mayores, solo reexportar) ---
+// --- HOOK DE PUBLICACIONES (Feed) ---
+
 export const usePublicationsFeed = ({ 
   searchTerm = '', 
   selectedCategoryId = '', 
@@ -167,10 +210,8 @@ export const usePublicationsFeed = ({
 
   const {
     posts,
-    hasResults,
-    totalResults,
-    fetchNextPage,
     hasNextPage,
+    fetchNextPage,
     isFetchingNextPage,
     isLoading,
     isError,
@@ -181,6 +222,10 @@ export const usePublicationsFeed = ({
     authorId, 
     onlyMine
   } as any);
+
+  // Calcular resultados manualmente ya que usePostsWithFilters devuelve el array directo
+  const hasResults = posts && posts.length > 0;
+  const totalResults = posts ? posts.length : 0;
 
   useEffect(() => {
     if (isLoading || isFetchingNextPage) return;
@@ -198,18 +243,18 @@ export const usePublicationsFeed = ({
     if (lastPostElementRef.current) observer.current.observe(lastPostElementRef.current);
     
     return () => observer.current?.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, posts.length]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, posts?.length]);
 
-  const items: PublicationItem[] = posts.map((post: any) => ({
+  const items: PublicationItem[] = (posts || []).map((post: any) => ({
       id: post.id,
       title: post.nombre,
       image: post.imagenes?.[0]?.url,
       price: parseFloat(String(post.precioActual)),
-      author: post.vendedor?.usuario,
+      author: post.vendedor?.usuario || post.vendedor?.nombre,
       avatar: post.vendedor?.fotoPerfilUrl,
       description: post.descripcion,
       timeAgo: post.fechaAgregado,
-      categoryName: post.categoria,
+      categoryName: post.categoryName,
       rating: post.vendedor?.reputacion ?? 0,
       sales: post.vendedor?.stats?.ventas ?? 0
   }));

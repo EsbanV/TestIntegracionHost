@@ -5,16 +5,33 @@ export interface UserProfile {
   correo: string;
   usuario: string;
   nombre: string;
-  role: string;
+  role: string;   // El backend envía el nombre del rol, no el objeto
+  estado?: string; // El backend envía el nombre del estado
   campus: string | null;
   reputacion: string | number;
   telefono?: string | null;
   direccion?: string | null;
   fechaRegistro?: string;
   fotoPerfilUrl?: string;
-  resumen?: {
-    totalVentas: number;
-    totalProductos: number;
+  
+  // Unificamos la estructura de estadísticas para el frontend
+  stats?: {
+    ventas: number;
+    publicaciones: number; // En el privado puede venir como totalProductos
+    compras?: number;      // Solo disponible en privado
+  };
+}
+
+// Respuesta de la API para perfiles
+export interface ProfileApiResponse {
+  success: boolean;
+  data: UserProfile & {
+    // El backend a veces envía 'resumen' (privado) o 'stats' (público)
+    resumen?: {
+      totalVentas: number;
+      totalProductos: number;
+      totalCompras: number;
+    };
   };
 }
 
@@ -43,6 +60,7 @@ export interface UpdateProfileData {
 }
 
 export interface ReviewsData {
+  ok: boolean;
   reviews: Review[];
   stats: {
     total: number;

@@ -1,23 +1,49 @@
-import React from 'react';
-import { usePublicationsFeed } from './perfil.hooks';
-import { PublicationsList } from './Perfil.Components'; // Importamos el componente visual unificado
+import React, { useEffect } from 'react';
+import { usePublicationsFeed } from '@/features/Perfil/perfil.hooks';
+import { PublicationsList } from '@/features/Perfil/Perfil.Components';
 
 interface MyPublicationsFeedProps {
   searchTerm?: string;
-  onStatsChange?: (has: boolean, total: number) => void;
+  selectedCategoryId?: string;
+  authorId?: string;
+  onStatsChange?: (hasResults: boolean, totalResults: number) => void;
 }
 
-const MyPublicationsFeed = ({ searchTerm, onStatsChange }: MyPublicationsFeedProps) => {
+const MyPublicationsFeed: React.FC<MyPublicationsFeedProps> = ({ 
+  searchTerm = '', 
+  selectedCategoryId = '', 
+  authorId,
+  onStatsChange 
+}) => {
   
+  // 1. Usar el hook refactorizado
   const { 
-    items, isLoading, isError, hasResults, hasNextPage, isFetchingNextPage, totalResults, lastPostElementRef 
-  } = usePublicationsFeed({ searchTerm });
+    items, 
+    isLoading, 
+    isError, 
+    hasResults, 
+    hasNextPage, 
+    isFetchingNextPage, 
+    totalResults, 
+    lastPostElementRef 
+  } = usePublicationsFeed({ 
+    searchTerm, 
+    selectedCategoryId, 
+    authorId,
+    // Si hay un authorId específico (perfil público), 'onlyMine' es false implícitamente 
+    // en la lógica del hook, o podemos pasarlo explícitamente si queremos controlar la edición.
+    // Por defecto asumimos que si se usa este componente sin authorId, es "mi feed".
+    onlyMine: !authorId 
+  });
 
-  // Efecto para comunicar estadísticas al padre (si es necesario)
-  React.useEffect(() => {
-    if(onStatsChange && !isLoading) onStatsChange(hasResults, totalResults);
+  // 2. Efecto para comunicar estadísticas al padre (PerfilPage) si es necesario
+  useEffect(() => {
+    if(onStatsChange && !isLoading) {
+      onStatsChange(hasResults, totalResults);
+    }
   }, [hasResults, totalResults, isLoading, onStatsChange]);
 
+  // 3. Renderizar la lista visual
   return (
     <PublicationsList 
        items={items}
@@ -27,7 +53,9 @@ const MyPublicationsFeed = ({ searchTerm, onStatsChange }: MyPublicationsFeedPro
        hasNextPage={hasNextPage}
        isFetchingNextPage={isFetchingNextPage}
        lastPostRef={lastPostElementRef}
-       showEditButton={true} // ¡Aquí activamos el modo edición porque es MI perfil!
+       // Solo mostramos el botón de editar si NO hay un authorId explícito (es decir, es mi perfil)
+       // O si el authorId coincide con el usuario logueado (validación extra)
+       showEditButton={!authorId} 
     />
   );
 };

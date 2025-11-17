@@ -1,5 +1,6 @@
 import React, { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Link } from 'react-router-dom';
 import { getImageUrl } from "@/app/imageHelper";
 
 // UI Shadcn
@@ -10,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Link } from 'react-router-dom';
 
 // Icons
 import { 
@@ -19,13 +19,16 @@ import {
 } from "react-icons/lu";
 
 // Tipos
-import type { Review, UpdateProfileData, UserProfile, PublicationItem } from "./perfil.types";
+import type { Review, UserProfile, PublicationItem } from "./perfil.types";
 
-// --- ✅ COMPONENTES Y UTILS EXTERNOS ---
-import { RatingStars } from "@/features/shared/ui/RatingStars"; // Ajusta la ruta a tu componente
-import { formatCLP, formatInt } from "@/utils/format"; // Ajusta la ruta a tu archivo de formato
+// Utils & Shared Components
+// Asegúrate de que estas rutas sean correctas en tu proyecto
+import { RatingStars } from "@/features/shared/ui/RatingStars"; 
+import { formatCLP, formatInt } from "@/utils/format"; 
 
-// --- SUBCOMPONENTES ---
+// ============================================================================
+// 1. COMPONENTES BÁSICOS (Inputs, Skeleton)
+// ============================================================================
 
 export const ProfileField = ({ label, value, icon, canEdit = false, editComponent }: { label: string, value: string, icon?: React.ReactNode, canEdit?: boolean, editComponent?: React.ReactNode }) => (
   <div className="space-y-1.5">
@@ -43,7 +46,6 @@ export const ProfileField = ({ label, value, icon, canEdit = false, editComponen
 );
 
 export const ProfileSkeleton = () => (
-  // ... (código del skeleton sin cambios) ...
   <div className="space-y-6 max-w-5xl mx-auto">
     <Skeleton className="h-48 w-full rounded-t-2xl bg-slate-200" />
     <div className="px-6 -mt-16 flex gap-6">
@@ -60,7 +62,9 @@ export const ProfileSkeleton = () => (
   </div>
 );
 
-// --- COMPONENTES PRINCIPALES ---
+// ============================================================================
+// 2. HERO SECTION (Portada y Avatar)
+// ============================================================================
 
 interface HeroProps {
   user: UserProfile;
@@ -70,6 +74,7 @@ interface HeroProps {
   onSave: () => void;
   isUploadingPhoto: boolean;
   onUploadPhoto: (file: File) => void;
+  readOnly?: boolean; // Nueva prop para ocultar botones en perfil público
 }
 
 export const ProfileHero = ({ user, isEditing, setIsEditing, readOnly = false, isSaving, onSave, isUploadingPhoto, onUploadPhoto }: HeroProps) => {
@@ -96,12 +101,15 @@ export const ProfileHero = ({ user, isEditing, setIsEditing, readOnly = false, i
                   <AvatarFallback className="text-4xl bg-slate-100 text-slate-400">{user.usuario.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
 
-                <div 
-                  className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {isUploadingPhoto ? <LuLoader className="text-white w-8 h-8 animate-spin" /> : <LuCamera className="text-white w-8 h-8" />}
-                </div>
+                {/* Botón de subir foto (Solo si no es readOnly) */}
+                {!readOnly && (
+                  <div 
+                    className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {isUploadingPhoto ? <LuLoader className="text-white w-8 h-8 animate-spin" /> : <LuCamera className="text-white w-8 h-8" />}
+                  </div>
+                )}
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
               </div>
               <div className="absolute bottom-2 right-2 bg-green-500 h-5 w-5 rounded-full border-4 border-white" title="Online"></div>
@@ -121,27 +129,23 @@ export const ProfileHero = ({ user, isEditing, setIsEditing, readOnly = false, i
                   </div>
                 </div>
 
-                <div className="flex gap-2 w-full md:w-auto">
-                {/* Solo mostramos botones si NO es readOnly */}
-     {!readOnly && (
-        <div className="flex gap-2 w-full md:w-auto">
-           {/* ... Botones Editar/Guardar ... */}
-                  {!isEditing ? (
-                    <Button onClick={() => setIsEditing(true)} variant="outline" className="gap-2 w-full md:w-auto border-blue-200 text-blue-700 hover:bg-blue-50">
-                      <LuPencil className="w-4 h-4" /> Editar Perfil
-                    </Button>
-                  ) : (
-                    <div className="flex gap-2 w-full md:w-auto">
-                      <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSaving}>Cancelar</Button>
-                      <Button onClick={onSave} disabled={isSaving} className="gap-2 bg-blue-600 hover:bg-blue-700">
-                        {isSaving ? "Guardando..." : <><LuSave className="w-4 h-4" /> Guardar</>}
+                {/* Botones de Acción (Solo si no es readOnly) */}
+                {!readOnly && (
+                  <div className="flex gap-2 w-full md:w-auto">
+                    {!isEditing ? (
+                      <Button onClick={() => setIsEditing(true)} variant="outline" className="gap-2 w-full md:w-auto border-blue-200 text-blue-700 hover:bg-blue-50">
+                        <LuPencil className="w-4 h-4" /> Editar Perfil
                       </Button>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="flex gap-2 w-full md:w-auto">
+                        <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSaving}>Cancelar</Button>
+                        <Button onClick={onSave} disabled={isSaving} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                          {isSaving ? "Guardando..." : <><LuSave className="w-4 h-4" /> Guardar</>}
+                        </Button>
                       </div>
-     )}
-     
-                </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -150,6 +154,10 @@ export const ProfileHero = ({ user, isEditing, setIsEditing, readOnly = false, i
     </div>
   );
 };
+
+// ============================================================================
+// 3. ESTADÍSTICAS Y RESEÑAS
+// ============================================================================
 
 export const ProfileStatsCard = ({ user }: { user: UserProfile }) => (
   <Card className="bg-gradient-to-br from-slate-900 to-slate-800 text-white border-none shadow-lg">
@@ -161,7 +169,7 @@ export const ProfileStatsCard = ({ user }: { user: UserProfile }) => (
           <div className="flex items-center gap-1 text-amber-400 text-sm"><LuStar className="fill-current" /> Reputación</div>
         </div>
         <div className="p-3 rounded-lg bg-white/5 backdrop-blur-sm">
-          <p className="text-2xl font-bold">{user.resumen?.totalVentas || 0}</p>
+          <p className="text-2xl font-bold">{user.resumen?.totalVentas || user.stats?.ventas || 0}</p>
           <div className="flex items-center gap-1 text-blue-300 text-sm"><LuShieldCheck /> Ventas</div>
         </div>
       </div>
@@ -169,7 +177,6 @@ export const ProfileStatsCard = ({ user }: { user: UserProfile }) => (
   </Card>
 );
 
-// --- LISTA DE RESEÑAS ---
 export const ReviewsList = ({ reviews }: { reviews: Review[] }) => (
   <div className="grid gap-4">
     {reviews.map((review) => (
@@ -211,11 +218,14 @@ export const EmptyReviews = () => (
     <div className="inline-flex p-3 bg-slate-50 rounded-full mb-3">
         <LuGhost className="text-slate-300 w-6 h-6" />
     </div>
-    <p className="text-slate-500 text-sm">Aún no tienes reseñas de compradores.</p>
+    <p className="text-slate-500 text-sm">Aún no hay reseñas para este usuario.</p>
   </div>
 );
 
-// --- LISTA DE PUBLICACIONES (COMPONENTE "TONTO") ---
+// ============================================================================
+// 4. LISTA DE PUBLICACIONES (Grid de Productos)
+// ============================================================================
+
 interface PublicationsListProps {
   items: PublicationItem[];
   isLoading: boolean;
