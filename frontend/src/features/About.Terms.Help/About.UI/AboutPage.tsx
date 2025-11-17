@@ -1,16 +1,47 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
-  BookOpen, MessageSquare, Star, Palette, Users, ShieldCheck, Lightbulb, Rocket 
+  BookOpen, MessageSquare, Star, Palette, Users, ShieldCheck, Lightbulb, Rocket, LogIn 
 } from 'lucide-react';
 
 // UI Components
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import LoginFooter from './About.Components/footer'; // O tu footer global
-import Header from '@/features/shared/ui/Header';
+import LoginFooter from './About.Components/footer';
+
+// --- HEADER EXCLUSIVO PARA ABOUT ---
+const AboutHeader = () => (
+  <motion.nav 
+    initial={{ y: -100 }}
+    animate={{ y: 0 }}
+    transition={{ type: "spring", stiffness: 100, damping: 20 }}
+    className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-xl border-b border-slate-200/50"
+  >
+    <div className="flex items-center gap-2.5 cursor-default">
+       {/* Isotipo */}
+       <div className="h-9 w-9 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <span className="text-white font-bold text-lg">M</span>
+       </div>
+       {/* Logotipo */}
+       <span className="font-bold text-xl tracking-tight text-slate-900">
+          Market<span className="text-blue-600">UCT</span>
+       </span>
+    </div>
+    
+    <div className="flex items-center gap-4">
+       <span className="text-sm text-slate-500 hidden sm:inline-block font-medium">
+         ¿Ya tienes cuenta?
+       </span>
+       <Link to="/login">
+          <Button className="gap-2 bg-slate-900 hover:bg-blue-600 text-white shadow-md hover:shadow-lg transition-all rounded-full px-6 h-10 font-semibold">
+             <LogIn size={18} /> Iniciar Sesión
+          </Button>
+       </Link>
+    </div>
+  </motion.nav>
+);
 
 // --- CONFIGURACIÓN DE ANIMACIONES ---
 const fadeIn = {
@@ -78,11 +109,11 @@ export default function AboutPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900">
-      <Header />
+      {/* Usamos el nuevo Header */}
+      <AboutHeader />
       
       {/* --- HERO SECTION --- */}
-      <section className="relative overflow-hidden pt-20 pb-32 lg:pt-32">
-        {/* Background Decorativo */}
+      <section className="relative overflow-hidden pt-28 pb-32 lg:pt-40">
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
            <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-blue-400/20 blur-[100px]" />
            <div className="absolute bottom-0 left-[-10%] w-[600px] h-[600px] rounded-full bg-indigo-400/20 blur-[120px]" />
@@ -109,9 +140,11 @@ export default function AboutPage() {
             </p>
 
             <div className="flex justify-center gap-4 pt-4">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 text-base px-8 h-12 rounded-full">
-                Explorar Marketplace
-              </Button>
+              <Link to="/login">
+                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 text-base px-8 h-12 rounded-full">
+                  Comenzar Ahora
+                </Button>
+              </Link>
               <Button size="lg" variant="outline" className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 text-base px-8 h-12 rounded-full">
                 Saber más
               </Button>
@@ -179,7 +212,6 @@ export default function AboutPage() {
 
       {/* --- MISION & VALORES --- */}
       <section className="py-24 bg-slate-900 text-white relative overflow-hidden">
-         {/* Patrón de fondo sutil */}
          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#4f46e5 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
          
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -196,9 +228,11 @@ export default function AboutPage() {
                   <p className="text-slate-300 text-lg leading-relaxed mb-8">
                     Creemos que la educación no debería tener barreras. Facilitamos un entorno donde cada libro, apunte o herramienta pueda encontrar una segunda vida en manos de otro estudiante.
                   </p>
-                  <Button variant="secondary" size="lg" className="rounded-full font-bold text-slate-900">
-                    Únete a la comunidad
-                  </Button>
+                  <Link to="/login">
+                    <Button variant="secondary" size="lg" className="rounded-full font-bold text-slate-900">
+                      Únete a la comunidad
+                    </Button>
+                  </Link>
                </motion.div>
 
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
