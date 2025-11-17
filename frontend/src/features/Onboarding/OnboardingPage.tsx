@@ -55,13 +55,12 @@ export default function OnboardingPage() {
   const handleNext = () => setStep(prev => prev + 1);
   const handleBack = () => setStep(prev => prev - 1);
 
-  const handleFinalSubmit = async () => {
+const handleFinalSubmit = async () => {
     setIsLoading(true);
     try {
       let finalPhotoUrl = user?.fotoPerfilUrl;
 
-      // 1. Subir Foto (si se seleccionó una nueva)
-      // Usamos la ruta de upload.js: POST /api/upload/profile-photo
+      // 1. Subir Foto (sin cambios...)
       if (selectedImage) {
         const imageFormData = new FormData();
         imageFormData.append('photo', selectedImage);
@@ -78,8 +77,7 @@ export default function OnboardingPage() {
         }
       }
 
-      // 2. Actualizar Datos de Texto
-      // Usamos la ruta de users.js: PUT /api/users/profile
+      // 2. Actualizar Datos (sin cambios...)
       const resProfile = await fetch(`${API_URL}/api/users/profile`, {
         method: 'PUT',
         headers: {
@@ -103,7 +101,13 @@ export default function OnboardingPage() {
           ...formData,
           fotoPerfilUrl: finalPhotoUrl
         };
-        login(token!, updatedUser);
+
+        // 👇 CORRECCIÓN AQUÍ: Recuperar el refresh token y pasarlo
+        const currentRefreshToken = localStorage.getItem('refresh_token') || '';
+        
+        // Pasamos los 3 argumentos requeridos: token, refreshToken, usuario
+        login(token!, currentRefreshToken, updatedUser);
+        
         navigate('/home', { replace: true });
       } else {
         console.error("Error actualizando perfil:", dataProfile.message);
