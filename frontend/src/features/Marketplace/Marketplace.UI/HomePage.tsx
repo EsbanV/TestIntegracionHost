@@ -102,7 +102,7 @@ const FavoriteButton = ({ isFavorite, onClick, className }: { isFavorite: boolea
     title={isFavorite ? "Quitar de favoritos" : "Guardar en favoritos"}
   >
     <Heart 
-      className={cn("bg-red-600 h-5 w-5 transition-all text-red-500", isFavorite && "fill-red-500 scale-110")} 
+      className={cn("h-5 w-5 transition-all text-red-500", isFavorite && "fill-red-500 scale-110")} 
       strokeWidth={2}
     />
   </button>
