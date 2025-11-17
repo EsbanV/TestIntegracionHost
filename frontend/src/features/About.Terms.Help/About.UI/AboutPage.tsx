@@ -18,18 +18,19 @@ import LoginFooter from './About.Components/footer';
 
 // 1. Fondo Aurora (Animación CSS pura con Tailwind)
 const AuroraBackground = () => (
-  <div className="absolute inset-0 -z-10 overflow-hidden">
-    {/* Imagen de fondo a pantalla completa */}
-    <div
-      className="absolute inset-0 bg-slate-950 bg-cover bg-center"
-      style={{ backgroundImage: `url(${BACKGROUND_IMAGE})` }}
+  <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+    {/* Imagen de fondo a pantalla completa (igual idea que en LoginPage) */}
+    <img
+      src={BACKGROUND_IMAGE}
+      alt="Fondo MarketUCT"
+      className="w-full h-full object-cover"
     />
 
-    {/* Capa oscura encima para que el texto se lea bien (opcional) */}
+    {/* Capa oscura encima para mejorar contraste del texto */}
     <div className="absolute inset-0 bg-slate-950/70" />
 
-    {/* Tus blobs/auroras */}
-    <div className="absolute -top-[50%] left-[50%] h-[50vw] w-[50vw] -translate-x-1/2 rounded-full bg-blue-500/20 blur-[100px] animate-pulse-slow" />
+    {/* Blobs / auroras */}
+    <div className="absolute -top-[50%] left-1/2 h-[50vw] w-[50vw] -translate-x-1/2 rounded-full bg-blue-500/20 blur-[100px] animate-pulse-slow" />
     <div className="absolute top-[20%] left-[10%] h-[30vw] w-[30vw] rounded-full bg-purple-500/20 blur-[120px] animate-blob" />
     <div className="absolute bottom-[10%] right-[10%] h-[40vw] w-[40vw] rounded-full bg-indigo-500/20 blur-[120px] animate-blob animation-delay-2000" />
 
