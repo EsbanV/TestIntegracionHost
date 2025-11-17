@@ -2,286 +2,169 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
-  BookOpen, MessageSquare, Star, Palette, Users, ShieldCheck, Lightbulb, Rocket, LogIn 
+  BookOpen, MessageSquare, Star, Palette, Users, ShieldCheck, Lightbulb, Rocket, LogIn, Zap 
 } from 'lucide-react';
 
 // UI Components
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import LoginFooter from './About.Components/footer';
 
-import LogoMUCT from "@/assets/img/logoMUCT.png";
+// --- COMPONENTES "MAGIC" (UI Avanzada) ---
 
-// --- HEADER EXCLUSIVO PARA ABOUT ---
+// 1. Fondo Aurora (Animación CSS pura con Tailwind)
+const AuroraBackground = () => (
+  <div className="absolute inset-0 -z-10 overflow-hidden bg-slate-950">
+    <div className="absolute -top-[50%] left-[50%] h-[50vw] w-[50vw] -translate-x-1/2 rounded-full bg-blue-500/20 blur-[100px] animate-pulse-slow" />
+    <div className="absolute top-[20%] left-[10%] h-[30vw] w-[30vw] rounded-full bg-purple-500/20 blur-[120px] animate-blob" />
+    <div className="absolute bottom-[10%] right-[10%] h-[40vw] w-[40vw] rounded-full bg-indigo-500/20 blur-[120px] animate-blob animation-delay-2000" />
+    {/* Grid Pattern Overlay */}
+    <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+  </div>
+);
+
+// 2. Texto con Gradiente Animado
+const MagicText = ({ text }: { text: string }) => (
+  <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 bg-[length:200%_auto] bg-clip-text text-transparent animate-gradient">
+    {text}
+  </span>
+);
+
+// 3. Tarjeta "Bento" con Efecto Hover
+const BentoCard = ({ icon, title, desc, className }: any) => (
+  <motion.div 
+    whileHover={{ scale: 1.02 }}
+    className={`group relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm transition-all hover:bg-white/10 ${className}`}
+  >
+    <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-blue-300 group-hover:text-white transition-colors">
+      {icon}
+    </div>
+    <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
+    <p className="text-slate-400 text-sm leading-relaxed group-hover:text-slate-200 transition-colors">
+      {desc}
+    </p>
+    {/* Brillo en borde al hacer hover */}
+    <div className="absolute inset-0 -z-10 bg-gradient-to-br from-blue-500/0 via-blue-500/0 to-blue-500/0 opacity-0 transition-opacity duration-500 group-hover:opacity-20" />
+  </motion.div>
+);
+
+// --- HEADER FLOTANTE ---
 const AboutHeader = () => (
   <motion.nav 
-    initial={{ y: -100 }}
-    animate={{ y: 0 }}
-    transition={{ type: "spring", stiffness: 100, damping: 20 }}
-    className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-xl border-b border-slate-200/50"
+    initial={{ y: -100 }} animate={{ y: 0 }} transition={{ type: "spring", stiffness: 100 }}
+    className="fixed top-6 left-0 right-0 z-50 mx-auto max-w-5xl px-6"
   >
-    <div className="flex items-center gap-2.5 cursor-default">
-       {/* Isotipo */}
-       <div className="h-9 w-9 bg-gradient-to-br from-white-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-white-500/20">
-          <span className="text-white font-bold text-lg">
-              <img 
-                  src={LogoMUCT} 
-                  alt="MarketUCT" 
-                  className="h-8 w-auto object-contain" 
-                />
-                </span>
+    <div className="flex items-center justify-between rounded-full border border-white/10 bg-slate-900/70 px-6 py-3 backdrop-blur-xl shadow-2xl shadow-black/50">
+       <div className="flex items-center gap-3">
+          <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">M</div>
+          <span className="font-bold text-white tracking-tight hidden sm:block">Market<span className="text-blue-400">UCT</span></span>
        </div>
-       {/* Logotipo */}
-       <span className="font-bold text-xl tracking-tight text-slate-900">
-          Market<span className="text-yellow-600">UCT</span>
-       </span>
-    </div>
-    
-    <div className="flex items-center gap-4">
-       <span className="text-sm text-slate-500 hidden sm:inline-block font-medium">
-         ¿Ya tienes cuenta?
-       </span>
        <Link to="/login">
-          <Button className="gap-2 bg-slate-900 hover:bg-blue-600 text-white shadow-md hover:shadow-lg transition-all rounded-full px-6 h-10 font-semibold">
-             <LogIn size={18} /> Iniciar Sesión
-          </Button>
+          <button className="group relative inline-flex h-9 items-center justify-center overflow-hidden rounded-full bg-blue-600 px-6 font-medium text-white transition-all hover:bg-blue-700 hover:scale-105">
+             <span className="mr-2">Ingresar</span> <LogIn size={16} />
+             <div className="absolute inset-0 -z-10 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:animate-shimmer" />
+          </button>
        </Link>
     </div>
   </motion.nav>
 );
 
-// --- CONFIGURACIÓN DE ANIMACIONES ---
-const fadeIn = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
-};
-
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.15
-    }
-  }
-};
-
-const scaleIn = {
-  hidden: { scale: 0.9, opacity: 0 },
-  visible: { scale: 1, opacity: 1, transition: { type: "spring", stiffness: 100 } }
-};
-
 export default function AboutPage() {
-  
-  const features = [
-    {
-      icon: <BookOpen className="w-8 h-8 text-blue-600" />,
-      title: 'Recursos Educativos',
-      description: 'Comparte y encuentra materiales de estudio de alta calidad creados por la comunidad.',
-      color: 'bg-blue-50 border-blue-100'
-    },
-    {
-      icon: <MessageSquare className="w-8 h-8 text-indigo-600" />,
-      title: 'Chat en Tiempo Real',
-      description: 'Conecta instantáneamente con vendedores y compradores para cerrar tratos rápidos.',
-      color: 'bg-indigo-50 border-indigo-100'
-    },
-    {
-      icon: <Star className="w-8 h-8 text-yellow-500" />,
-      title: 'Reputación Transparente',
-      description: 'Sistema de valoraciones confiable para asegurar una comunidad segura y honesta.',
-      color: 'bg-yellow-50 border-yellow-100'
-    },
-    {
-      icon: <Palette className="w-8 h-8 text-pink-600" />,
-      title: 'Diseño Intuitivo',
-      description: 'Una interfaz moderna y fácil de usar, pensada para la vida universitaria.',
-      color: 'bg-pink-50 border-pink-100'
-    }
-  ];
-
-  const stats = [
-    { value: '1000+', label: 'Estudiantes' },
-    { value: '500+', label: 'Publicaciones' },
-    { value: '4.8', label: 'Calificación' },
-    { value: '24/7', label: 'Disponible' },
-  ];
-
-  const values = [
-    { icon: <Users size={24} />, title: "Colaboración", desc: "Crecemos juntos compartiendo conocimiento." },
-    { icon: <ShieldCheck size={24} />, title: "Seguridad", desc: "Tu confianza es nuestra prioridad #1." },
-    { icon: <Lightbulb size={24} />, title: "Innovación", desc: "Siempre buscando mejores soluciones." },
-    { icon: <Rocket size={24} />, title: "Excelencia", desc: "Calidad en cada detalle de la plataforma." }
-  ];
-
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900">
-      {/* Usamos el nuevo Header */}
+    <div className="relative min-h-screen font-sans text-slate-100 selection:bg-blue-500/30">
+      <AuroraBackground />
       <AboutHeader />
       
       {/* --- HERO SECTION --- */}
-      <section className="relative overflow-hidden pt-28 pb-32 lg:pt-40">
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
-           <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-blue-400/20 blur-[100px]" />
-           <div className="absolute bottom-0 left-[-10%] w-[600px] h-[600px] rounded-full bg-indigo-400/20 blur-[120px]" />
-        </div>
+      <section className="relative pt-40 pb-20 lg:pt-52 lg:pb-32 text-center px-4">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}
+          className="max-w-4xl mx-auto space-y-8"
+        >
+          <Badge variant="outline" className="bg-blue-900/30 text-blue-300 border-blue-700/50 px-4 py-1.5 text-sm backdrop-blur-md uppercase tracking-widest">
+            ✨ La evolución del comercio estudiantil
+          </Badge>
+          
+          <h1 className="text-5xl md:text-8xl font-black tracking-tight leading-tight">
+            Tu Campus, <br /> <MagicText text="Tu Mercado." />
+          </h1>
+          
+          <p className="text-lg md:text-2xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            La plataforma definitiva para comprar, vender e intercambiar dentro de la comunidad UCT. Seguro, rápido y exclusivo.
+          </p>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div 
-            initial="hidden" 
-            whileInView="visible" 
-            viewport={{ once: true }} 
-            variants={fadeIn}
-            className="max-w-3xl mx-auto space-y-6"
-          >
-            <Badge variant="secondary" className="px-4 py-1.5 text-sm font-medium bg-white border-slate-200 shadow-sm text-blue-700">
-              🚀 La plataforma oficial de la comunidad
-            </Badge>
-            
-            <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-900 leading-tight">
-              Conectando la <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Vida Universitaria</span>
-            </h1>
-            
-            <p className="text-lg md:text-xl text-slate-600 leading-relaxed">
-              MarketUCT no es solo un marketplace. Es el punto de encuentro digital donde estudiantes y profesores intercambian recursos, ideas y oportunidades.
-            </p>
-
-            <div className="flex justify-center gap-4 pt-4">
-              <Link to="/login">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 text-base px-8 h-12 rounded-full">
-                  Comenzar Ahora
-                </Button>
-              </Link>
-              <Button size="lg" variant="outline" className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 text-base px-8 h-12 rounded-full">
-                Saber más
+          <div className="flex flex-col sm:flex-row justify-center gap-4 pt-8">
+            <Link to="/login">
+              <Button className="h-14 px-8 text-lg rounded-full bg-white text-slate-900 hover:bg-slate-200 font-bold shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] transition-all hover:scale-105">
+                Comenzar Ahora <Rocket className="ml-2 h-5 w-5" />
               </Button>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* --- STATS SECTION --- */}
-      <section className="py-10 bg-white border-y border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-slate-100">
-             {stats.map((stat, idx) => (
-               <motion.div 
-                 key={idx}
-                 initial={{ opacity: 0, y: 20 }}
-                 whileInView={{ opacity: 1, y: 0 }}
-                 viewport={{ once: true }}
-                 transition={{ delay: idx * 0.1 }}
-                 className="p-4"
-               >
-                 <div className="text-4xl md:text-5xl font-black text-slate-900 mb-2">{stat.value}</div>
-                 <div className="text-sm font-bold text-slate-500 uppercase tracking-wider">{stat.label}</div>
-               </motion.div>
-             ))}
+            </Link>
           </div>
-        </div>
+        </motion.div>
       </section>
 
-      {/* --- FEATURES SECTION --- */}
-      <section className="py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-           <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Todo lo que necesitas en un solo lugar</h2>
-              <p className="text-slate-500 max-w-2xl mx-auto text-lg">Herramientas diseñadas específicamente para mejorar tu experiencia académica y facilitar el intercambio.</p>
+      {/* --- BENTO GRID FEATURES --- */}
+      <section className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 lg:h-[500px]">
+              
+              {/* Tarjeta Grande Izquierda */}
+              <BentoCard 
+                className="md:col-span-2 md:row-span-2 bg-gradient-to-br from-blue-900/40 to-slate-900/40"
+                icon={<Zap size={32} />}
+                title="Velocidad Instantánea"
+                desc="Publica tus productos en segundos. Chat en tiempo real sin esperas. Todo fluye a la velocidad de la vida universitaria."
+              />
+
+              {/* Tarjeta Derecha Arriba */}
+              <BentoCard 
+                className="md:col-span-1 md:row-span-1"
+                icon={<ShieldCheck size={28} />}
+                title="Comunidad Segura"
+                desc="Acceso exclusivo con correo institucional. Olvídate de estafas externas."
+              />
+
+              {/* Tarjeta Derecha Abajo */}
+              <BentoCard 
+                className="md:col-span-1 md:row-span-1"
+                icon={<Star size={28} />}
+                title="Reputación Real"
+                desc="Sistema de valoración transparente. Gana confianza con cada venta."
+              />
            </div>
-
-           <motion.div 
-             variants={staggerContainer}
-             initial="hidden"
-             whileInView="visible"
-             viewport={{ once: true }}
-             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-           >
-             {features.map((feature, idx) => (
-               <motion.div key={idx} variants={scaleIn}>
-                 <Card className={`h-full border-2 hover:border-blue-500/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-white ${feature.color}`}>
-                   <CardHeader>
-                     <div className="mb-4 p-3 bg-white rounded-2xl w-fit shadow-sm border border-slate-100">
-                        {feature.icon}
-                     </div>
-                     <CardTitle className="text-xl font-bold text-slate-900">{feature.title}</CardTitle>
-                   </CardHeader>
-                   <CardContent>
-                     <CardDescription className="text-slate-600 text-base leading-relaxed">
-                       {feature.description}
-                     </CardDescription>
-                   </CardContent>
-                 </Card>
-               </motion.div>
-             ))}
-           </motion.div>
         </div>
       </section>
 
-      {/* --- MISION & VALORES --- */}
-      <section className="py-24 bg-slate-900 text-white relative overflow-hidden">
-         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#4f46e5 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
-         
-         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="grid md:grid-cols-2 gap-16 items-center">
-               <motion.div 
-                 initial={{ opacity: 0, x: -30 }}
-                 whileInView={{ opacity: 1, x: 0 }}
-                 viewport={{ once: true }}
-                 transition={{ duration: 0.6 }}
-               >
-                  <h2 className="text-3xl md:text-5xl font-bold mb-6 leading-tight">
-                    Nuestra misión es <span className="text-blue-400">democratizar</span> el acceso a recursos.
-                  </h2>
-                  <p className="text-slate-300 text-lg leading-relaxed mb-8">
-                    Creemos que la educación no debería tener barreras. Facilitamos un entorno donde cada libro, apunte o herramienta pueda encontrar una segunda vida en manos de otro estudiante.
-                  </p>
-                  <Link to="/login">
-                    <Button variant="secondary" size="lg" className="rounded-full font-bold text-slate-900">
-                      Únete a la comunidad
-                    </Button>
-                  </Link>
-               </motion.div>
+      {/* --- STATS --- */}
+      <section className="py-20 border-y border-white/5 bg-white/5 backdrop-blur-sm">
+        <div className="max-w-6xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+           {[
+             { label: "Usuarios Activos", value: "1.2k+" },
+             { label: "Transacciones", value: "$5M+" },
+             { label: "Productos", value: "850+" },
+             { label: "Satisfacción", value: "99%" },
+           ].map((stat, i) => (
+             <div key={i}>
+                <div className="text-4xl md:text-5xl font-black text-white mb-2">{stat.value}</div>
+                <div className="text-sm font-bold text-slate-500 uppercase tracking-widest">{stat.label}</div>
+             </div>
+           ))}
+        </div>
+      </section>
 
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {values.map((val, i) => (
-                    <motion.div 
-                      key={i}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: i * 0.1 }}
-                      className="bg-white/5 backdrop-blur-sm border border-white/10 p-6 rounded-2xl hover:bg-white/10 transition-colors"
-                    >
-                       <div className="text-blue-400 mb-3">{val.icon}</div>
-                       <h4 className="font-bold text-lg mb-1">{val.title}</h4>
-                       <p className="text-sm text-slate-400">{val.desc}</p>
-                    </motion.div>
-                  ))}
-               </div>
-            </div>
+      {/* --- CTA FINAL --- */}
+      <section className="py-32 text-center px-4">
+         <div className="max-w-3xl mx-auto space-y-8">
+            <h2 className="text-3xl md:text-5xl font-bold">¿Listo para unirte?</h2>
+            <p className="text-slate-400 text-lg">Forma parte de la economía circular de tu universidad hoy mismo.</p>
+            <Link to="/login">
+              <button className="group relative inline-flex items-center justify-center overflow-hidden rounded-full bg-blue-600 px-8 py-4 font-bold text-white transition-all hover:bg-blue-700 hover:shadow-[0_0_40px_-10px_rgba(37,99,235,0.5)]">
+                 <span className="mr-2">Crear mi cuenta gratis</span>
+                 <Users size={20} />
+              </button>
+            </Link>
          </div>
-      </section>
-
-      {/* --- CONTACTO CTA --- */}
-      <section className="py-20">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-           <Card className="bg-gradient-to-br from-blue-600 to-indigo-700 border-none shadow-2xl text-white overflow-hidden relative">
-              <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-              <CardContent className="p-12 relative z-10">
-                 <h2 className="text-3xl font-bold mb-4">¿Tienes dudas o sugerencias?</h2>
-                 <p className="text-blue-100 mb-8 text-lg">
-                   Nuestro equipo de soporte está siempre listo para ayudarte a sacar el máximo provecho de MarketUCT.
-                 </p>
-                 <a 
-                   href="mailto:soporte@uct.cl" 
-                   className="inline-flex items-center justify-center px-8 py-4 text-base font-bold text-blue-700 bg-white rounded-full hover:bg-blue-50 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1"
-                 >
-                   Contactar Soporte
-                 </a>
-              </CardContent>
-           </Card>
-        </div>
       </section>
 
       <LoginFooter />
