@@ -168,7 +168,7 @@
     @apply bg-background text-foreground antialiased;
 
     /* Fondo con imagen sutil tipo banner general del campus */
-    background-image: url('./assets/img/FONDO.jpg');
+    background-image: url('./assets/img/FondoOscuro.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
