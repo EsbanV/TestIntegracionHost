@@ -13,14 +13,14 @@ import { useAuth } from '@/app/context/AuthContext';
 const API_URL = import.meta.env.VITE_API_URL;
 
 const CATEGORY_MAP: Record<string, number> = {
-  'Electrónicos': 1,
-  'Libros y Materiales': 2,
-  'Muebles': 3,
-  'Ropa': 4,
+  'Electrónica': 1,
+  'Libros y Apuntes': 2,
+  'Ropa': 3,
+  'Servicios': 4,
   'Otros': 5
 };
 
-const CAMPUS_OPTIONS = ["San Francisco", "San Juan Pablo II", "Norte"];
+const CAMPUS_OPTIONS = ["San Francisco", "San Juan Pablo II"];
 
 // --- UTILIDADES ---
 function cn(...inputs: ClassValue[]) {

@@ -27,8 +27,8 @@ export default function HomePage() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
   // --- CONFIGURACIÓN ---
-  const categories = useMemo(() => ['Electrónica', 'Libros y Apuntes', 'Muebles', 'Ropa', 'Otros'], []);
-  const categoryMap: Record<string, string> = { 'Electrónica': 'Electrónicos', 'Libros y Apuntes': 'Libros y Materiales', 'Muebles': 'Muebles', 'Ropa': 'Ropa', 'Otros': 'Otros' };
+  const categories = useMemo(() => ['Electrónica', 'Libros y Apuntes', 'Servicios', 'Ropa', 'Otros'], []);
+  const categoryMap: Record<string, string> = { 'Electrónica': 'Electrónica', 'Libros y Apuntes': 'Libros y Apuntes', 'Servicios': 'Servicios', 'Ropa': 'Ropa', 'Otros': 'Otros' };
   const selectedCategoryId = selectedCategory ? (categoryMap[selectedCategory] ?? '') : '';
 
   // --- DATOS ---
