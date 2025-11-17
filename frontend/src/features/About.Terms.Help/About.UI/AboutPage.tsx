@@ -26,7 +26,7 @@ const AuroraBackground = () => (
     />
 
     {/* 2. Capa oscura y Blur */}
-    <div className="absolute inset-0 bg-slate-950/70" />
+    <div className="absolute inset-0 bg-slate-900/2" />
 
     {/* Blobs / auroras */}
     <div className="absolute -top-[50%] left-1/2 h-[50vw] w-[50vw] -translate-x-1/2 rounded-full bg-blue-500/20 blur-[100px] animate-pulse-slow" />
@@ -73,7 +73,7 @@ const AboutHeader = () => (
     transition={{ type: "spring", stiffness: 100 }}
     className="fixed top-6 left-0 right-0 z-50 mx-auto max-w-5xl px-6"
   >
-    <div className="flex items-center justify-between rounded-full border border-white/10 bg-slate-900/10 px-6 py-3 backdrop-blur-xl shadow-2xl shadow-black/50">
+    <div className="flex items-center justify-between rounded-full border border-white/10 bg-slate-900/2 px-6 py-3 backdrop-blur-xl shadow-2xl shadow-black/50">
       <div className="flex items-center gap-3">
         <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">
           M
