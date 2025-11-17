@@ -30,8 +30,8 @@ import {
 } from "lucide-react"
 
 // Assets
-import LogoMUCT from "@/assets/img/logoMUCT.png" // Asegúrate de que la ruta sea correcta
-import UserDefault from "@/assets/img/user_default.png"
+import LogoMUCT from "@/src/assets/img/logoMUCT.png" // Asegúrate de que la ruta sea correcta
+import UserDefault from "@/src/assets/img/user_default.png"
 
 interface SidebarProps {
   className?: string
