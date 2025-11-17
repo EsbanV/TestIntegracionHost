@@ -36,15 +36,32 @@ export interface Chat {
   transaccion?: TransaccionActiva | null;
 }
 
-// --- NUEVOS TIPOS PARA PAGINACIÓN ---
+// --- TIPOS PARA PAGINACIÓN ---
 
+// Respuesta cruda del backend (Lista de Chats)
 export interface ChatListResponse {
   ok: boolean;
-  conversaciones: any[]; // Datos crudos del backend
-  nextPage?: number;     // Para saber si hay más chats
+  conversaciones: any[]; // Array de conversaciones crudas
+  nextPage?: number;     // Paginación
 }
 
+// Respuesta cruda del backend (Mensajes)
 export interface MessagesResponse {
   ok: boolean;
-  mensajes: any[];       // Datos crudos del backend
+  mensajes: any[];       // Array de mensajes crudos
+}
+
+// --- TIPOS QUE RETORNAN LOS HOOKS INFINITOS ---
+// Estos son los que usan los componentes
+
+export interface ChatListData {
+  pages: ChatListResponse[];
+  pageParams: number[];
+  allChats: Chat[]; // Array aplanado listo para UI
+}
+
+export interface ChatMessagesData {
+  pages: MessagesResponse[];
+  pageParams: number[];
+  allMessages: Mensaje[]; // Array aplanado listo para UI
 }
