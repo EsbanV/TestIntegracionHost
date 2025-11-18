@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 // Icons
 import { 
   LuPencil, LuSave, LuMail, LuCalendar, LuStar, LuShieldCheck,
-  LuCamera, LuLoader, LuGhost, LuShoppingBag
+  LuCamera, LuLoader, LuGhost, LuShoppingBag, LuEye
 } from "react-icons/lu";
 
 // Tipos
