@@ -5,7 +5,6 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { useAuth } from '@/app/context/AuthContext'; // ajusta según tu proyecto
-import { fetchWithAuth } from '@/lib/fetchWithAuth'; // ajusta según tu proyecto
 import type {
   AdminMetricsResponse,
   AdminDailyMetricsResponse,

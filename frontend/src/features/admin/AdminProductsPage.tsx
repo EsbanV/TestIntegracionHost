@@ -9,11 +9,94 @@ import {
 } from './admin.hooks';
 import type { AdminProductListItem } from './admin.types';
 import { Input } from '@/components/ui/input';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Eye, EyeOff } from 'lucide-react';
+
+// -----------------------------------------------------------
+// Fila de producto: maneja el toggle de visibilidad por fila
+// -----------------------------------------------------------
+
+interface ProductRowProps {
+  product: AdminProductListItem;
+}
+
+const ProductRow: React.FC<ProductRowProps> = ({ product }) => {
+  const toggleVisibilityMutation = useAdminToggleProductVisibility(product.id);
+
+  const handleToggleVisibility = () => {
+    toggleVisibilityMutation.mutate();
+  };
+
+  return (
+    <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 transition-colors">
+      {/* Producto + ID */}
+      <td className="px-3 py-2">
+        <div className="flex flex-col">
+          <span className="font-medium text-slate-800">{product.title}</span>
+          <span className="text-[11px] text-slate-500">#{product.id}</span>
+        </div>
+      </td>
+
+      {/* Vendedor */}
+      <td className="px-3 py-2 text-[11px] text-slate-600">
+        {product.author}
+      </td>
+
+      {/* Categoría */}
+      <td className="px-3 py-2 text-[11px] text-slate-600">
+        {product.categoryName || '-'}
+      </td>
+
+      {/* Precio */}
+      <td className="px-3 py-2 text-right text-[11px] text-slate-700">
+        {product.price != null
+          ? `$${product.price.toLocaleString('es-CL')}`
+          : '-'}
+      </td>
+
+      {/* Estado negocio (nuevo/usado, etc.) */}
+      <td className="px-3 py-2 text-center">
+        <Badge variant="outline" className="text-[10px]">
+          {product.estadoNombre || 'Activo'}
+        </Badge>
+      </td>
+
+      {/* Visibilidad en el Marketplace */}
+      <td className="px-3 py-2 text-center">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          title={product.visible ? 'Ocultar publicación' : 'Mostrar publicación'}
+          onClick={handleToggleVisibility}
+          disabled={toggleVisibilityMutation.isPending}
+        >
+          {product.visible ? (
+            <Eye className="h-4 w-4 text-slate-600" />
+          ) : (
+            <EyeOff className="h-4 w-4 text-slate-400" />
+          )}
+        </Button>
+        <div className="mt-1 text-[10px] text-slate-500">
+          {product.visible ? 'Visible' : 'Oculta'}
+        </div>
+      </td>
+    </tr>
+  );
+};
+
+// -----------------------------------------------------------
+// Página principal de productos
+// -----------------------------------------------------------
 
 export default function AdminProductsPage() {
   const [page, setPage] = useState(1);
@@ -34,21 +117,7 @@ export default function AdminProductsPage() {
     pageSize,
   });
 
-  const toggleVisibilityMutation = useAdminToggleProductVisibility(0); // se sobreescribe por fila
-
   const totalPages = data?.totalPages ?? 1;
-
-  const handleToggleVisibility = (id: number) => {
-    toggleVisibilityMutation.mutateAsync(undefined, {
-      // truco: sobreescribimos la URL con el id adecuado
-      onMutate: () => {
-        (toggleVisibilityMutation as any).options.mutationFn = () =>
-          (toggleVisibilityMutation as any).options.mutationFnOriginal?.(
-            id,
-          );
-      },
-    } as any);
-  };
 
   return (
     <AdminLayout
@@ -80,56 +149,52 @@ export default function AdminProductsPage() {
             <label className="text-xs font-medium text-slate-600 mb-1 block">
               Estado
             </label>
-          <Select
-            value={estadoId !== undefined ? String(estadoId) : 'all'}
-            onValueChange={(value) => {
+            <Select
+              value={estadoId !== undefined ? String(estadoId) : 'all'}
+              onValueChange={(value) => {
                 if (value === 'all') setEstadoId(undefined);
                 else setEstadoId(Number(value));
                 setPage(1);
-            }}
+              }}
             >
-            <SelectTrigger className="h-9 text-xs">
+              <SelectTrigger className="h-9 text-xs">
                 <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
+              </SelectTrigger>
+              <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
                 {lookups?.productStatuses.map((st) => (
-                <SelectItem key={st.id} value={String(st.id)}>
+                  <SelectItem key={st.id} value={String(st.id)}>
                     {st.nombre}
-                </SelectItem>
+                  </SelectItem>
                 ))}
-            </SelectContent>
+              </SelectContent>
             </Select>
-
-
           </div>
 
           <div className="w-full md:w-1/4">
             <label className="text-xs font-medium text-slate-600 mb-1 block">
               Categoría
             </label>
-           <Select
-  value={categoriaId !== undefined ? String(categoriaId) : 'all'}
-  onValueChange={(value) => {
-    if (value === 'all') setCategoriaId(undefined);
-    else setCategoriaId(Number(value));
-    setPage(1);
-  }}
->
-  <SelectTrigger className="h-9 text-xs">
-    <SelectValue placeholder="Todas" />
-  </SelectTrigger>
-  <SelectContent>
-    <SelectItem value="all">Todas</SelectItem>
-    {lookups?.categories.map((cat) => (
-      <SelectItem key={cat.id} value={String(cat.id)}>
-        {cat.nombre}
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
-
-
+            <Select
+              value={categoriaId !== undefined ? String(categoriaId) : 'all'}
+              onValueChange={(value) => {
+                if (value === 'all') setCategoriaId(undefined);
+                else setCategoriaId(Number(value));
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {lookups?.categories.map((cat) => (
+                  <SelectItem key={cat.id} value={String(cat.id)}>
+                    {cat.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -167,52 +232,7 @@ export default function AdminProductsPage() {
               </thead>
               <tbody className="bg-white">
                 {data?.products?.map((p: AdminProductListItem) => (
-                  <tr
-                    key={p.id}
-                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 transition-colors"
-                  >
-                    <td className="px-3 py-2">
-                      <div className="flex flex-col">
-                        <span className="font-medium text-slate-800">
-                          {p.title}
-                        </span>
-                        <span className="text-[11px] text-slate-500">
-                          #{p.id}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-[11px] text-slate-600">
-                      {p.author}
-                    </td>
-                    <td className="px-3 py-2 text-[11px] text-slate-600">
-                      {p.categoryName || '-'}
-                    </td>
-                    <td className="px-3 py-2 text-right text-[11px] text-slate-700">
-                      {p.price != null
-                        ? `$${p.price.toLocaleString('es-CL')}`
-                        : '-'}
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <Badge variant="outline" className="text-[10px]">
-                        {p.estadoNombre || 'Activo'}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        title={p.visible ? 'Ocultar' : 'Mostrar'}
-                        onClick={() => handleToggleVisibility(p.id)}
-                      >
-                        {p.visible ? (
-                          <Eye className="h-4 w-4 text-slate-600" />
-                        ) : (
-                          <EyeOff className="h-4 w-4 text-slate-400" />
-                        )}
-                      </Button>
-                    </td>
-                  </tr>
+                  <ProductRow key={p.id} product={p} />
                 ))}
 
                 {(!data || data.products.length === 0) && (
