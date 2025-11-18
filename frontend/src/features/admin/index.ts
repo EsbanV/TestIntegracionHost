@@ -1,2 +1,2 @@
-export * from './layout/AdminLayout';
+export * from './AdminLayout';
 export * from './components';

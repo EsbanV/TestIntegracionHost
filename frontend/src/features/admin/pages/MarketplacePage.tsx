@@ -1,4 +1,4 @@
-import AdminLayout from '../layout/AdminLayout';
+import AdminLayout from '../AdminLayout';
 import PageTransition from '../components/PageTransition';
 import EmptyCard from '../components/EmptyCard';
 

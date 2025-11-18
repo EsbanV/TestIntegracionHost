@@ -24,12 +24,8 @@ import ForumPage from '@/features/Forum/ForumPage'
 import MyPublicationsPage from '@/features/Forum/MyPublicationsPage'
 import FavoritesPage from '@/features/Favoritos/FavoritesPage'
 
-import UsersPage from '../features/admin/pages/UsersPage';
-import AdminDashboardPage from '../features/admin/pages/DashboardPage';
-import AdminPostsPage from '../features/admin/pages/PostsPage';
-import AdminSettingsPage from '../features/admin/pages/SettingsPage';
-import AdminMarketplacePage from '../features/admin/pages/MarketplacePage';
-import AdminProductsPage from '../features/admin/pages/AdminProductsPage';
+import AdminPage from '@/features/admin/AdminPage';
+
 
 
 export function AppRoutes() {
@@ -110,12 +106,7 @@ export function AppRoutes() {
 
         {/* --- Rutas de Administrador (Requiere rol 'ADMIN') --- */}
         <Route element={<AdminRoute />}>
-          <Route path="/admin" element={<AdminDashboardPage />} />
-          <Route path="/admin/usuarios" element={<UsersPage />} />
-          <Route path="/admin/publicaciones" element={<AdminPostsPage />} />
-          <Route path="/admin/ajustes" element={<AdminSettingsPage />} />
-          <Route path="/admin/marketplace" element={<AdminMarketplacePage />} />
-          <Route path="/admin/productos" element={<AdminProductsPage />} />
+          <Route path="/admin" element={<AdminPage />} />
         </Route>
 
       </Route> {/* Fin ProtectedRoute */}

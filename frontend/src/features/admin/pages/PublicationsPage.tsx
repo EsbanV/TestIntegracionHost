@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import AdminLayout from '../layout/AdminLayout';
+import AdminLayout from '../AdminLayout';
 import { 
   AdminTable, 
   AdminModal, 
