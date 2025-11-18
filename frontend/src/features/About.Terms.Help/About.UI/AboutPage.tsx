@@ -7,6 +7,7 @@ import {
 
 import loginBg from '@/assets/img/FondoClaro.png';
 const BACKGROUND_IMAGE = loginBg;
+const LogoMUCT = "/assets/img/logoMUCT.png";
 
 // UI Components
 import { Card, CardContent } from "@/components/ui/card";
@@ -73,7 +74,12 @@ const AboutHeader = () => (
     <div className="flex items-center justify-between rounded-full border border-white/10 bg-slate-900/70 px-6 py-3 backdrop-blur-xl shadow-2xl shadow-black/50">
       <div className="flex items-center gap-3">
         <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">
-          M
+                          <img 
+                
+                  src={LogoMUCT} 
+                  alt="MarketUCT" 
+                  className="text-white w-9 h-9" 
+                />
         </div>
         <span className="font-bold text-white tracking-tight hidden sm:block">
           Market<span className="text-blue-400">UCT</span>
