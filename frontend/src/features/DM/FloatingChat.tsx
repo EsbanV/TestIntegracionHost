@@ -6,7 +6,7 @@ import { useAuth } from "@/app/context/AuthContext";
 // Hooks
 import { 
   useChatSocket, useChatList, useChatMessages, 
-  useChatTransactions, useChatActions 
+  useChatTransactions, useChatActions, useRateLimiter
 } from '@/features/DM/chat.hooks';
 
 
