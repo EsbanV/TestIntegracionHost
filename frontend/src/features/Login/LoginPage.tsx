@@ -126,9 +126,10 @@ export default function LoginPage() {
             className="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-blue-600/30 mb-6 rotate-3"
           >
                 <img 
+                
                   src={LogoMUCT} 
                   alt="MarketUCT" 
-                  className="h-8 w-auto object-contain" 
+                  className="text-white w-9 h-9" 
                 />
           </motion.div>
           <h1 className="text-3xl font-extrabold text-slate-900 mb-2 tracking-tight">MarketUCT</h1>
