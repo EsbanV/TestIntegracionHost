@@ -69,50 +69,52 @@ export default function AdminUsersPage() {
             <label className="text-xs font-medium text-slate-600 mb-1 block">
               Rol
             </label>
-            <Select
-              value={rolId ? String(rolId) : ''}
-              onValueChange={(value) => {
-                setRolId(value ? Number(value) : undefined);
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="h-9 text-xs">
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
-                {lookups?.roles.map((rol) => (
-                  <SelectItem key={rol.id} value={String(rol.id)}>
-                    {rol.nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <Select
+                value={rolId !== undefined ? String(rolId) : 'all'}
+                onValueChange={(value) => {
+                    if (value === 'all') setRolId(undefined);
+                    else setRolId(Number(value));
+                    setPage(1);
+                }}
+                >
+                <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {lookups?.roles.map((rol) => (
+                    <SelectItem key={rol.id} value={String(rol.id)}>
+                        {rol.nombre}
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
           </div>
 
           <div className="w-full md:w-1/4">
             <label className="text-xs font-medium text-slate-600 mb-1 block">
               Estado
             </label>
-            <Select
-              value={estadoId ? String(estadoId) : ''}
-              onValueChange={(value) => {
-                setEstadoId(value ? Number(value) : undefined);
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="h-9 text-xs">
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
-                {lookups?.userStatuses.map((estado) => (
-                  <SelectItem key={estado.id} value={String(estado.id)}>
-                    {estado.nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <Select
+                value={estadoId !== undefined ? String(estadoId) : 'all'}
+                onValueChange={(value) => {
+                    if (value === 'all') setEstadoId(undefined);
+                    else setEstadoId(Number(value));
+                    setPage(1);
+                }}
+                >
+                <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {lookups?.userStatuses.map((estado) => (
+                    <SelectItem key={estado.id} value={String(estado.id)}>
+                        {estado.nombre}
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
           </div>
 
           <Button

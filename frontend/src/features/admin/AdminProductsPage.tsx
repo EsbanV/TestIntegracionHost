@@ -80,50 +80,56 @@ export default function AdminProductsPage() {
             <label className="text-xs font-medium text-slate-600 mb-1 block">
               Estado
             </label>
-            <Select
-              value={estadoId ? String(estadoId) : ''}
-              onValueChange={(value) => {
-                setEstadoId(value ? Number(value) : undefined);
+          <Select
+            value={estadoId !== undefined ? String(estadoId) : 'all'}
+            onValueChange={(value) => {
+                if (value === 'all') setEstadoId(undefined);
+                else setEstadoId(Number(value));
                 setPage(1);
-              }}
+            }}
             >
-              <SelectTrigger className="h-9 text-xs">
+            <SelectTrigger className="h-9 text-xs">
                 <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
                 {lookups?.productStatuses.map((st) => (
-                  <SelectItem key={st.id} value={String(st.id)}>
+                <SelectItem key={st.id} value={String(st.id)}>
                     {st.nombre}
-                  </SelectItem>
+                </SelectItem>
                 ))}
-              </SelectContent>
+            </SelectContent>
             </Select>
+
+
           </div>
 
           <div className="w-full md:w-1/4">
             <label className="text-xs font-medium text-slate-600 mb-1 block">
               Categoría
             </label>
-            <Select
-              value={categoriaId ? String(categoriaId) : ''}
-              onValueChange={(value) => {
-                setCategoriaId(value ? Number(value) : undefined);
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="h-9 text-xs">
-                <SelectValue placeholder="Todas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
-                {lookups?.categories.map((cat) => (
-                  <SelectItem key={cat.id} value={String(cat.id)}>
-                    {cat.nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+           <Select
+  value={categoriaId !== undefined ? String(categoriaId) : 'all'}
+  onValueChange={(value) => {
+    if (value === 'all') setCategoriaId(undefined);
+    else setCategoriaId(Number(value));
+    setPage(1);
+  }}
+>
+  <SelectTrigger className="h-9 text-xs">
+    <SelectValue placeholder="Todas" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="all">Todas</SelectItem>
+    {lookups?.categories.map((cat) => (
+      <SelectItem key={cat.id} value={String(cat.id)}>
+        {cat.nombre}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+
+
           </div>
         </div>
 
