@@ -5,13 +5,13 @@ export interface OnboardingFormData {
   telefono: string;
   direccion: string;
   campus: string;
+  acceptedTerms: boolean; // <--- Nuevo campo
 }
 
 export interface StepProps {
   formData: OnboardingFormData;
   setFormData: React.Dispatch<React.SetStateAction<OnboardingFormData>>;
   isLoading: boolean;
-  // Props específicas para el paso de foto
   imagePreview?: string | null;
   onImageSelect?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   fileInputRef?: React.RefObject<HTMLInputElement>;

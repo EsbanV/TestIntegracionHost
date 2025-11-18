@@ -1,16 +1,14 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Hooks
 import { useOnboarding, formatWelcomeName } from '@/features/Onboarding/onboarding.hooks';
 
-// Componentes
 import { 
   StepOneBasicInfo, 
   StepTwoCampus, 
   StepThreePhoto, 
   OnboardingFooter 
-} from '@/features/Onboarding//Onboarding.Components';
+} from '@/features/Onboarding/Onboarding.Components';
 
 export default function OnboardingPage() {
   const {
@@ -27,11 +25,11 @@ export default function OnboardingPage() {
     handleFinalSubmit
   } = useOnboarding();
 
-  // Renderizado dinámico del contenido
   const renderStepContent = () => {
     switch (step) {
       case 1: return <StepOneBasicInfo formData={formData} setFormData={setFormData} isLoading={isLoading} />;
       case 2: return <StepTwoCampus formData={formData} setFormData={setFormData} isLoading={isLoading} />;
+      // Pasamos formData al paso 3 para el checkbox
       case 3: return <StepThreePhoto formData={formData} setFormData={setFormData} isLoading={isLoading} imagePreview={imagePreview} fileInputRef={fileInputRef} onImageSelect={handleImageSelect} />;
       default: return null;
     }
@@ -44,7 +42,6 @@ export default function OnboardingPage() {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100"
       >
-        {/* HEADER GRÁFICO */}
         <div className="bg-slate-900 p-8 pb-16 text-center relative overflow-hidden">
           <div className="absolute top-[-50px] left-[-50px] w-32 h-32 bg-blue-600/20 rounded-full blur-2xl"></div>
           <div className="absolute bottom-0 right-[-20px] w-40 h-40 bg-indigo-600/20 rounded-full blur-2xl"></div>
@@ -59,11 +56,9 @@ export default function OnboardingPage() {
           </div>
         </div>
 
-        {/* CARD FLOTANTE */}
         <div className="relative -mt-8 px-6 pb-6">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
             
-            {/* Barra de Progreso */}
             <div className="flex justify-center gap-2 mb-8">
               {[1, 2, 3].map((i) => (
                 <div 
@@ -75,7 +70,6 @@ export default function OnboardingPage() {
               ))}
             </div>
 
-            {/* Contenido del Paso */}
             <AnimatePresence mode="wait">
               <motion.div
                 key={step}
@@ -88,14 +82,14 @@ export default function OnboardingPage() {
               </motion.div>
             </AnimatePresence>
 
-            {/* Footer de Navegación */}
             <OnboardingFooter 
                 step={step} 
                 handleBack={handleBack} 
                 handleNext={handleNext} 
                 handleFinalSubmit={handleFinalSubmit} 
                 isLoading={isLoading}
-                canContinue={step !== 1 || !!formData.usuario} // Validación simple para paso 1
+                canContinue={step !== 1 || !!formData.usuario}
+                formData={formData} // <--- Importante: Pasamos formData al footer
             />
 
           </div>

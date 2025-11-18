@@ -6,7 +6,6 @@ import { CAMPUS_OPTIONS, OnboardingFormData } from './onboarding.types';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-// Helper para formatear nombre
 export const formatWelcomeName = (fullName?: string) => {
   if (!fullName) return "Usuario";
   const parts = fullName.trim().split(/\s+/);
@@ -26,15 +25,14 @@ export const useOnboarding = () => {
     usuario: user?.usuario || '',
     telefono: '',
     direccion: '',
-    campus: CAMPUS_OPTIONS[0]
+    campus: CAMPUS_OPTIONS[0],
+    acceptedTerms: false // <--- Inicializado en false
   });
 
-  // Estado de imagen
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(getImageUrl(user?.fotoPerfilUrl));
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Manejadores de Imagen
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -43,19 +41,24 @@ export const useOnboarding = () => {
     }
   };
 
-  // Navegación de pasos
   const handleNext = () => setStep(prev => prev + 1);
   const handleBack = () => setStep(prev => prev - 1);
 
-  // Envío Final
   const handleFinalSubmit = async () => {
     if (!token) return;
+    
+    // Validación extra de seguridad
+    if (!formData.acceptedTerms) {
+        alert("Debes aceptar los términos y condiciones.");
+        return;
+    }
+
     setIsLoading(true);
     
     try {
       let finalPhotoUrl = user?.fotoPerfilUrl;
 
-      // 1. Subir Foto si existe
+      // 1. Subir Foto
       if (selectedImage) {
         const imageFormData = new FormData();
         imageFormData.append('photo', selectedImage);
@@ -67,12 +70,10 @@ export const useOnboarding = () => {
         });
         
         const dataImg = await resImg.json();
-        if (dataImg.ok) {
-          finalPhotoUrl = dataImg.photoUrl;
-        }
+        if (dataImg.ok) finalPhotoUrl = dataImg.photoUrl;
       }
 
-      // 2. Actualizar Perfil
+      // 2. Actualizar Perfil (Excluimos acceptedTerms del envío)
       const resProfile = await fetch(`${API_URL}/api/users/profile`, {
         method: 'PUT',
         headers: {
@@ -90,19 +91,16 @@ export const useOnboarding = () => {
       const dataProfile = await resProfile.json();
 
       if (dataProfile.ok) {
-        // 3. Actualizar Contexto y Redirigir
         const updatedUser = { 
           ...user!, 
-          ...formData,
+          ...formData, // Esto guarda acceptedTerms en local, pero no afecta al backend
           fotoPerfilUrl: finalPhotoUrl
         };
 
         const currentRefreshToken = localStorage.getItem('refresh_token') || '';
         login(token, currentRefreshToken, updatedUser);
-        
         navigate('/home', { replace: true });
       } else {
-        console.error("Error actualizando perfil:", dataProfile.message);
         alert("Error al guardar: " + (dataProfile.message || "Intente nuevamente"));
       }
 
