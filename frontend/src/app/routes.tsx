@@ -25,6 +25,9 @@ import MyPublicationsPage from '@/features/Forum/MyPublicationsPage'
 import FavoritesPage from '@/features/Favoritos/FavoritesPage'
 
 import AdminPage from '@/features/admin/AdminPage';
+import AdminUsersPage from '@/features/admin/AdminUsersPage';
+import AdminProductsPage from '@/features/admin/AdminProductsPage';
+import AdminTransactionsPage from '@/features/admin/AdminTransactionsPage';
 
 
 
@@ -105,9 +108,25 @@ export function AppRoutes() {
         </Route> {/* Fin RequireSetup */}
 
         {/* --- Rutas de Administrador (Requiere rol 'ADMIN') --- */}
-        <Route element={<AdminRoute />}>
-          <Route path="/admin" element={<AdminPage />} />
-        </Route>
+          <Route element={<AdminRoute />}>
+            {/* Dashboard */}
+            <Route path="/admin" element={<AdminPage />} />
+
+            {/* Secciones principales */}
+            <Route path="/admin/usuarios" element={<AdminUsersPage />} />
+            <Route path="/admin/productos" element={<AdminProductsPage />} />
+            <Route path="/admin/transacciones" element={<AdminTransactionsPage />} />
+            <Route path="/admin/reportes" element={<AdminReportsPage />} />
+
+            {/* Contenido */}
+            <Route path="/admin/publicaciones" element={<AdminPostsPage />} />
+            <Route path="/admin/comentarios" element={<AdminCommentsPage />} />
+            <Route path="/admin/comunidad" element={<AdminCommunityPage />} />
+
+            {/* Configuración */}
+            <Route path="/admin/categorias" element={<AdminCategoriesPage />} />
+            <Route path="/admin/ajustes" element={<AdminSettingsPage />} />
+          </Route>
 
       </Route> {/* Fin ProtectedRoute */}
 
