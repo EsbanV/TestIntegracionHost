@@ -7,7 +7,7 @@ import {
 
 import loginBg from '@/assets/img/FondoClaro.png';
 const BACKGROUND_IMAGE = loginBg;
-const LogoMUCT = "/assets/img/logoMUCT.png";
+const LogoMUCT = "@/assets/img/logoMUCT.png";
 
 // UI Components
 import { Card, CardContent } from "@/components/ui/card";
@@ -179,7 +179,7 @@ export default function AboutPage() {
                 <div className="text-4xl md:text-5xl font-black text-white mb-2">
                   {stat.value}
                 </div>
-                <div className="text-sm font-bold text-slate-500 uppercase tracking-widest">
+                <div className="text-sm font-bold text-slate-400 uppercase tracking-widest">
                   {stat.label}
                 </div>
               </div>
