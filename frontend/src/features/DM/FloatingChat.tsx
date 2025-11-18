@@ -92,6 +92,8 @@ export default function FloatingChat() {
       ? ({ nombre: "...", id: activeChatId } as unknown as Chat)
       : null);
 
+  const unreadCount = activeChatInfo?.noLeidos ?? 0;
+
   useChatSocket(activeChatId);
 
   const {
@@ -105,8 +107,9 @@ export default function FloatingChat() {
   const handleSelectChat = (id: number) => {
     setActiveChatId(id);
     setView("chat");
-    markAsRead(id);
+    // markAsRead(id);  // <- puedes comentar/eliminar esto
   };
+
 
   const handleSend = async (texto: string, file?: File) => {
     if (!checkRateLimit()) return;
@@ -156,10 +159,12 @@ export default function FloatingChat() {
 
   // marcar como leído cuando el chat flotante está abierto y llegan mensajes nuevos
   useEffect(() => {
-    if (activeChatId && isOpen && view === "chat") {
-      markAsRead(activeChatId);
-    }
-  }, [messages.length, activeChatId, isOpen, view, markAsRead]);
+    if (!activeChatId) return;
+    if (!isOpen || view !== "chat") return;
+    if (unreadCount <= 0) return;
+
+    markAsRead(activeChatId);
+  }, [activeChatId, isOpen, view, unreadCount, markAsRead]);
 
   return (
     <>

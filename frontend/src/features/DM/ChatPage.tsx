@@ -85,6 +85,8 @@ export default function ChatPage() {
           avatar: undefined,
         } as unknown as Chat)
       : null);
+    const unreadCount = displayChatInfo?.noLeidos ?? 0;
+
 
   // --- SOCKETS & ACCIONES ---
   useChatSocket(activeChatId);
@@ -166,9 +168,15 @@ export default function ChatPage() {
   }, [location]);
 
   // Marcar como leído al abrir el chat o recibir nuevos mensajes
-  useEffect(() => {
-    if (activeChatId) markAsRead(activeChatId);
-  }, [activeChatId, messages.length]);
+// Marcar como leído al abrir el chat cuando hay mensajes sin leer
+    useEffect(() => {
+    if (!activeChatId) return;
+    if (unreadCount <= 0) return;
+
+    // Solo se ejecuta cuando entras a un chat que tiene noLeidos > 0
+    markAsRead(activeChatId);
+    }, [activeChatId, unreadCount]);
+
 
   // --- RENDER ---
 

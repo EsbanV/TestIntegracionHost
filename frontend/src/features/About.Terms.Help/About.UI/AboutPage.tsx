@@ -7,7 +7,7 @@ import {
 
 import loginBg from '@/assets/img/FondoClaro.png';
 const BACKGROUND_IMAGE = loginBg;
-const LogoMUCT = "@/assets/img/logoMUCT.png";
+import LogoMUCT from "@/assets/img/logoMUCT.png";
 
 // UI Components
 import { Card, CardContent } from "@/components/ui/card";
