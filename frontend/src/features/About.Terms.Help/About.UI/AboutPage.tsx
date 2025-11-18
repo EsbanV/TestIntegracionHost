@@ -26,7 +26,7 @@ const AuroraBackground = () => (
     />
 
     {/* Capa oscura encima para mejorar contraste del texto */}
-    <div className="absolute inset-0 bg-slate-950/70" />
+    <div className="absolute inset-0 bg-white-950/50" />
 
     {/* Blobs / auroras */}
     <div className="absolute -top-[50%] left-1/2 h-[50vw] w-[50vw] -translate-x-1/2 rounded-full bg-blue-500/20 blur-[100px] animate-pulse-slow" />
