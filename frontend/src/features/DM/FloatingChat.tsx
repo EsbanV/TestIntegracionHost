@@ -54,14 +54,33 @@ export default function FloatingChat() {
   };
   
   // ... (Funciones de transacción iguales) ...
-  const handleConfirmDelivery = async () => { if(transaction) confirmTransaction({ txId: transaction.id, type: 'delivery' }); };
-  const handleConfirmReceipt = async () => { 
-      if(transaction) { 
-          await confirmTransaction({ txId: transaction.id, type: 'receipt' }); 
-          setPendingRatingData({ sellerId: activeChatId, sellerName: displayChatInfo.nombre, transactionId: transaction.id });
-          setIsRateModalOpen(true);
-      } 
-  };
+  const handleConfirmDelivery = async () => {
+  if (!transaction || !activeChatId) return;
+  await confirmTransaction({
+    txId: transaction.id,
+    type: "delivery",
+    chatUserId: activeChatId,
+  });
+};
+
+const handleConfirmReceipt = async () => {
+  if (!transaction || !activeChatId) return;
+  await confirmTransaction({
+    txId: transaction.id,
+    type: "receipt",
+    chatUserId: activeChatId,
+  });
+
+  if (displayChatInfo) {
+    setPendingRatingData({
+      sellerId: activeChatId,
+      sellerName: displayChatInfo.nombre,
+      transactionId: transaction.id,
+    });
+    setIsRateModalOpen(true);
+  }
+};
+
 
 
   return (

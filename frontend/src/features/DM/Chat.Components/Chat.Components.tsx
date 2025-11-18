@@ -25,6 +25,7 @@ interface TransactionBarProps {
   onRate: () => void;
 }
 
+
 export const TransactionStatusBar = ({ tx, onConfirmDelivery, onConfirmReceipt, onRate }: TransactionBarProps) => {
   // (Lógica de estados igual que antes, solo ajustamos clases visuales si es necesario)
   // ... [Mantener el código de TransactionStatusBar igual, ya que no era el problema principal]

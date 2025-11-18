@@ -90,22 +90,37 @@ export default function ChatPage() {
   };
 
   const handleConfirmDelivery = async () => {
-      if (!transaction) return;
-      try { await confirmTransaction({ txId: transaction.id, type: 'delivery' }); } catch (e) {}
-  };
+  if (!transaction || !activeChatId) return;
+  try {
+    await confirmTransaction({
+      txId: transaction.id,
+      type: "delivery",
+      chatUserId: activeChatId,
+    });
+  } catch (error) {
+    console.error("Error al confirmar entrega:", error);
+  }
+};
 
-  const handleConfirmReceipt = async () => {
-      if (!transaction || !displayChatInfo) return;
-      try { 
-          await confirmTransaction({ txId: transaction.id, type: 'receipt' }); 
-          setPendingRatingData({ 
-              sellerId: activeChatId!, 
-              sellerName: displayChatInfo.nombre, 
-              transactionId: transaction.id 
-          }); 
-          setIsRateModalOpen(true);
-      } catch (e) {}
-  };
+const handleConfirmReceipt = async () => {
+  if (!transaction || !displayChatInfo || !activeChatId) return;
+  try {
+    await confirmTransaction({
+      txId: transaction.id,
+      type: "receipt",
+      chatUserId: activeChatId,
+    });
+
+    setPendingRatingData({
+      sellerId: activeChatId,
+      sellerName: displayChatInfo.nombre,
+      transactionId: transaction.id,
+    });
+    setIsRateModalOpen(true);
+  } catch (error) {
+    console.error("Error al confirmar recibo:", error);
+  }
+};
 
   // Efectos de navegación y lectura
   useEffect(() => {

@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/app/context/AuthContext";
-import type { Post } from "./home.types";
+import type { Post, StartTransactionApiResponse } from "./home.types";
 
 // URL Base del backend
 const API_URL = import.meta.env.VITE_API_URL;
+const URL_BASE = import.meta.env.VITE_API_URL;
+
 
 // --- UTILS ---
 export const formatCLP = (amount: number) => {
@@ -24,6 +26,37 @@ export const getInitials = (name?: string) => {
   if (!name) return "U";
   return name.substring(0, 2).toUpperCase();
 };
+
+export async function fetchWithAuth<T>(
+  url: string,
+  token: string | null,
+  options: RequestInit = {}
+): Promise<T> {
+  if (!token) {
+    throw new Error("No autenticado");
+  }
+
+  const res = await fetch(`${URL_BASE}${url}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    },
+  });
+
+  const rawData: any = await res.json();
+
+  if (!res.ok) {
+    // si el backend manda { message: string }, lo aprovechamos
+    throw new Error(rawData?.message || "Error en la petición");
+  }
+
+  // aquí ya es “éxito”, casteamos a T
+  return rawData as T;
+}
+
+
 
 // --- HOOKS DE DATOS ---
 
@@ -146,36 +179,75 @@ export const useFavorites = () => {
 export const useContactSeller = () => {
   const { token } = useAuth();
 
-  const startTransaction = async (productId: number) => {
-     if (!token) return null;
-     try {
-        const res = await fetch(`${API_URL}/api/transactions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ productId, quantity: 1 })
-        });
-        const data = await res.json();
-        return { ok: res.ok, transactionId: data.transactionId, message: data.message };
-     } catch (error) {
-        console.error(error);
-        return { ok: false, message: "Error de conexión" };
-     }
-  };
+  const startTransaction = useCallback(
+    async (productId: number, quantity = 1) => {
+      if (!token) {
+        return { ok: false, message: 'No autenticado' };
+      }
 
-  const sendMessage = async (destinatarioId: number, contenido: string) => {
-      if (!token) return false;
       try {
-        const res = await fetch(`${API_URL}/api/chat/send`, {
+        // 👇 Aquí le pasamos el tipo al genérico <StartTransactionApiResponse>
+        const data = await fetchWithAuth<StartTransactionApiResponse>(
+          '/api/transactions',
+          token,
+          {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ destinatarioId, contenido, tipo: 'texto' })
-        });
-        return res.ok;
-      } catch (error) { return false; }
-  };
+            body: JSON.stringify({ productId, quantity }),
+          }
+        );
+
+        // Si la petición HTTP fallara, fetchWithAuth ya habría hecho throw,
+        // así que si llegas aquí es un caso "ok" a nivel HTTP.
+        return {
+          ok: true,
+          created: data.created,
+          transactionId: data.transactionId,
+          message: data.message,
+        };
+      } catch (error: any) {
+        // Errores HTTP (400, 500, etc.) o de red
+        return {
+          ok: false,
+          message: error?.message || 'Error al iniciar compra',
+        };
+      }
+    },
+    [token]
+  );
+
+  // Si también quieres usar fetchWithAuth en sendMessage:
+  // (opcional: si te gusta más, puedes dejarlo con fetch normal)
+  const sendMessage = useCallback(
+    async (destinatarioId: number, contenido: string) => {
+      if (!token) return false;
+
+      interface SendMessageResponse {
+        ok: boolean;
+        message?: string;
+      }
+
+      try {
+        const data = await fetchWithAuth<SendMessageResponse>(
+          '/api/chat/send',
+          token,
+          {
+            method: 'POST',
+            body: JSON.stringify({ destinatarioId, contenido, tipo: 'texto' }),
+          }
+        );
+
+        return data.ok;
+      } catch {
+        return false;
+      }
+    },
+    [token]
+  );
 
   return { startTransaction, sendMessage };
 };
+
+
 
 interface UsePostsOptions {
   searchTerm: string;

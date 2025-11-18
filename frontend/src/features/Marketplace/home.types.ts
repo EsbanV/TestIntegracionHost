@@ -63,3 +63,11 @@ export interface Vendedor {
   reputacion?: number | null; // Calificación promedio (0-5)
   campus?: string | null;
 }
+
+export interface StartTransactionApiResponse {
+  ok: boolean;
+  created: boolean;
+  id: number;
+  transactionId: number;
+  message?: string;
+}

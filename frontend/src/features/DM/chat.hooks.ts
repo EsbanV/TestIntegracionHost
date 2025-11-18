@@ -177,14 +177,25 @@ export const useChatMessages = (activeChatId: number | null, isOpen: boolean) =>
 };
 
 // C. TRANSACCIÓN ACTIVA
-export const useChatTransaction = (activeChatId: number | null, isOpen: boolean) => {
+// Después (más robusto)
+export const useChatTransaction = (
+  activeChatId: number | null,
+  isOpen: boolean
+) => {
   const { token, user } = useAuth();
 
   return useQuery<TransaccionActiva | null>({
-    queryKey: chatKeys.transaction(activeChatId!),
+    queryKey: activeChatId
+      ? chatKeys.transaction(activeChatId)
+      : ['chat', 'transaction', 'none'],
     queryFn: async () => {
-      const data: any = await fetchWithAuth(`/api/transactions/check-active/${activeChatId}`, token);
-      if(data.ok && data.transaction) {
+      if (!activeChatId) return null;
+      const data: any = await fetchWithAuth(
+        `/api/transactions/check-active/${activeChatId}`,
+        token
+      );
+
+      if (data.ok && data.transaction) {
         return {
           id: data.transaction.id,
           producto: data.transaction.producto,
@@ -192,83 +203,133 @@ export const useChatTransaction = (activeChatId: number | null, isOpen: boolean)
           esComprador: data.transaction.compradorId === user?.id,
           esVendedor: data.transaction.vendedorId === user?.id,
           confirmacionVendedor: data.transaction.confirmacionVendedor,
-          confirmacionComprador: data.transaction.confirmacionComprador
+          confirmacionComprador: data.transaction.confirmacionComprador,
         };
       }
       return null;
     },
     enabled: !!token && !!activeChatId && isOpen,
-    staleTime: 1000 * 60 * 5, 
-    retry: false
+    staleTime: 0,                          // siempre fresco
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
+    retry: false,
   });
 };
+
 
 // ============================================================================
 // 3. HOOK DE ACCIONES (Mutaciones)
 // ============================================================================
+// ============================================================================
+// 3. HOOK DE ACCIONES (Mutaciones)
+// ============================================================================
 export const useChatActions = () => {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const queryClient = useQueryClient();
 
   // A. Enviar Mensaje (Texto o Archivo)
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ chatId, text, file }: { chatId: number, text: string, file?: File }) => {
+    mutationFn: async ({
+      chatId,
+      text,
+      file,
+    }: {
+      chatId: number;
+      text: string;
+      file?: File;
+    }) => {
       let contenido = text;
-      let tipo = 'texto';
+      let tipo = "texto";
 
       // Subir imagen si existe
       if (file) {
         const formData = new FormData();
-        formData.append('image', file);
+        formData.append("image", file);
+
         const res = await fetch(`${URL_BASE}/api/upload/upload-image`, {
-           method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
         });
+
         const data = await res.json();
         if (!data.ok) throw new Error("Error subiendo imagen");
+
         contenido = data.imageUrl;
-        tipo = 'imagen';
+        tipo = "imagen";
       }
 
-      // Enviar mensaje
-      return fetchWithAuth('/api/chat/send', token, {
-        method: 'POST',
-        body: JSON.stringify({ destinatarioId: chatId, contenido, tipo })
+      // Enviar mensaje normal / imagen
+      return fetchWithAuth("/api/chat/send", token, {
+        method: "POST",
+        body: JSON.stringify({ destinatarioId: chatId, contenido, tipo }),
       });
     },
     onSuccess: (_, variables) => {
-      // Invalidar para refrescar UI
-      queryClient.invalidateQueries({ queryKey: chatKeys.conversation(variables.chatId) });
+      // Refrescar conversación y lista de chats
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.conversation(variables.chatId),
+      });
       queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
-    }
+    },
   });
 
   // B. Marcar como leído
   const markAsReadMutation = useMutation({
-    mutationFn: (chatId: number) => 
-      fetchWithAuth(`/api/chat/conversacion/${chatId}/mark-read`, token, { method: 'POST' }),
+    mutationFn: (chatId: number) =>
+      fetchWithAuth(
+        `/api/chat/conversacion/${chatId}/mark-read`,
+        token,
+        { method: "POST" }
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
-    }
+    },
   });
 
-  // C. Confirmar Transacción (Entrega o Recepción)
+  // C. Confirmar transacción (entrega / recibo)
+  type ConfirmTxVars = {
+    txId: number;
+    type: "delivery" | "receipt";
+    chatUserId: number; // mismo id que activeChatId
+  };
+
   const confirmTransactionMutation = useMutation({
-    mutationFn: async ({ txId, type }: { txId: number, type: 'delivery' | 'receipt' }) => {
-      const endpoint = type === 'delivery' ? 'confirm-delivery' : 'confirm-receipt';
-      return fetchWithAuth(`/api/transactions/${txId}/${endpoint}`, token, { method: 'PATCH' });
+    mutationFn: async ({ txId, type }: ConfirmTxVars) => {
+      const endpoint =
+        type === "delivery" ? "confirm-delivery" : "confirm-receipt";
+
+      return fetchWithAuth(
+        `/api/transactions/${txId}/${endpoint}`,
+        token,
+        { method: "PATCH" }
+      );
     },
     onSuccess: (_, variables) => {
-       // Buscamos qué chat tenía esta transacción para invalidarlo
-       queryClient.invalidateQueries({ queryKey: chatKeys.all }); 
-    }
+      // Refrescar sólo lo relevante de ese chat
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.transaction(variables.chatUserId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.conversation(variables.chatUserId),
+      });
+      queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
+    },
   });
 
+  // ✅ Lo que exponemos al resto de la app
   return {
-    sendMessage: sendMessageMutation.mutateAsync,
+    sendMessage: (args: { chatId: number; text: string; file?: File }) =>
+      sendMessageMutation.mutateAsync(args),
+
+    markAsRead: (chatId: number) =>
+      markAsReadMutation.mutateAsync(chatId),
+
+    confirmTransaction: (vars: ConfirmTxVars) =>
+      confirmTransactionMutation.mutateAsync(vars),
+
     isSending: sendMessageMutation.isPending,
-    markAsRead: markAsReadMutation.mutate,
-    confirmTransaction: confirmTransactionMutation.mutateAsync,
-    isConfirming: confirmTransactionMutation.isPending
+    isConfirming: confirmTransactionMutation.isPending,
   };
 };
 
