@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { LuInfo, LuMapPin, LuPhone, LuLayoutGrid, LuStar, LuMessageCircle, LuGhost, LuMail, LuLoader } from "react-icons/lu";
+import { 
+  LuInfo, LuMapPin, LuPhone, LuLayoutGrid, LuStar, 
+  LuMessageCircle, LuGhost, LuMail, LuUser, LuLoader 
+} from "react-icons/lu";
 
 // Lógica
 import { useProfile } from "@/features/Perfil/perfil.hooks";
-import { useContactSeller, useFavorites } from "@/features/Marketplace/home.hooks"; // Reutilizamos hooks del home
+import { useContactSeller, useFavorites } from "@/features/Marketplace/home.hooks";
 
 // Componentes UI Perfil
 import { 
@@ -25,11 +27,10 @@ import {
   EmptyReviews 
 } from "@/features/Perfil/Perfil.Components";
 
-// Componentes UI Marketplace (Reutilizados para ver detalles)
+// Componentes UI Marketplace
 import { ProductDetailModal } from "@/features/Marketplace/Home.Components";
 import MyPublicationsFeed from "@/features/Perfil/MyPublicationsFeed";
 
-// --- ANIMACIONES ---
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
@@ -39,12 +40,15 @@ export default function PerfilPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
-  // Hooks de lógica
-  const { user, isLoadingProfile, isErrorProfile, reviewData, isLoadingReviews, isOwnProfile, isEditing, setIsEditing, formData, setFormData, saveProfile, isSaving, uploadPhoto, isUploadingPhoto } = useProfile(id);
+  const { 
+    user, isLoadingProfile, isErrorProfile, reviewData, isLoadingReviews, 
+    isOwnProfile, isEditing, setIsEditing, formData, setFormData, 
+    saveProfile, isSaving, uploadPhoto, isUploadingPhoto 
+  } = useProfile(id);
+  
   const { startTransaction } = useContactSeller();
   const { favoriteIds, toggleFavorite } = useFavorites();
 
-  // Estado para el Modal de Detalle de Producto
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
 
   // --- HANDLERS ---
@@ -53,13 +57,11 @@ export default function PerfilPage() {
   };
 
   const handleProductClick = (post: any) => {
-    // Necesitamos reconstruir el objeto 'post' para que coincida con lo que espera el Modal
-    // ya que la API de perfil a veces devuelve una estructura simplificada.
     const postFull = {
       ...post,
-      vendedor: user, // Asignamos el usuario actual como vendedor
-      imagenes: post.image ? [{ url: post.image }] : [], // Adaptamos la imagen única a array
-      fechaAgregado: new Date().toISOString() // Fallback si no viene fecha
+      vendedor: user,
+      imagenes: post.image ? [{ url: post.image }] : [],
+      fechaAgregado: new Date().toISOString()
     };
     setSelectedPost(postFull);
   };
@@ -72,6 +74,14 @@ export default function PerfilPage() {
     }
     navigate('/chats', { state: { toUser: user, transactionId: result.transactionId } });
     setSelectedPost(null);
+  };
+
+  // ✅ Validación de Teléfono (Solo Números)
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (/^\d*$/.test(val)) {
+      setFormData({ ...formData, telefono: val });
+    }
   };
 
   if (isLoadingProfile) return <ProfileSkeleton />;
@@ -88,7 +98,7 @@ export default function PerfilPage() {
     <div className="max-w-6xl mx-auto pb-12 px-4 md:px-8">
       <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
         
-        {/* 1. HERO (Portada y Avatar) */}
+        {/* 1. HERO (Aquí editamos el usuario) */}
         <ProfileHero 
           user={user} 
           isEditing={isEditing} 
@@ -98,9 +108,11 @@ export default function PerfilPage() {
           isUploadingPhoto={isUploadingPhoto}
           onUploadPhoto={uploadPhoto}
           readOnly={!isOwnProfile}
+          // 👇 Pasamos el estado de edición al header
+          editUsername={formData.usuario}
+          onEditUsernameChange={(e) => setFormData({...formData, usuario: e.target.value})}
         />
 
-        {/* Botón Contactar Principal */}
         {!isOwnProfile && (
           <div className="flex justify-end -mt-2">
             <Button onClick={handleContactUser} className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20 gap-2 px-6 rounded-full">
@@ -111,7 +123,7 @@ export default function PerfilPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* 2. SIDEBAR (Info Personal) */}
+          {/* 2. SIDEBAR (Datos Personales) */}
           <div className="lg:col-span-4 space-y-6">
             <Card className="shadow-sm border-slate-200 overflow-hidden">
               <CardHeader className="bg-slate-50 border-b border-slate-100 py-4">
@@ -120,15 +132,17 @@ export default function PerfilPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-5 space-y-5">
+                
+                {/* NOMBRE REAL (Solo lectura siempre) */}
                 <ProfileField 
                   label="Nombre Completo" 
-                  value={isEditing ? formData.nombre : user.nombre} 
-                  canEdit={isEditing}
-                  editComponent={<Input value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.target.value})} />}
+                  icon={<LuInfo className="w-4 h-4 text-slate-400" />}
+                  value={user.nombre} 
+                  // canEdit={false} <- Eliminado explícitamente de edición
                 />
                 <Separator />
-                
-                {/* CORREO (Visible siempre) */}
+
+                {/* CORREO (Solo lectura) */}
                 <ProfileField 
                   label="Correo Electrónico" 
                   icon={<LuMail className="w-4 h-4 text-slate-400" />}
@@ -136,13 +150,20 @@ export default function PerfilPage() {
                 />
                 <Separator />
 
-                {/* TELÉFONO (Visible siempre) */}
+                {/* TELÉFONO (Validado solo números) */}
                 <ProfileField 
                     label="Teléfono / WhatsApp" 
                     icon={<LuPhone className="w-4 h-4 text-slate-400" />} 
                     value={isEditing ? formData.telefono : (user.telefono || "No registrado")} 
                     canEdit={isEditing} 
-                    editComponent={<Input value={formData.telefono} onChange={(e) => setFormData({...formData, telefono: e.target.value})} />} 
+                    editComponent={
+                      <Input 
+                        value={formData.telefono} 
+                        onChange={handlePhoneChange} // ✅ Handler con regex
+                        placeholder="912345678"
+                        inputMode="numeric"
+                      />
+                    } 
                 />
                 <Separator />
 
@@ -152,14 +173,13 @@ export default function PerfilPage() {
                     value={isEditing ? formData.campus : (user.campus || "No registrado")} 
                     canEdit={isEditing} 
                     editComponent={
-                      <select className="w-full rounded-md border border-slate-300 p-2 text-sm" value={formData.campus || ""} onChange={(e) => setFormData({...formData, campus: e.target.value})}>
+                      <select className="w-full rounded-md border border-slate-300 p-2 text-sm bg-white" value={formData.campus || ""} onChange={(e) => setFormData({...formData, campus: e.target.value})}>
                         <option value="San Francisco">San Francisco</option>
                         <option value="San Juan Pablo II">San Juan Pablo II</option>
                       </select>
                     } 
                 />
                 
-                {/* DIRECCIÓN (Visible siempre si existe) */}
                 <Separator />
                 <ProfileField 
                     label="Dirección (Opcional)" icon={<LuMapPin className="w-4 h-4 text-slate-400" />} 
@@ -173,7 +193,7 @@ export default function PerfilPage() {
             <ProfileStatsCard user={user} />
           </div>
 
-          {/* 3. CONTENIDO PRINCIPAL (Tabs) */}
+          {/* 3. TABS (Publicaciones y Reseñas) */}
           <div className="lg:col-span-8">
             <Tabs defaultValue="publications" className="w-full">
               <TabsList className="w-full justify-start h-12 bg-white border border-slate-200 p-1 rounded-xl shadow-sm mb-6">
@@ -185,15 +205,13 @@ export default function PerfilPage() {
                 </TabsTrigger>
               </TabsList>
 
-              {/* FEED DE PUBLICACIONES */}
               <TabsContent value="publications" className="outline-none">
                 <MyPublicationsFeed 
                     authorId={String(user.id)} 
-                    onProductClick={handleProductClick} // Pasamos el handler click
+                    onProductClick={handleProductClick} 
                 />
               </TabsContent>
 
-              {/* RESEÑAS */}
               <TabsContent value="reviews" className="outline-none">
                 <Card className="border-slate-200 shadow-sm">
                   <CardContent className="p-6">
@@ -215,7 +233,6 @@ export default function PerfilPage() {
         </div>
       </motion.div>
 
-      {/* MODAL DE DETALLE DEL PRODUCTO (Reutilizado del Home) */}
       <ProductDetailModal 
         open={!!selectedPost} 
         onClose={() => setSelectedPost(null)} 

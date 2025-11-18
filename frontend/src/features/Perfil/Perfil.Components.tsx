@@ -5,7 +5,7 @@ import { getImageUrl } from "@/app/imageHelper";
 
 // UI Shadcn
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,21 +15,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 // Icons
 import { 
   LuPencil, LuSave, LuMail, LuCalendar, LuStar, LuShieldCheck,
-  LuCamera, LuLoader, LuGhost, LuShoppingBag, LuEye
+  LuCamera, LuLoader, LuGhost, LuShoppingBag, LuEye, LuUser
 } from "react-icons/lu";
 
-// Tipos
 import type { Review, UserProfile, PublicationItem } from "./perfil.types";
+import { formatCLP } from "@/utils/format"; 
 
-// Utils & Shared Components
-// Asegúrate de que estas rutas sean correctas en tu proyecto
-import { RatingStars } from "@/features/shared/ui/RatingStars"; 
-import { formatCLP, formatInt } from "@/utils/format"; 
-
-// ============================================================================
-// 1. COMPONENTES BÁSICOS (Inputs, Skeleton)
-// ============================================================================
-
+// ... [Mantener ProfileField y ProfileSkeleton igual que antes] ...
 export const ProfileField = ({ label, value, icon, canEdit = false, editComponent }: { label: string, value: string, icon?: React.ReactNode, canEdit?: boolean, editComponent?: React.ReactNode }) => (
   <div className="space-y-1.5">
     <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide flex items-center gap-1.5">{icon} {label}</Label>
@@ -55,15 +47,11 @@ export const ProfileSkeleton = () => (
          <Skeleton className="h-4 w-1/3 bg-slate-200" />
       </div>
     </div>
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8 mx-4 md:mx-0">
-      <Skeleton className="h-64 w-full rounded-xl bg-slate-100" />
-      <Skeleton className="h-96 w-full lg:col-span-2 rounded-xl bg-slate-100" />
-    </div>
   </div>
 );
 
 // ============================================================================
-// 2. HERO SECTION (Portada y Avatar)
+// 2. HERO SECTION (Modificado para editar Usuario)
 // ============================================================================
 
 interface HeroProps {
@@ -74,10 +62,17 @@ interface HeroProps {
   onSave: () => void;
   isUploadingPhoto: boolean;
   onUploadPhoto: (file: File) => void;
-  readOnly?: boolean; // Nueva prop para ocultar botones en perfil público
+  readOnly?: boolean;
+  // 👇 Nuevas props para la edición del header
+  editUsername?: string;
+  onEditUsernameChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-export const ProfileHero = ({ user, isEditing, setIsEditing, readOnly = false, isSaving, onSave, isUploadingPhoto, onUploadPhoto }: HeroProps) => {
+export const ProfileHero = ({ 
+  user, isEditing, setIsEditing, readOnly = false, 
+  isSaving, onSave, isUploadingPhoto, onUploadPhoto,
+  editUsername, onEditUsernameChange 
+}: HeroProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,14 +89,13 @@ export const ProfileHero = ({ user, isEditing, setIsEditing, readOnly = false, i
           <div className="flex flex-col md:flex-row gap-6 items-start">
             
             {/* Avatar */}
-            <div className="relative -mt-12 group">
+            <div className="relative -mt-12 group shrink-0">
               <div className="p-1.5 bg-white rounded-full shadow-sm relative">
                 <Avatar className="h-32 w-32 border-4 border-white shadow-inner">
                   <AvatarImage src={getImageUrl(user.fotoPerfilUrl)} alt={user.usuario} className="object-cover" />
                   <AvatarFallback className="text-4xl bg-slate-100 text-slate-400">{user.usuario.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
 
-                {/* Botón de subir foto (Solo si no es readOnly) */}
                 {!readOnly && (
                   <div 
                     className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
@@ -112,26 +106,43 @@ export const ProfileHero = ({ user, isEditing, setIsEditing, readOnly = false, i
                 )}
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
               </div>
-              <div className="absolute bottom-2 right-2 bg-green-500 h-5 w-5 rounded-full border-4 border-white" title="Online"></div>
             </div>
 
-            {/* Info */}
+            {/* Info Header */}
             <div className="flex-1 mt-4 md:mt-2 w-full">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{user.usuario}</h1>
-                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100">{user.role}</Badge>
+                <div className="w-full max-w-lg">
+                  <div className="flex items-center gap-3 mb-1 h-12"> 
+                    {/* 👇 LÓGICA DE EDICIÓN DEL USUARIO AQUÍ */}
+                    {isEditing && !readOnly ? (
+                        <div className="relative w-full max-w-xs">
+                           <LuUser className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500 w-5 h-5" />
+                           <Input 
+                              value={editUsername}
+                              onChange={onEditUsernameChange}
+                              className="text-2xl font-bold text-slate-900 pl-10 h-12 border-blue-300 bg-blue-50/50 focus:bg-white transition-colors"
+                              placeholder="Nombre de usuario"
+                              autoFocus
+                           />
+                        </div>
+                    ) : (
+                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight truncate">{user.usuario}</h1>
+                    )}
+                    
+                    {!isEditing && (
+                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 shrink-0">{user.role}</Badge>
+                    )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
+                  
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500 mt-2">
                     <span className="flex items-center gap-1.5"><LuMail className="w-4 h-4" /> {user.correo}</span>
                     <span className="flex items-center gap-1.5"><LuCalendar className="w-4 h-4" /> Miembro desde {user.fechaRegistro ? new Date(user.fechaRegistro).getFullYear() : '2024'}</span>
                   </div>
                 </div>
 
-                {/* Botones de Acción (Solo si no es readOnly) */}
+                {/* Botones de Acción */}
                 {!readOnly && (
-                  <div className="flex gap-2 w-full md:w-auto">
+                  <div className="flex gap-2 w-full md:w-auto shrink-0">
                     {!isEditing ? (
                       <Button onClick={() => setIsEditing(true)} variant="outline" className="gap-2 w-full md:w-auto border-blue-200 text-blue-700 hover:bg-blue-50">
                         <LuPencil className="w-4 h-4" /> Editar Perfil
@@ -155,10 +166,8 @@ export const ProfileHero = ({ user, isEditing, setIsEditing, readOnly = false, i
   );
 };
 
-// ============================================================================
-// 3. ESTADÍSTICAS Y RESEÑAS
-// ============================================================================
-
+// ... [Mantener ProfileStatsCard, ReviewsList, PublicationsList igual que antes] ...
+// (Asegúrate de que PublicationsList y el resto sigan en el archivo)
 export const ProfileStatsCard = ({ user }: { user: UserProfile }) => (
   <Card className="bg-gradient-to-br from-slate-900 to-slate-800 text-white border-none shadow-lg">
     <CardContent className="p-6">
@@ -222,32 +231,9 @@ export const EmptyReviews = () => (
   </div>
 );
 
-// ... (ProfileField, ProfileSkeleton, ProfileHero se mantienen igual, asegúrate de importar ProfileHero del código anterior si lo necesitas, aquí me enfoco en PublicationsList) ...
-
-// ... [Mantener ProfileField, ProfileSkeleton, ProfileHero igual que antes] ...
-// Aquí solo pego el cambio crítico en PublicationsList para ahorrar espacio, 
-// asume que el resto del archivo sigue igual a tu versión original excepto esto:
-
-// ============================================================================
-// 4. LISTA DE PUBLICACIONES (Grid Mejorado)
-// ============================================================================
-
-interface PublicationsListProps {
-  items: PublicationItem[];
-  isLoading: boolean;
-  isError: boolean;
-  hasResults: boolean;
-  hasNextPage: boolean;
-  isFetchingNextPage: boolean;
-  lastPostRef: (node: HTMLDivElement) => void;
-  showEditButton?: boolean;
-  onItemClick?: (item: PublicationItem) => void; // Nuevo prop
-}
-
 export const PublicationsList = ({ 
   items, isLoading, isError, hasResults, hasNextPage, isFetchingNextPage, lastPostRef, showEditButton = false, onItemClick
-}: PublicationsListProps) => {
-  
+}: any) => {
   if (isLoading) return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
        {[1,2,3].map(i => <Skeleton key={i} className="h-64 rounded-xl bg-slate-100" />)}
@@ -271,7 +257,7 @@ export const PublicationsList = ({
   return (
     <div className="space-y-8">
        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map((post, index) => (
+          {items.map((post: any, index: number) => (
              <motion.div 
                key={post.id}
                initial={{ opacity: 0, y: 10 }}
@@ -279,9 +265,8 @@ export const PublicationsList = ({
                transition={{ delay: index * 0.05 }}
                ref={index === items.length - 1 ? lastPostRef : null}
                className="group relative bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
-               onClick={() => onItemClick && onItemClick(post)} // Click para abrir modal
+               onClick={() => onItemClick && onItemClick(post)}
              >
-                {/* Imagen */}
                 <div className="relative aspect-[4/3] w-full bg-slate-100 overflow-hidden">
                    {post.image ? (
                      <img src={getImageUrl(post.image)} alt={post.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
@@ -291,48 +276,39 @@ export const PublicationsList = ({
                         <span className="text-xs font-medium">Sin foto</span>
                      </div>
                    )}
-                   
-                   {/* Badges Superpuestos */}
                    <div className="absolute top-3 left-3">
                       <Badge variant="secondary" className="bg-white/90 backdrop-blur text-slate-800 shadow-sm border-0 font-medium">
                         {post.categoryName || "Varios"}
                       </Badge>
                    </div>
-                   
-                   {/* Acciones Hover */}
                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
                       <Button size="sm" className="bg-white text-slate-900 hover:bg-slate-100 shadow-lg font-medium">
                          <LuEye className="w-4 h-4 mr-2" /> Ver Detalle
                       </Button>
                    </div>
                 </div>
-                
-                {/* Info */}
                 <div className="p-5 flex flex-col h-[160px]">
                    <div className="flex justify-between items-start mb-2">
                       <h3 className="text-base font-bold text-slate-900 line-clamp-2 leading-tight flex-1 mr-2">
                         {post.title}
                       </h3>
                    </div>
-                   
                    <div className="mt-auto space-y-3">
                       <div className="flex items-baseline gap-1">
                         <span className="text-lg font-bold text-emerald-600">{formatCLP(post.price || 0)}</span>
                       </div>
-                      
                       <div className="flex items-center justify-between pt-3 border-t border-slate-50">
                          <div className="flex items-center gap-1 text-xs text-slate-400">
                             <LuCalendar className="w-3 h-3" />
                             <span>Publicado recientemente</span>
                          </div>
-                         
                          {showEditButton && (
                            <Button 
                              variant="ghost" 
                              size="sm" 
                              className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2"
                              onClick={(e) => {
-                               e.stopPropagation(); // Evita abrir el modal si clickeas editar
+                               e.stopPropagation(); 
                              }}
                              asChild
                            >
@@ -347,7 +323,6 @@ export const PublicationsList = ({
              </motion.div>
           ))}
        </div>
-       
        {isFetchingNextPage && <div className="flex justify-center py-4"><LuLoader className="animate-spin text-blue-600" /></div>}
     </div>
   );
