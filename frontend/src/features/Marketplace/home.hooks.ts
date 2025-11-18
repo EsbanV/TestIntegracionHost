@@ -176,113 +176,101 @@ export const useFavorites = () => {
 };
 
 // 3. Hook de Contacto (Iniciar Transacción)
-export const useContactSeller = () => {
+// home.hooks.ts (fragmento)
+
+type StartTransactionResult = {
+  ok: boolean;
+  created: boolean;
+  transactionId: number;
+  message?: string;
+};
+
+export function useContactSeller() {
   const { token } = useAuth();
 
-   const startTransaction = useCallback(
-    async (productId: number, sellerId: number, quantity = 1) => {
+  // Crear / retomar transacción SIEMPRE a nivel de PRODUCTO
+  const startTransaction = useCallback(
+    async (productId: number, _sellerId: number): Promise<StartTransactionResult> => {
       if (!token) {
-        return { ok: false, message: 'No autenticado' };
-      }
-
-      // 1) Revisar si ya hay una transacción activa con este vendedor
-      let active: ActiveTransactionFromCheck | null = null;
-
-      try {
-        active = await fetchWithAuth<ActiveTransactionFromCheck>(
-          `/api/transactions/check-active/${sellerId}`,
-          token
-        );
-      } catch (error) {
-        // Si el endpoint tira 404 u otro error cuando NO hay transacción,
-        // simplemente consideramos que no hay nada activo.
-        active = null;
-      }
-
-      if (active?.transaction) {
-        const t = active.transaction;
-
-        // Caso crítico: el vendedor YA confirmó entrega
-        // pero el comprador todavía NO ha confirmado recibo.
-        if (t.confirmacionVendedor && !t.confirmacionComprador) {
-          return {
-            ok: false,
-            message:
-              'Ya tienes una transacción que el vendedor marcó como entregada. ' +
-              'Debes confirmar el recibo en el chat antes de iniciar otra con este vendedor.',
-          };
-        }
-
-        // Caso: hay una transacción pendiente aún en curso (nadie ha confirmado).
-        // En vez de crear otra, reusamos esta.
         return {
-          ok: true,
+          ok: false,
           created: false,
-          transactionId: t.id,
-          message: 'Retomando la transacción en curso con este vendedor.',
+          transactionId: 0,
+          message: "No autenticado",
         };
       }
 
-      // 2) Si no hay transacción activa, creamos una nueva
       try {
-        const data = await fetchWithAuth<StartTransactionApiResponse>(
-          '/api/transactions',
-          token,
-          {
-            method: 'POST',
-            body: JSON.stringify({ productId, quantity }),
-          }
-        );
+        // Llamamos directamente al POST de transacciones
+        const data = await fetchWithAuth<{
+          ok: boolean;
+          created: boolean;
+          id?: number;
+          transactionId?: number;
+          message?: string;
+        }>("/api/transactions", token, {
+          method: "POST",
+          body: JSON.stringify({
+            productId,
+            quantity: 1,
+          }),
+        });
+
+        const txId = data.transactionId ?? data.id ?? 0;
 
         return {
           ok: data.ok,
           created: data.created,
-          transactionId: data.transactionId,
+          transactionId: txId,
           message: data.message,
         };
-      } catch (error: any) {
+      } catch (err: any) {
+        console.error("Error al iniciar transacción:", err);
         return {
           ok: false,
-          message: error?.message || 'Error al iniciar compra',
+          created: false,
+          transactionId: 0,
+          message: err?.message || "Error al iniciar la compra",
         };
       }
     },
     [token]
   );
 
-  // Si también quieres usar fetchWithAuth en sendMessage:
-  // (opcional: si te gusta más, puedes dejarlo con fetch normal)
+  // Enviar mensaje inicial al vendedor (se usa en el modal)
   const sendMessage = useCallback(
-    async (destinatarioId: number, contenido: string) => {
+    async (toUserId: number, content: string): Promise<boolean> => {
       if (!token) return false;
-
-      interface SendMessageResponse {
-        ok: boolean;
-        message?: string;
-      }
+      if (!content.trim()) return false;
 
       try {
-        const data = await fetchWithAuth<SendMessageResponse>(
-          '/api/chat/send',
+        const data = await fetchWithAuth<{ ok: boolean }>(
+          "/api/chat/send",
           token,
           {
-            method: 'POST',
-            body: JSON.stringify({ destinatarioId, contenido, tipo: 'texto' }),
+            method: "POST",
+            body: JSON.stringify({
+              destinatarioId: toUserId,
+              contenido: content,
+              tipo: "texto",
+            }),
           }
         );
 
-        return data.ok;
-      } catch {
+        return !!data.ok;
+      } catch (err) {
+        console.error("Error al enviar mensaje:", err);
         return false;
       }
     },
     [token]
   );
 
-  return { startTransaction, sendMessage };
-};
-
-
+  return {
+    startTransaction,
+    sendMessage,
+  };
+}
 
 interface UsePostsOptions {
   searchTerm: string;
