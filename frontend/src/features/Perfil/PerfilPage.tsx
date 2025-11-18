@@ -158,7 +158,6 @@ export default function PerfilPage() {
                     >
                       <option value="San Francisco">San Francisco</option>
                       <option value="San Juan Pablo II">San Juan Pablo II</option>
-                      <option value="Norte">Norte</option>
                     </select>
                   } 
                 />
