@@ -6,6 +6,7 @@ import {
   useAdminProducts,
   useAdminLookups,
   useAdminToggleProductVisibility,
+  useAdminDeleteProduct,
 } from './admin.hooks';
 import type { AdminProductListItem } from './admin.types';
 import { Input } from '@/components/ui/input';
@@ -19,10 +20,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Trash2 } from 'lucide-react';
 
 // -----------------------------------------------------------
-// Fila de producto: maneja el toggle de visibilidad por fila
+// Fila de producto: visibilidad + eliminar
 // -----------------------------------------------------------
 
 interface ProductRowProps {
@@ -31,9 +32,18 @@ interface ProductRowProps {
 
 const ProductRow: React.FC<ProductRowProps> = ({ product }) => {
   const toggleVisibilityMutation = useAdminToggleProductVisibility(product.id);
+  const deleteMutation = useAdminDeleteProduct(product.id);
 
   const handleToggleVisibility = () => {
     toggleVisibilityMutation.mutate();
+  };
+
+  const handleDelete = () => {
+    const confirmado = window.confirm(
+      `¿Seguro que quieres eliminar el producto #${product.id}?\n\n"${product.title}"`
+    );
+    if (!confirmado) return;
+    deleteMutation.mutate();
   };
 
   return (
@@ -89,6 +99,20 @@ const ProductRow: React.FC<ProductRowProps> = ({ product }) => {
         <div className="mt-1 text-[10px] text-slate-500">
           {product.visible ? 'Visible' : 'Oculta'}
         </div>
+      </td>
+
+      {/* Acciones (eliminar) */}
+      <td className="px-3 py-2 text-center">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-red-500 hover:text-red-600"
+          title="Eliminar producto"
+          onClick={handleDelete}
+          disabled={deleteMutation.isPending}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </td>
     </tr>
   );
@@ -228,6 +252,9 @@ export default function AdminProductsPage() {
                   <th className="px-3 py-2 text-center font-semibold text-slate-600">
                     Visibilidad
                   </th>
+                  <th className="px-3 py-2 text-center font-semibold text-slate-600">
+                    Acciones
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white">
@@ -238,7 +265,7 @@ export default function AdminProductsPage() {
                 {(!data || data.products.length === 0) && (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-3 py-4 text-center text-xs text-slate-500 italic"
                     >
                       No se encontraron productos con los filtros actuales.

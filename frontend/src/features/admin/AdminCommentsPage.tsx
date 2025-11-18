@@ -2,11 +2,60 @@
 import React, { useState } from 'react';
 import AdminLayout from './AdminLayout';
 import { AdminSectionCard } from './Admin.Components';
-import { useAdminComments } from './admin.hooks';
+import { useAdminComments, useAdminDeleteComment } from './admin.hooks';
 import type { AdminComment } from './admin.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Trash2 } from 'lucide-react';
+
+interface CommentRowProps {
+  comment: AdminComment;
+}
+
+const CommentRow: React.FC<CommentRowProps> = ({ comment }) => {
+  const deleteMutation = useAdminDeleteComment(comment.id);
+
+  const handleDelete = () => {
+    const confirmado = window.confirm(
+      `¿Seguro que quieres eliminar el comentario #${comment.id}?\n\n"${comment.contenido}"`
+    );
+    if (!confirmado) return;
+
+    deleteMutation.mutate();
+  };
+
+  return (
+    <tr
+      className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 transition-colors"
+    >
+      <td className="px-3 py-2 text-[11px] text-slate-600">
+        #{comment.publicacionId}
+      </td>
+      <td className="px-3 py-2 text-[11px] text-slate-600">
+        @{comment.autor?.usuario}
+      </td>
+      <td className="px-3 py-2 text-[11px] text-slate-800 max-w-xs truncate">
+        {comment.contenido}
+      </td>
+      <td className="px-3 py-2 text-[11px] text-slate-600 whitespace-nowrap">
+        {new Date(comment.fecha).toLocaleString('es-CL')}
+      </td>
+      <td className="px-3 py-2 text-center">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-red-500 hover:text-red-600"
+          onClick={handleDelete}
+          disabled={deleteMutation.isPending}
+          aria-label="Eliminar comentario"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </td>
+    </tr>
+  );
+};
 
 export default function AdminCommentsPage() {
   const [page, setPage] = useState(1);
@@ -88,33 +137,20 @@ export default function AdminCommentsPage() {
                   <th className="px-3 py-2 text-left font-semibold text-slate-600">
                     Fecha
                   </th>
+                  <th className="px-3 py-2 text-center font-semibold text-slate-600">
+                    Acciones
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white">
                 {data?.comments?.map((c: AdminComment) => (
-                  <tr
-                    key={c.id}
-                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 transition-colors"
-                  >
-                    <td className="px-3 py-2 text-[11px] text-slate-600">
-                      #{c.publicacionId}
-                    </td>
-                    <td className="px-3 py-2 text-[11px] text-slate-600">
-                      @{c.autor?.usuario}
-                    </td>
-                    <td className="px-3 py-2 text-[11px] text-slate-800 max-w-xs truncate">
-                      {c.contenido}
-                    </td>
-                    <td className="px-3 py-2 text-[11px] text-slate-600 whitespace-nowrap">
-                      {new Date(c.fecha).toLocaleString('es-CL')}
-                    </td>
-                  </tr>
+                  <CommentRow key={c.id} comment={c} />
                 ))}
 
                 {(!data || data.comments.length === 0) && (
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={5}
                       className="px-3 py-4 text-center text-xs text-slate-500 italic"
                     >
                       No se encontraron comentarios.
