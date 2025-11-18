@@ -29,18 +29,41 @@ const CommentRow: React.FC<CommentRowProps> = ({ comment }) => {
     <tr
       className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 transition-colors"
     >
+      {/* Publicación (ID de la publicación + ID del comentario) */}
       <td className="px-3 py-2 text-[11px] text-slate-600">
-        #{comment.publicacionId}
+        <div className="flex flex-col">
+          <span className="font-mono text-slate-700">
+            Pub #{comment.publicacionId}
+          </span>
+          <span className="text-[10px] text-slate-500">
+            Comentario #{comment.id}
+          </span>
+        </div>
       </td>
+
+      {/* Autor (usuario + ID del autor) */}
       <td className="px-3 py-2 text-[11px] text-slate-600">
-        @{comment.autor?.usuario}
+        <div className="flex flex-col">
+          <span>@{comment.autor?.usuario}</span>
+          {comment.autor?.id != null && (
+            <span className="text-[10px] text-slate-500 font-mono">
+              ID autor: {comment.autor.id}
+            </span>
+          )}
+        </div>
       </td>
+
+      {/* Contenido */}
       <td className="px-3 py-2 text-[11px] text-slate-800 max-w-xs truncate">
         {comment.contenido}
       </td>
+
+      {/* Fecha */}
       <td className="px-3 py-2 text-[11px] text-slate-600 whitespace-nowrap">
         {new Date(comment.fecha).toLocaleString('es-CL')}
       </td>
+
+      {/* Acciones */}
       <td className="px-3 py-2 text-center">
         <Button
           variant="ghost"
@@ -126,10 +149,10 @@ export default function AdminCommentsPage() {
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                    Publicación
+                    Publicación / IDs
                   </th>
                   <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                    Autor
+                    Autor / ID
                   </th>
                   <th className="px-3 py-2 text-left font-semibold text-slate-600">
                     Contenido
