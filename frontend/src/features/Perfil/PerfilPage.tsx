@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -9,14 +9,13 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { LuInfo, LuMapPin, LuPhone, LuLayoutGrid, LuStar, LuMessageCircle, LuGhost } from "react-icons/lu";
+import { LuInfo, LuMapPin, LuPhone, LuLayoutGrid, LuStar, LuMessageCircle, LuGhost, LuMail, LuLoader } from "react-icons/lu";
 
-// --- LÓGICA (Hooks Unificados) ---
+// Lógica
 import { useProfile } from "@/features/Perfil/perfil.hooks";
-import { useContactSeller } from "@/features/Marketplace/home.hooks"; 
+import { useContactSeller, useFavorites } from "@/features/Marketplace/home.hooks"; // Reutilizamos hooks del home
 
-// --- COMPONENTES UI UNIFICADOS ---
+// Componentes UI Perfil
 import { 
   ProfileHero, 
   ProfileField, 
@@ -26,240 +25,205 @@ import {
   EmptyReviews 
 } from "@/features/Perfil/Perfil.Components";
 
-// --- COMPONENTE DE PUBLICACIONES INDEPENDIENTE ---
+// Componentes UI Marketplace (Reutilizados para ver detalles)
+import { ProductDetailModal } from "@/features/Marketplace/Home.Components";
 import MyPublicationsFeed from "@/features/Perfil/MyPublicationsFeed";
 
-// Animaciones
+// --- ANIMACIONES ---
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.2 } }
-};
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } }
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
 };
 
 export default function PerfilPage() {
-  const { id } = useParams<{ id: string }>(); // Leemos ID de la URL (si existe)
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  
+  // Hooks de lógica
+  const { user, isLoadingProfile, isErrorProfile, reviewData, isLoadingReviews, isOwnProfile, isEditing, setIsEditing, formData, setFormData, saveProfile, isSaving, uploadPhoto, isUploadingPhoto } = useProfile(id);
   const { startTransaction } = useContactSeller();
+  const { favoriteIds, toggleFavorite } = useFavorites();
 
-  // 1. Hook Principal de Perfil
-  // Este hook ya determina si es "mi perfil" o "perfil público" basado en el ID
-  const {
-    user,
-    isLoadingProfile,
-    isErrorProfile,
-    reviewData,
-    isLoadingReviews,
-    
-    isOwnProfile, // boolean clave
-    isEditing,
-    setIsEditing,
-    formData,
-    setFormData,
-    
-    saveProfile,
-    isSaving,
-    uploadPhoto,
-    isUploadingPhoto
-  } = useProfile(id);
+  // Estado para el Modal de Detalle de Producto
+  const [selectedPost, setSelectedPost] = useState<any | null>(null);
 
-  // 2. Estados de Carga / Error
+  // --- HANDLERS ---
+  const handleContactUser = () => {
+    navigate('/chats', { state: { toUser: user } });
+  };
+
+  const handleProductClick = (post: any) => {
+    // Necesitamos reconstruir el objeto 'post' para que coincida con lo que espera el Modal
+    // ya que la API de perfil a veces devuelve una estructura simplificada.
+    const postFull = {
+      ...post,
+      vendedor: user, // Asignamos el usuario actual como vendedor
+      imagenes: post.image ? [{ url: post.image }] : [], // Adaptamos la imagen única a array
+      fechaAgregado: new Date().toISOString() // Fallback si no viene fecha
+    };
+    setSelectedPost(postFull);
+  };
+
+  const handleContactProduct = async (post: any) => {
+    const result = await startTransaction(post.id, user!.id);
+    if (!result?.ok) {
+      alert(result.message || 'No se pudo iniciar la transacción');
+      return;
+    }
+    navigate('/chats', { state: { toUser: user, transactionId: result.transactionId } });
+    setSelectedPost(null);
+  };
+
   if (isLoadingProfile) return <ProfileSkeleton />;
   
   if (isErrorProfile || !user) return (
     <div className="flex flex-col items-center justify-center h-[60vh] text-slate-500">
-      <div className="p-4 bg-slate-50 rounded-full mb-4">
-         <LuGhost size={40} className="text-slate-300" />
-      </div>
-      <h2 className="text-xl font-semibold text-slate-700">Usuario no encontrado</h2>
+      <LuGhost size={40} className="mb-4 text-slate-300" />
+      <h2 className="text-xl font-semibold">Usuario no encontrado</h2>
       <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>Volver</Button>
     </div>
   );
 
-  // 3. Acción de Contacto (Solo para perfiles ajenos)
-  const handleContact = async () => {
-    // Iniciar chat vacío o con un producto dummy si tu lógica lo requiere
-    // Aquí asumimos que vas al chat directo con el usuario
-    navigate('/chats', { state: { toUser: user } }); 
-  };
-
   return (
-    <div className="max-w-5xl mx-auto pb-12 px-4 md:px-6">
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="space-y-6"
-      >
-        {/* HERO SECTION */}
-        <motion.div variants={itemVariants}>
-          <ProfileHero 
-            user={user} 
-            isEditing={isEditing} 
-            setIsEditing={setIsEditing}
-            isSaving={isSaving}
-            onSave={() => saveProfile(formData)}
-            isUploadingPhoto={isUploadingPhoto}
-            onUploadPhoto={uploadPhoto}
-            readOnly={!isOwnProfile} // Oculta botones de edición si no es mi perfil
-          />
-          
-          {/* Botón Contactar (Visible solo si NO es mi perfil) */}
-          {!isOwnProfile && (
-             <div className="flex justify-end mt-4 px-2">
-                <Button onClick={handleContact} className="bg-blue-600 hover:bg-blue-700 gap-2 shadow-md transition-all active:scale-95">
-                   <LuMessageCircle size={18} /> Contactar a @{user.usuario}
-                </Button>
-             </div>
-          )}
-        </motion.div>
+    <div className="max-w-6xl mx-auto pb-12 px-4 md:px-8">
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
+        
+        {/* 1. HERO (Portada y Avatar) */}
+        <ProfileHero 
+          user={user} 
+          isEditing={isEditing} 
+          setIsEditing={setIsEditing}
+          isSaving={isSaving}
+          onSave={() => saveProfile(formData)}
+          isUploadingPhoto={isUploadingPhoto}
+          onUploadPhoto={uploadPhoto}
+          readOnly={!isOwnProfile}
+        />
 
-        {/* GRID PRINCIPAL */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Botón Contactar Principal */}
+        {!isOwnProfile && (
+          <div className="flex justify-end -mt-2">
+            <Button onClick={handleContactUser} className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20 gap-2 px-6 rounded-full">
+                <LuMessageCircle size={18} /> Enviar mensaje a {user.nombre.split(' ')[0]}
+            </Button>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* COLUMNA IZQUIERDA: INFO & STATS */}
-          <motion.div variants={itemVariants} className="space-y-6">
-            
-            <Card className="shadow-sm border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <LuInfo className="text-blue-500" /> Información {isOwnProfile ? 'Personal' : 'Pública'}
+          {/* 2. SIDEBAR (Info Personal) */}
+          <div className="lg:col-span-4 space-y-6">
+            <Card className="shadow-sm border-slate-200 overflow-hidden">
+              <CardHeader className="bg-slate-50 border-b border-slate-100 py-4">
+                <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-800">
+                  <LuInfo className="text-blue-500" /> Datos de Contacto
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="p-5 space-y-5">
                 <ProfileField 
                   label="Nombre Completo" 
-                  value={isOwnProfile || isEditing ? (formData.nombre || user.nombre) : user.nombre} 
-                  canEdit={isEditing} 
-                  editComponent={
-                    <Input value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.target.value})} className="bg-white" />
-                  } 
+                  value={isEditing ? formData.nombre : user.nombre} 
+                  canEdit={isEditing}
+                  editComponent={<Input value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.target.value})} />}
                 />
                 <Separator />
+                
+                {/* CORREO (Visible siempre) */}
                 <ProfileField 
-                  label="Nombre de Usuario" 
-                  value={user.usuario} 
-                  canEdit={false} // Usuario no editable aquí
-                  editComponent={<Input value={user.usuario} disabled className="bg-slate-50" />} 
+                  label="Correo Electrónico" 
+                  icon={<LuMail className="w-4 h-4 text-slate-400" />}
+                  value={user.correo} 
                 />
                 <Separator />
+
+                {/* TELÉFONO (Visible siempre) */}
                 <ProfileField 
-                  label="Campus" 
-                  icon={<LuMapPin className="w-4 h-4 text-slate-400" />} 
-                  value={isOwnProfile || isEditing ? (formData.campus || user.campus || "No registrado") : (user.campus || "No registrado")} 
-                  canEdit={isEditing} 
-                  editComponent={
-                    <select 
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:ring-2 focus:ring-blue-500" 
-                      value={formData.campus || ""} 
-                      onChange={(e) => setFormData({...formData, campus: e.target.value})}
-                    >
-                      <option value="San Francisco">San Francisco</option>
-                      <option value="San Juan Pablo II">San Juan Pablo II</option>
-                    </select>
-                  } 
+                    label="Teléfono / WhatsApp" 
+                    icon={<LuPhone className="w-4 h-4 text-slate-400" />} 
+                    value={isEditing ? formData.telefono : (user.telefono || "No registrado")} 
+                    canEdit={isEditing} 
+                    editComponent={<Input value={formData.telefono} onChange={(e) => setFormData({...formData, telefono: e.target.value})} />} 
+                />
+                <Separator />
+
+                <ProfileField 
+                    label="Campus" 
+                    icon={<LuMapPin className="w-4 h-4 text-slate-400" />} 
+                    value={isEditing ? formData.campus : (user.campus || "No registrado")} 
+                    canEdit={isEditing} 
+                    editComponent={
+                      <select className="w-full rounded-md border border-slate-300 p-2 text-sm" value={formData.campus || ""} onChange={(e) => setFormData({...formData, campus: e.target.value})}>
+                        <option value="San Francisco">San Francisco</option>
+                        <option value="San Juan Pablo II">San Juan Pablo II</option>
+                      </select>
+                    } 
                 />
                 
-                {/* Datos Privados (Solo visibles para el dueño) */}
-                {isOwnProfile && (
-                  <>
-                    <Separator />
-                    <ProfileField 
-                        label="Teléfono" icon={<LuPhone className="w-4 h-4 text-slate-400" />} 
-                        value={formData.telefono || "No registrado"} canEdit={isEditing} 
-                        editComponent={<Input value={formData.telefono} onChange={(e) => setFormData({...formData, telefono: e.target.value})} />} 
-                    />
-                    <Separator />
-                    <ProfileField 
-                        label="Dirección" icon={<LuMapPin className="w-4 h-4 text-slate-400" />} 
-                        value={formData.direccion || "No registrada"} canEdit={isEditing} 
-                        editComponent={<Input value={formData.direccion} onChange={(e) => setFormData({...formData, direccion: e.target.value})} />} 
-                    />
-                  </>
-                )}
-                
-                {!isOwnProfile && (
-                   <div className="pt-2 text-xs text-slate-400 italic text-center bg-slate-50 p-2 rounded-lg border border-slate-100">
-                      🔒 Los datos de contacto son privados.
-                   </div>
-                )}
+                {/* DIRECCIÓN (Visible siempre si existe) */}
+                <Separator />
+                <ProfileField 
+                    label="Dirección (Opcional)" icon={<LuMapPin className="w-4 h-4 text-slate-400" />} 
+                    value={isEditing ? formData.direccion : (user.direccion || "No registrada")} 
+                    canEdit={isEditing} 
+                    editComponent={<Input value={formData.direccion} onChange={(e) => setFormData({...formData, direccion: e.target.value})} />} 
+                />
               </CardContent>
             </Card>
 
             <ProfileStatsCard user={user} />
-          </motion.div>
+          </div>
 
-          {/* COLUMNA DERECHA: TABS */}
-          <motion.div variants={itemVariants} className="lg:col-span-2">
+          {/* 3. CONTENIDO PRINCIPAL (Tabs) */}
+          <div className="lg:col-span-8">
             <Tabs defaultValue="publications" className="w-full">
-              <div className="flex items-center justify-between mb-4 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
-                <TabsList className="w-full justify-start h-auto bg-transparent p-0 gap-1">
-                  <TabsTrigger 
-                    value="publications" 
-                    className="flex-1 md:flex-none data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 py-2 rounded-lg transition-all"
-                  >
-                    <LuLayoutGrid className="w-4 h-4 mr-2" /> Publicaciones
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="reviews" 
-                    className="flex-1 md:flex-none data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700 py-2 rounded-lg transition-all"
-                  >
-                    <LuStar className="w-4 h-4 mr-2" /> Valoraciones
-                  </TabsTrigger>
-                </TabsList>
-              </div>
+              <TabsList className="w-full justify-start h-12 bg-white border border-slate-200 p-1 rounded-xl shadow-sm mb-6">
+                <TabsTrigger value="publications" className="flex-1 h-full data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 rounded-lg font-medium">
+                  <LuLayoutGrid className="w-4 h-4 mr-2" /> Publicaciones
+                </TabsTrigger>
+                <TabsTrigger value="reviews" className="flex-1 h-full data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700 rounded-lg font-medium">
+                  <LuStar className="w-4 h-4 mr-2" /> Valoraciones
+                </TabsTrigger>
+              </TabsList>
 
-              {/* TAB 1: PUBLICACIONES (Feed Independiente) */}
-              <TabsContent value="publications" className="mt-0 focus-visible:ring-0">
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 min-h-[400px]"
-                >
-                  <MyPublicationsFeed 
-                      authorId={String(user.id)} // Filtra por este usuario
-                      // El componente interno decidirá si mostrar botones de edición basado en si es el usuario logueado
-                  />
-                </motion.div>
+              {/* FEED DE PUBLICACIONES */}
+              <TabsContent value="publications" className="outline-none">
+                <MyPublicationsFeed 
+                    authorId={String(user.id)} 
+                    onProductClick={handleProductClick} // Pasamos el handler click
+                />
               </TabsContent>
 
-              {/* TAB 2: RESEÑAS */}
-              <TabsContent value="reviews" className="mt-0 focus-visible:ring-0">
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4"
-                >
-                  <div className="flex items-center justify-between mb-2 border-b border-slate-50 pb-3">
-                    <h3 className="text-lg font-semibold text-slate-800">
-                        Opiniones sobre {isOwnProfile ? 'ti' : user.nombre}
-                    </h3>
-                    {reviewData?.stats && (
-                      <Badge variant="secondary" className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200">
-                        {reviewData.stats.promedio} ★ ({reviewData.stats.total} opiniones)
-                      </Badge>
+              {/* RESEÑAS */}
+              <TabsContent value="reviews" className="outline-none">
+                <Card className="border-slate-200 shadow-sm">
+                  <CardContent className="p-6">
+                    {isLoadingReviews ? (
+                       <div className="space-y-4 text-center py-10">
+                          <LuLoader className="animate-spin w-8 h-8 mx-auto text-slate-300" />
+                          <p className="text-slate-400">Cargando reseñas...</p>
+                       </div>
+                    ) : reviewData && reviewData.reviews.length > 0 ? (
+                      <ReviewsList reviews={reviewData.reviews} />
+                    ) : (
+                      <EmptyReviews />
                     )}
-                  </div>
-
-                  {isLoadingReviews ? (
-                    <div className="space-y-4">
-                       <Skeleton className="h-24 w-full rounded-lg" />
-                       <Skeleton className="h-24 w-full rounded-lg" />
-                    </div>
-                  ) : reviewData && reviewData.reviews.length > 0 ? (
-                    <ReviewsList reviews={reviewData.reviews} />
-                  ) : (
-                    <EmptyReviews />
-                  )}
-                </motion.div>
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
-          </motion.div>
-
+          </div>
         </div>
       </motion.div>
+
+      {/* MODAL DE DETALLE DEL PRODUCTO (Reutilizado del Home) */}
+      <ProductDetailModal 
+        open={!!selectedPost} 
+        onClose={() => setSelectedPost(null)} 
+        post={selectedPost} 
+        isFavorite={favoriteIds.has(selectedPost?.id || 0)}
+        onToggleFavorite={toggleFavorite}
+        onContact={handleContactProduct}
+      />
     </div>
   );
 }
