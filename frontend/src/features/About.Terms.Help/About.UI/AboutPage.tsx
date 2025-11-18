@@ -5,7 +5,7 @@ import {
   BookOpen, MessageSquare, Star, Palette, Users, ShieldCheck, Lightbulb, Rocket, LogIn, Zap 
 } from 'lucide-react';
 
-import loginBg from '@/assets/img/FondoOscuro.png';
+import loginBg from '@/assets/img/FondoClaro.png';
 const BACKGROUND_IMAGE = loginBg;
 
 // UI Components
@@ -28,7 +28,7 @@ const AuroraBackground = () => (
     />
 
     {/* Capa oscura */}
-    <div className="absolute inset-0 bg-slate-950/60" />
+    <div className="absolute inset-0 bg-white-950/60" />
 
     {/* Blobs */}
     <div className="absolute -top-[40%] left-1/2 h-[55vw] w-[55vw] -translate-x-1/2 rounded-full bg-blue-500/20 blur-[110px] animate-pulse-slow" />
