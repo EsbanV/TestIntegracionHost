@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/app/context/AuthContext";
 import type { 
@@ -50,7 +50,6 @@ const fetchPublicProfileRequest = async (userId: number): Promise<UserProfile> =
     throw new Error("Usuario no encontrado");
   }
   
-  // En la ruta pública ya viene 'stats', pero nos aseguramos
   return data.data; 
 };
 
@@ -58,7 +57,6 @@ const fetchReviewsRequest = async (userId: number): Promise<ReviewsData> => {
   const res = await fetch(`${URL_BASE}/api/users/reviews/user/${userId}`);
   const data = await res.json();
   
-  // La ruta de reviews usa 'ok' en lugar de 'success'
   if (!res.ok || !data.ok) {
       return { ok: false, reviews: [], stats: { total: 0, promedio: "0" } };
   }
@@ -80,7 +78,6 @@ const updateProfileRequest = async (data: UpdateProfileData, token: string | nul
   
   const result = await res.json();
   
-  // La ruta de update usa 'ok'
   if (!res.ok || !result.ok) {
       throw new Error(result.message || "Error al actualizar");
   }
@@ -103,6 +100,14 @@ const uploadProfilePhotoRequest = async (file: File, token: string | null) => {
   const result = await res.json();
   if (!res.ok || !result.ok) throw new Error(result.message || "Error al subir imagen");
   return result;
+};
+
+// --- HOOK DE PUBLICACIONES (Feed) ---
+const fetchUserProductsRequest = async (userId: number) => {
+  const res = await fetch(`${URL_BASE}/api/products/user/${userId}?limit=50`); 
+  const data = await res.json();
+  if (!res.ok) throw new Error("Error al cargar productos del usuario");
+  return data.products || [];
 };
 
 // --- HOOK PRINCIPAL ---
@@ -130,12 +135,8 @@ export const useProfile = (profileIdParam?: string) => {
             : fetchPublicProfileRequest(targetUserId);
     },
     enabled: !!targetUserId,
-    // Datos iniciales optimistas si es mi propio perfil
-    initialData: isOwnProfile && sessionUser ? {
-        ...sessionUser,
-        // Mock stats temporal mientras carga lo real
-        stats: { ventas: 0, publicaciones: 0 } 
-    } as any : undefined, 
+    // ⚠️ ELIMINADO: initialData causaba el bug al usar datos incompletos de la sesión.
+    // Ahora forzamos que siempre cargue los datos frescos del backend.
   });
 
   const user = profileQuery.data;
@@ -147,7 +148,7 @@ export const useProfile = (profileIdParam?: string) => {
     enabled: !!targetUserId,
   });
 
-  // Sincronizar formulario
+  // Sincronizar formulario cuando llegan los datos REALES del backend
   useEffect(() => {
     if (user && isOwnProfile) {
       setFormData({
@@ -196,43 +197,37 @@ export const useProfile = (profileIdParam?: string) => {
 };
 
 // --- HOOK DE PUBLICACIONES (Feed) ---
-
-// --- FETCHERS (NUEVO) ---
-const fetchUserProductsRequest = async (userId: number) => {
-  // Esta ruta YA EXISTE en tu backend (products.js) y filtra por vendedorId
-  const res = await fetch(`${URL_BASE}/api/products/user/${userId}?limit=50`); 
-  const data = await res.json();
-  if (!res.ok) throw new Error("Error al cargar productos del usuario");
-  return data.products || [];
-};
-
-// --- HOOK DE PUBLICACIONES DEL PERFIL (CORREGIDO) ---
 export const usePublicationsFeed = ({ 
-  authorId, // Este ID es clave
+  authorId,
 }: UsePublicationsFeedProps) => {
   
-  // Si no hay authorId, no podemos cargar nada
   const userId = authorId ? parseInt(authorId) : null;
 
   const { data: posts = [], isLoading, isError, error } = useQuery({
     queryKey: ["user-products", userId],
     queryFn: () => fetchUserProductsRequest(userId!),
-    enabled: !!userId, // Solo se ejecuta si tenemos un ID válido
+    enabled: !!userId,
   });
 
   const hasResults = posts.length > 0;
   const totalResults = posts.length;
 
-  // Mapeo de datos al formato UI
-  const items: PublicationItem[] = posts.map((post: any) => ({
+  const items: PublicationItem[] = posts.map((post: any) => {
+    // Lógica robusta para imágenes
+    const mainImage = post.imagenes?.[0]?.url 
+                   || post.imagenUrl          
+                   || null;
+
+    return {
       id: post.id,
       title: post.nombre,
-      image: post.imagenUrl, // Ojo: tu ruta /user/:id devuelve 'imagenUrl', no 'imagenes' array
-      price: parseFloat(String(post.precioActual)),
-      categoryName: post.categoria,
-      rating: 0, // El endpoint simple no trae rating del vendedor por producto
+      image: mainImage,
+      price: post.precioActual ? parseFloat(String(post.precioActual)) : 0,
+      categoryName: post.categoria || post.categoriaNombre || "Varios",
+      rating: post.vendedor?.reputacion || 0,
       sales: 0
-  }));
+    };
+  });
 
   return {
       items,
@@ -240,12 +235,10 @@ export const usePublicationsFeed = ({
       isError,
       error,
       hasResults,
-      // En este endpoint simple no hay paginación infinita por ahora,
-      // así que desactivamos la carga de "siguiente página"
       hasNextPage: false, 
       isFetchingNextPage: false,
       fetchNextPage: () => {}, 
       totalResults,
-      lastPostElementRef: { current: null } // No necesitamos ref de scroll infinito aquí por ahora
+      lastPostElementRef: { current: null } 
   };
 };
