@@ -266,7 +266,8 @@ export const SearchFiltersBar = ({
 export function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFavorite, onContact }: { open: boolean, onClose: () => void, post: Post | null, isFavorite: boolean, onToggleFavorite: (id: number) => void, onContact: (post: Post) => void }) {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { sendMessage } = useContactSeller(); // Usamos hook de negocio para enviar
+  const { sendMessage, startTransaction } = useContactSeller();
+ // Usamos hook de negocio para enviar
 
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -292,15 +293,34 @@ export function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFa
   const isOwnProduct = user?.id === post.vendedor?.id;
 
   // Wrapper para enviar mensaje dentro del modal
-  const handleSendInsideModal = async () => {
-      if(!message.trim()) return;
-      setIsSending(true);
-      // Usamos el hook de lógica que movimos a home.hooks.ts
-      const success = await sendMessage(post.vendedor.id, message);
-      if(success) setSentSuccess(true);
-      else alert("Error enviando mensaje");
-      setIsSending(false);
-  };
+const handleSendInsideModal = async () => {
+  if (!message.trim()) return;
+  setIsSending(true);
+
+  // 1) Iniciar o reutilizar transacción para este producto
+  const txResult = await startTransaction(post.id);
+
+  // mismo criterio que usas en HomePage:
+  if (!txResult?.ok && !txResult?.message?.includes("autocomprarte")) {
+    alert(
+      "No se pudo iniciar la compra: " +
+        (txResult?.message || "Error desconocido")
+    );
+    setIsSending(false);
+    return;
+  }
+
+  // 2) Enviar el mensaje al vendedor
+  const success = await sendMessage(post.vendedor.id, message);
+
+  if (success) {
+    setSentSuccess(true); // muestra el state "Mensaje enviado" + botón "Ir al chat"
+  } else {
+    alert("Error enviando mensaje");
+  }
+
+  setIsSending(false);
+};
 
   const goToChat = () => { navigate('/chats', { state: { toUser: post.vendedor } }); onClose(); };
 
