@@ -152,6 +152,7 @@ export const TransactionCarousel: React.FC<TransactionCarouselProps> = ({
   if (!transacciones.length) return null;
 
   const tx = transacciones[currentIndex];
+  if (!tx) return null;
   const canPrev = currentIndex > 0;
   const canNext = currentIndex < transacciones.length - 1;
 
