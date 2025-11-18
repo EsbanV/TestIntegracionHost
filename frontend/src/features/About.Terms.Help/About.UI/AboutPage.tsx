@@ -20,15 +20,9 @@ const AuroraBackground = () => (
   <div className="absolute inset-0 -z-10 overflow-hidden">
     
     {/* Imagen que cubre la pantalla sin dejar huecos */}
-    <img
-      src={BACKGROUND_IMAGE}
-      alt="Fondo MarketUCT"
-      className="absolute inset-0 w-full h-full object-cover object-top"
-      draggable="false"
-    />
 
     {/* Capa oscura */}
-    <div className="absolute inset-0 bg-white-950/60" />
+    <div className="absolute inset-0 bg-slate-950/60" />
 
     {/* Blobs */}
     <div className="absolute -top-[40%] left-1/2 h-[55vw] w-[55vw] -translate-x-1/2 rounded-full bg-blue-500/20 blur-[110px] animate-pulse-slow" />
