@@ -50,28 +50,27 @@ export default function HomePage() {
   }, [isLoading, hasNextPage, fetchNextPage]);
 
   // --- ACCIONES ---
-    const handleContact = async (post: Post) => {
-      const result = await startTransaction(post.id);
+  const handleContact = async (post: Post) => {
+    const result = await startTransaction(post.id, post.vendedor.id);
 
-      if (!result?.ok) {
-        alert("No se pudo iniciar el contacto: " + (result?.message || "Error desconocido"));
-        return;
-      }
+    if (!result?.ok) {
+      alert(result.message || 'No se pudo iniciar la compra');
+      return;
+    }
 
-      if (!result.created) {
-        // Ya existía una compra pendiente con este producto
-        console.log('Transacción existente retomada:', result.transactionId);
-        // Aquí puedes mostrar un toast tipo: "Retomando compra anterior"
-      }
+    if (!result.created) {
+      console.log('Retomando transacción existente', result.transactionId);
+    }
 
-      navigate('/chats', { 
-        state: { 
-          toUser: post.vendedor,
-          transactionId: result.transactionId,
-        } 
-      });
-      setSelectedPost(null);
-    };
+    navigate('/chats', {
+      state: {
+        toUser: post.vendedor,
+        transactionId: result.transactionId,
+      },
+    });
+
+    setSelectedPost(null);
+  };
 
 
   return (

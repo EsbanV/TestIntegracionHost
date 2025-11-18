@@ -65,3 +65,39 @@ export interface ChatMessagesData {
   pageParams: number[];
   allMessages: Mensaje[]; // Array aplanado listo para UI
 }
+
+// Tipos para transacciones activas en el chat
+export interface ActiveTransaction {
+  id: number;
+  producto: {
+    id: number;
+    nombre: string;
+    imagen: string | null;
+  };
+  estadoId: number;
+  compradorId: number;
+  vendedorId: number;
+  confirmacionVendedor: boolean;
+  confirmacionComprador: boolean;
+  fecha: string | Date;
+  esComprador: boolean;
+  esVendedor: boolean;
+}
+
+export interface ActiveByChatResponse {
+  ok: boolean;
+  transactions: {
+    id: number;
+    producto: {
+      id: number;
+      nombre: string;
+      imagen: string | null;
+    };
+    estadoId: number;
+    compradorId: number;
+    vendedorId: number;
+    confirmacionVendedor: boolean;
+    confirmacionComprador: boolean;
+    fecha: string;
+  }[];
+}

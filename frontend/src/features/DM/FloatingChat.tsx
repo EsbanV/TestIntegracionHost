@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LuMessageCircle, LuClock } from "react-icons/lu";
 import { useAuth } from "@/app/context/AuthContext";
@@ -6,9 +6,9 @@ import { useAuth } from "@/app/context/AuthContext";
 // Hooks
 import { 
   useChatSocket, useChatList, useChatMessages, 
-  useChatTransaction, useChatActions 
+  useChatTransactions, useChatActions 
 } from '@/features/DM/chat.hooks';
-import { useRateLimiter } from '@/features/DM/chat.hooks';
+
 
 // ✅ IMPORTAR COMPONENTES ESPECÍFICOS DEL FLOTANTE
 import { 
@@ -16,8 +16,8 @@ import {
   FloatingChatInput, 
   FloatingChatList, 
   FloatingMessagesArea,
-  TransactionStatusBar // Este es compartido
-} from './FloatingChat.Components/FloatingChat.Components'; // Ajusta la ruta
+  TransactionCarousel
+} from './FloatingChat.Components/FloatingChat.Components';
 
 import RateUserModal from "@/features/DM/Chat.Components/RateUserModal";
 import type { Chat } from '@/features/DM/chat.types';
@@ -38,13 +38,30 @@ export default function FloatingChat() {
 
   const { data: messagesData } = useChatMessages(activeChatId, isOpen && view === 'chat');
   const messages = messagesData?.allMessages || [];
-  const { data: transaction } = useChatTransaction(activeChatId, isOpen && view === 'chat');
+  const { data: transactions = [] } = useChatTransactions(
+    activeChatId,
+    isOpen && view === 'chat'
+  );
+  const [currentTxIndex, setCurrentTxIndex] = useState(0);
+  const currentTx = transactions[currentTxIndex] || null;
   
+  useEffect(() => {
+  setCurrentTxIndex(0);
+}, [activeChatId, transactions.length]);
+
+
   const activeChatInfo = chats.find(c => c.id === activeChatId);
   const displayChatInfo = activeChatInfo || (activeChatId ? { nombre: "...", id: activeChatId } as any : null);
 
   useChatSocket(activeChatId);
-  const { sendMessage, markAsRead, confirmTransaction, isSending } = useChatActions();
+  const { 
+    sendMessage, 
+    markAsRead, 
+    confirmTransaction, 
+    cancelTransaction,
+    isSending 
+  } = useChatActions();
+
 
   const handleSelectChat = (id: number) => { setActiveChatId(id); setView("chat"); markAsRead(id); };
   const handleSend = async (texto: string, file?: File) => {
@@ -54,19 +71,19 @@ export default function FloatingChat() {
   };
   
   // ... (Funciones de transacción iguales) ...
-  const handleConfirmDelivery = async () => {
-  if (!transaction || !activeChatId) return;
+ const handleConfirmDelivery = async (tx: any) => {
+  if (!tx || !activeChatId) return;
   await confirmTransaction({
-    txId: transaction.id,
+    txId: tx.id,
     type: "delivery",
     chatUserId: activeChatId,
   });
 };
 
-const handleConfirmReceipt = async () => {
-  if (!transaction || !activeChatId) return;
+const handleConfirmReceipt = async (tx: any) => {
+  if (!tx || !activeChatId) return;
   await confirmTransaction({
-    txId: transaction.id,
+    txId: tx.id,
     type: "receipt",
     chatUserId: activeChatId,
   });
@@ -75,11 +92,20 @@ const handleConfirmReceipt = async () => {
     setPendingRatingData({
       sellerId: activeChatId,
       sellerName: displayChatInfo.nombre,
-      transactionId: transaction.id,
+      transactionId: tx.id,
     });
     setIsRateModalOpen(true);
   }
 };
+
+const handleCancelTx = async (tx: any) => {
+  if (!tx || !activeChatId) return;
+  await cancelTransaction({
+    txId: tx.id,
+    chatUserId: activeChatId,
+  });
+};
+
 
 
 
@@ -101,13 +127,23 @@ const handleConfirmReceipt = async () => {
                />
             ) : (
                <div className="flex flex-col h-full bg-[#F8F9FC] relative">
-                  {transaction && (
-                     <TransactionStatusBar 
-                        tx={transaction} 
-                        onConfirmDelivery={handleConfirmDelivery} 
-                        onConfirmReceipt={handleConfirmReceipt} 
-                        onRate={() => setIsRateModalOpen(true)} 
-                     />
+                  {transactions.length > 0 && (
+                    <TransactionCarousel
+                      transacciones={transactions}
+                      currentIndex={currentTxIndex}
+                      onChangeIndex={setCurrentTxIndex}
+                      onConfirmDelivery={handleConfirmDelivery}
+                      onConfirmReceipt={handleConfirmReceipt}
+                      onCancel={handleCancelTx}
+                      onRate={(tx) => {
+                        setPendingRatingData({
+                          sellerId: activeChatId!,
+                          sellerName: displayChatInfo?.nombre || '',
+                          transactionId: tx.id,
+                        });
+                        setIsRateModalOpen(true);
+                      }}
+                    />
                   )}
                   
                   <FloatingMessagesArea 

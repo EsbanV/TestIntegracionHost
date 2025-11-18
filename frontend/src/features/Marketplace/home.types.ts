@@ -71,3 +71,14 @@ export interface StartTransactionApiResponse {
   transactionId: number;
   message?: string;
 }
+
+export interface ActiveTransactionFromCheck {
+  ok: boolean;
+  transaction: {
+    id: number;
+    confirmacionVendedor: boolean;
+    confirmacionComprador: boolean;
+    // añade aquí otros campos si los usas (producto, estadoId, etc.)
+  } | null;
+  message?: string;
+}

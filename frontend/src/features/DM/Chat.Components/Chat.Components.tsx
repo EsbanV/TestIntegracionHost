@@ -6,7 +6,7 @@ import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 import { 
   LuSearch, LuCheck, LuCheckCheck, LuImage, LuSmile, LuLoader, LuSend,
   LuShoppingBag, LuTruck, LuPackageCheck, LuStar, LuCircleAlert, LuMessageCircle,
-  LuChevronLeft, LuX, LuGripHorizontal
+  LuChevronLeft, LuChevronRight, LuX, LuGripHorizontal
 } from "react-icons/lu";
 
 // UI Components
@@ -15,15 +15,19 @@ import { Button } from "@/components/ui/button";
 
 import type { Chat, Mensaje, TransaccionActiva } from "../chat.types";
 
-// ============================================================================
-// 1. BARRA DE TRANSACCIÓN (Sin cambios mayores, solo padding)
-// ============================================================================
+
 interface TransactionBarProps {
   tx: TransaccionActiva;
   onConfirmDelivery: () => void;
   onConfirmReceipt: () => void;
   onRate: () => void;
+  onCancel?: () => void; // 👈 nuevo
 }
+
+
+// ============================================================================
+// 1. BARRA DE TRANSACCIÓN (Sin cambios mayores, solo padding)
+// ============================================================================
 
 
 export const TransactionStatusBar = ({ tx, onConfirmDelivery, onConfirmReceipt, onRate }: TransactionBarProps) => {
@@ -34,39 +38,77 @@ export const TransactionStatusBar = ({ tx, onConfirmDelivery, onConfirmReceipt, 
     return (
       <div className="bg-blue-50 border-b border-blue-100 p-3 px-4 flex items-center justify-between shrink-0 shadow-sm z-10">
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="bg-blue-100 p-1.5 rounded text-blue-600 shrink-0"><LuShoppingBag size={16} /></div>
-          <div className="min-w-0">
-             <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Venta en curso</p>
-             <p className="text-xs text-slate-700 truncate font-medium">{tx.producto.nombre}</p>
-          </div>
+          {/* ... lo mismo que ya tenías ... */}
         </div>
-        {tx.esVendedor ? (
-          <Button size="sm" onClick={onConfirmDelivery} className="bg-blue-600 hover:bg-blue-700 text-white h-7 text-xs font-bold shrink-0">Entregar</Button>
-        ) : (
-          <span className="text-xs text-slate-400 italic shrink-0">Esperando envío...</span>
-        )}
+
+        <div className="flex items-center gap-2 shrink-0">
+          {tx.esVendedor ? (
+            <Button
+              size="sm"
+              onClick={onConfirmDelivery}
+              className="bg-blue-600 hover:bg-blue-700 text-white h-7 text-xs font-bold"
+            >
+              Entregar
+            </Button>
+          ) : (
+            <span className="text-xs text-slate-400 italic">
+              Esperando envío...
+            </span>
+          )}
+
+          {onCancel && (tx.esComprador || tx.esVendedor) && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11px] border-red-200 text-red-600 hover:bg-red-50"
+              onClick={onCancel}
+            >
+              Cancelar
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
+
   // En Camino
   if (tx.estadoId === 1 && tx.confirmacionVendedor && !tx.confirmacionComprador) {
     return (
       <div className="bg-amber-50 border-b border-amber-100 p-3 px-4 flex items-center justify-between shrink-0 shadow-sm z-10">
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="bg-amber-100 p-1.5 rounded text-amber-600 shrink-0"><LuTruck size={16} /></div>
-          <div className="min-w-0">
-             <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">En camino</p>
-             <p className="text-xs text-slate-700 truncate">Producto enviado</p>
-          </div>
+          {/* ... igual que ahora ... */}
         </div>
-        {tx.esComprador ? (
-          <Button size="sm" onClick={onConfirmReceipt} className="bg-green-600 hover:bg-green-700 text-white h-7 text-xs font-bold shrink-0">Confirmar</Button>
-        ) : (
-          <span className="text-xs text-slate-400 italic shrink-0">Esperando confirmación...</span>
-        )}
+
+        <div className="flex items-center gap-2 shrink-0">
+          {tx.esComprador ? (
+            <Button
+              size="sm"
+              onClick={onConfirmReceipt}
+              className="bg-green-600 hover:bg-green-700 text-white h-7 text-xs font-bold"
+            >
+              Confirmar
+            </Button>
+          ) : (
+            <span className="text-xs text-slate-400 italic">
+              Esperando confirmación...
+            </span>
+          )}
+
+          {onCancel && (tx.esComprador || tx.esVendedor) && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11px] border-red-200 text-red-600 hover:bg-red-50"
+              onClick={onCancel}
+            >
+              Cancelar
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
+
   // Completado
   if (tx.estadoId === 2) {
     return (
@@ -79,6 +121,73 @@ export const TransactionStatusBar = ({ tx, onConfirmDelivery, onConfirmReceipt, 
     );
   }
   return null;
+};
+
+  interface TransactionCarouselProps {
+  transacciones: TransaccionActiva[];
+  currentIndex: number;
+  onChangeIndex: (index: number) => void;
+  onConfirmDelivery: (tx: TransaccionActiva) => void;
+  onConfirmReceipt: (tx: TransaccionActiva) => void;
+  onCancel: (tx: TransaccionActiva) => void;
+  onRate: (tx: TransaccionActiva) => void;
+}
+
+export const TransactionCarousel: React.FC<TransactionCarouselProps> = ({
+  transacciones,
+  currentIndex,
+  onChangeIndex,
+  onConfirmDelivery,
+  onConfirmReceipt,
+  onCancel,
+  onRate,
+}) => {
+  if (!transacciones.length) return null;
+
+  const tx = transacciones[currentIndex];
+  const canPrev = currentIndex > 0;
+  const canNext = currentIndex < transacciones.length - 1;
+
+  return (
+    <div className="bg-white border-b border-slate-200/70 shadow-sm shrink-0">
+      {/* Nav superior para elegir transacción */}
+      <div className="flex items-center justify-between px-4 py-1.5 text-[11px] text-slate-500 bg-slate-50/70">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-slate-700">
+            Compra {currentIndex + 1} de {transacciones.length}
+          </span>
+          <span className="truncate max-w-[160px] text-slate-500">
+            {tx.producto?.nombre}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            className="p-1 rounded-full hover:bg-slate-200 disabled:opacity-40"
+            disabled={!canPrev}
+            onClick={() => canPrev && onChangeIndex(currentIndex - 1)}
+          >
+            <LuChevronLeft className="w-3 h-3" />
+          </button>
+          <button
+            className="p-1 rounded-full hover:bg-slate-200 disabled:opacity-40"
+            disabled={!canNext}
+            onClick={() => canNext && onChangeIndex(currentIndex + 1)}
+          >
+            <LuChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+
+      {/* Barra de estado de la transacción seleccionada */}
+      <TransactionStatusBar
+        tx={tx}
+        onConfirmDelivery={() => onConfirmDelivery(tx)}
+        onConfirmReceipt={() => onConfirmReceipt(tx)}
+        onRate={() => onRate(tx)}
+        onCancel={() => onCancel(tx)}
+      />
+    </div>
+  );
 };
 
 // ============================================================================

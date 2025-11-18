@@ -179,14 +179,52 @@ export const useFavorites = () => {
 export const useContactSeller = () => {
   const { token } = useAuth();
 
-  const startTransaction = useCallback(
-    async (productId: number, quantity = 1) => {
+   const startTransaction = useCallback(
+    async (productId: number, sellerId: number, quantity = 1) => {
       if (!token) {
         return { ok: false, message: 'No autenticado' };
       }
 
+      // 1) Revisar si ya hay una transacción activa con este vendedor
+      let active: ActiveTransactionFromCheck | null = null;
+
       try {
-        // 👇 Aquí le pasamos el tipo al genérico <StartTransactionApiResponse>
+        active = await fetchWithAuth<ActiveTransactionFromCheck>(
+          `/api/transactions/check-active/${sellerId}`,
+          token
+        );
+      } catch (error) {
+        // Si el endpoint tira 404 u otro error cuando NO hay transacción,
+        // simplemente consideramos que no hay nada activo.
+        active = null;
+      }
+
+      if (active?.transaction) {
+        const t = active.transaction;
+
+        // Caso crítico: el vendedor YA confirmó entrega
+        // pero el comprador todavía NO ha confirmado recibo.
+        if (t.confirmacionVendedor && !t.confirmacionComprador) {
+          return {
+            ok: false,
+            message:
+              'Ya tienes una transacción que el vendedor marcó como entregada. ' +
+              'Debes confirmar el recibo en el chat antes de iniciar otra con este vendedor.',
+          };
+        }
+
+        // Caso: hay una transacción pendiente aún en curso (nadie ha confirmado).
+        // En vez de crear otra, reusamos esta.
+        return {
+          ok: true,
+          created: false,
+          transactionId: t.id,
+          message: 'Retomando la transacción en curso con este vendedor.',
+        };
+      }
+
+      // 2) Si no hay transacción activa, creamos una nueva
+      try {
         const data = await fetchWithAuth<StartTransactionApiResponse>(
           '/api/transactions',
           token,
@@ -196,16 +234,13 @@ export const useContactSeller = () => {
           }
         );
 
-        // Si la petición HTTP fallara, fetchWithAuth ya habría hecho throw,
-        // así que si llegas aquí es un caso "ok" a nivel HTTP.
         return {
-          ok: true,
+          ok: data.ok,
           created: data.created,
           transactionId: data.transactionId,
           message: data.message,
         };
       } catch (error: any) {
-        // Errores HTTP (400, 500, etc.) o de red
         return {
           ok: false,
           message: error?.message || 'Error al iniciar compra',

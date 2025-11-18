@@ -293,34 +293,29 @@ export function ProductDetailModal({ open, onClose, post, isFavorite, onToggleFa
   const isOwnProduct = user?.id === post.vendedor?.id;
 
   // Wrapper para enviar mensaje dentro del modal
-const handleSendInsideModal = async () => {
-  if (!message.trim()) return;
-  setIsSending(true);
+    const handleSendInsideModal = async () => {
+      if (!message.trim()) return;
+      setIsSending(true);
 
-  // 1) Iniciar o reutilizar transacción para este producto
-  const txResult = await startTransaction(post.id);
+      const txResult = await startTransaction(post.id, post.vendedor.id);
 
-  // mismo criterio que usas en HomePage:
-  if (!txResult?.ok && !txResult?.message?.includes("autocomprarte")) {
-    alert(
-      "No se pudo iniciar la compra: " +
-        (txResult?.message || "Error desconocido")
-    );
-    setIsSending(false);
-    return;
-  }
+      if (!txResult?.ok) {
+        alert(txResult.message || "No se pudo iniciar la compra");
+        setIsSending(false);
+        return;
+      }
 
-  // 2) Enviar el mensaje al vendedor
-  const success = await sendMessage(post.vendedor.id, message);
+      const success = await sendMessage(post.vendedor.id, message);
 
-  if (success) {
-    setSentSuccess(true); // muestra el state "Mensaje enviado" + botón "Ir al chat"
-  } else {
-    alert("Error enviando mensaje");
-  }
+      if (success) {
+        setSentSuccess(true);
+      } else {
+        alert("Error enviando mensaje");
+      }
 
-  setIsSending(false);
-};
+      setIsSending(false);
+    };
+
 
   const goToChat = () => { navigate('/chats', { state: { toUser: post.vendedor } }); onClose(); };
 

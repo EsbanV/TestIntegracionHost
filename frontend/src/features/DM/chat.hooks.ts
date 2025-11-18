@@ -13,7 +13,9 @@ import type {
   Mensaje, 
   TransaccionActiva, 
   ChatListResponse, 
-  MessagesResponse 
+  MessagesResponse,
+  ActiveByChatResponse,
+  ActiveTransaction
 } from "./chat.types";
 
 // ============================================================================
@@ -178,38 +180,39 @@ export const useChatMessages = (activeChatId: number | null, isOpen: boolean) =>
 
 // C. TRANSACCIÓN ACTIVA
 // Después (más robusto)
-export const useChatTransaction = (
+// ============================================================================
+// 3. HOOK: TRANSACCIONES ACTIVAS PARA UN CHAT (lista)
+// ============================================================================
+export const useChatTransactions = (
   activeChatId: number | null,
   isOpen: boolean
 ) => {
   const { token, user } = useAuth();
 
-  return useQuery<TransaccionActiva | null>({
+  return useQuery<ActiveTransaction[]>({
     queryKey: activeChatId
       ? chatKeys.transaction(activeChatId)
       : ['chat', 'transaction', 'none'],
     queryFn: async () => {
-      if (!activeChatId) return null;
-      const data: any = await fetchWithAuth(
-        `/api/transactions/check-active/${activeChatId}`,
+      if (!activeChatId) return [];
+
+      const data = await fetchWithAuth<ActiveByChatResponse>(
+        `/api/transactions/active-by-chat/${activeChatId}`,
         token
       );
 
-      if (data.ok && data.transaction) {
-        return {
-          id: data.transaction.id,
-          producto: data.transaction.producto,
-          estadoId: data.transaction.estadoId,
-          esComprador: data.transaction.compradorId === user?.id,
-          esVendedor: data.transaction.vendedorId === user?.id,
-          confirmacionVendedor: data.transaction.confirmacionVendedor,
-          confirmacionComprador: data.transaction.confirmacionComprador,
-        };
+      if (!data.ok || !Array.isArray(data.transactions)) {
+        return [];
       }
-      return null;
+
+      return data.transactions.map((t) => ({
+        ...t,
+        esComprador: t.compradorId === user?.id,
+        esVendedor: t.vendedorId === user?.id,
+      }));
     },
     enabled: !!token && !!activeChatId && isOpen,
-    staleTime: 0,                          // siempre fresco
+    staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: 'always',
     retry: false,
@@ -223,11 +226,25 @@ export const useChatTransaction = (
 // ============================================================================
 // 3. HOOK DE ACCIONES (Mutaciones)
 // ============================================================================
+// ============================================================================
+// 4. HOOK DE ACCIONES (mutaciones del chat + transacciones)
+// ============================================================================
+type ConfirmTxVars = {
+  txId: number;
+  type: 'delivery' | 'receipt';
+  chatUserId: number; // mismo id que activeChatId
+};
+
+type CancelTxVars = {
+  txId: number;
+  chatUserId: number;
+};
+
 export const useChatActions = () => {
   const { token } = useAuth();
   const queryClient = useQueryClient();
 
-  // A. Enviar Mensaje (Texto o Archivo)
+  // A. Enviar mensaje (texto o imagen)
   const sendMessageMutation = useMutation({
     mutationFn: async ({
       chatId,
@@ -239,31 +256,41 @@ export const useChatActions = () => {
       file?: File;
     }) => {
       let contenido = text;
-      let tipo = "texto";
+      let tipo = 'texto';
 
-      // Subir imagen si existe
       if (file) {
         const formData = new FormData();
-        formData.append("image", file);
+        formData.append('image', file);
 
         const res = await fetch(`${URL_BASE}/api/upload/upload-image`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
           body: formData,
         });
 
-        const data = await res.json();
-        if (!data.ok) throw new Error("Error subiendo imagen");
+        const raw = await res.json();
+        if (!res.ok || !raw?.ok) {
+          throw new Error(raw?.message || 'Error subiendo imagen');
+        }
 
-        contenido = data.imageUrl;
-        tipo = "imagen";
+        contenido = raw.imageUrl;
+        tipo = 'imagen';
       }
 
-      // Enviar mensaje normal / imagen
-      return fetchWithAuth("/api/chat/send", token, {
-        method: "POST",
-        body: JSON.stringify({ destinatarioId: chatId, contenido, tipo }),
-      });
+      return fetchWithAuth<{ ok: boolean }>(
+        '/api/chat/send',
+        token,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            destinatarioId: chatId,
+            contenido,
+            tipo,
+          }),
+        }
+      );
     },
     onSuccess: (_, variables) => {
       // Refrescar conversación y lista de chats
@@ -277,36 +304,33 @@ export const useChatActions = () => {
   // B. Marcar como leído
   const markAsReadMutation = useMutation({
     mutationFn: (chatId: number) =>
-      fetchWithAuth(
+      fetchWithAuth<{ ok: boolean }>(
         `/api/chat/conversacion/${chatId}/mark-read`,
         token,
-        { method: "POST" }
+        { method: 'POST' }
       ),
-    onSuccess: () => {
+    onSuccess: (_, chatId) => {
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.conversation(chatId),
+      });
       queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
     },
   });
 
   // C. Confirmar transacción (entrega / recibo)
-  type ConfirmTxVars = {
-    txId: number;
-    type: "delivery" | "receipt";
-    chatUserId: number; // mismo id que activeChatId
-  };
-
   const confirmTransactionMutation = useMutation({
     mutationFn: async ({ txId, type }: ConfirmTxVars) => {
       const endpoint =
-        type === "delivery" ? "confirm-delivery" : "confirm-receipt";
+        type === 'delivery' ? 'confirm-delivery' : 'confirm-receipt';
 
-      return fetchWithAuth(
+      return fetchWithAuth<{ ok: boolean }>(
         `/api/transactions/${txId}/${endpoint}`,
         token,
-        { method: "PATCH" }
+        { method: 'PATCH' }
       );
     },
     onSuccess: (_, variables) => {
-      // Refrescar sólo lo relevante de ese chat
+      // Refrescar solo lo relacionado al chat de esa persona
       queryClient.invalidateQueries({
         queryKey: chatKeys.transaction(variables.chatUserId),
       });
@@ -317,7 +341,28 @@ export const useChatActions = () => {
     },
   });
 
-  // ✅ Lo que exponemos al resto de la app
+  // D. Cancelar transacción (con devolución de stock)
+  const cancelTransactionMutation = useMutation({
+    mutationFn: async ({ txId }: CancelTxVars) => {
+      return fetchWithAuth<{ ok: boolean }>(
+        `/api/transactions/${txId}/cancel`,
+        token,
+        { method: 'PATCH' }
+      );
+    },
+    onSuccess: (_, variables) => {
+      // Al cancelar, sacamos esa transacción del carrusel
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.transaction(variables.chatUserId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.conversation(variables.chatUserId),
+      });
+      queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
+    },
+  });
+
+  // ✅ API pública del hook
   return {
     sendMessage: (args: { chatId: number; text: string; file?: File }) =>
       sendMessageMutation.mutateAsync(args),
@@ -328,10 +373,15 @@ export const useChatActions = () => {
     confirmTransaction: (vars: ConfirmTxVars) =>
       confirmTransactionMutation.mutateAsync(vars),
 
+    cancelTransaction: (vars: CancelTxVars) =>
+      cancelTransactionMutation.mutateAsync(vars),
+
     isSending: sendMessageMutation.isPending,
     isConfirming: confirmTransactionMutation.isPending,
+    isCancelling: cancelTransactionMutation.isPending,
   };
 };
+
 
 // ============================================================================
 // 4. RATE LIMITER (Mutaciones)

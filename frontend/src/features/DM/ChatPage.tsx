@@ -12,7 +12,7 @@ import {
   useChatSocket, 
   useChatList, 
   useChatMessages, 
-  useChatTransaction, 
+  useChatTransactions, 
   useChatActions 
 } from '@/features/DM/chat.hooks';
 
@@ -23,8 +23,10 @@ import {
   ChatListSidebar, 
   ChatMessagesArea, 
   ChatInputArea, 
-  TransactionStatusBar 
+  TransactionStatusBar,
+  TransactionCarousel,   // 👈 nuevo
 } from '@/features/DM/Chat.Components/Chat.Components';
+
 
 import type { Chat } from '@/features/DM/chat.types';
 
@@ -58,7 +60,11 @@ export default function ChatPage() {
   const { data: messagesData } = useChatMessages(activeChatId, true);
   const messages = messagesData?.allMessages || [];
 
-  const { data: transaction } = useChatTransaction(activeChatId, true);
+    const { data: transactions = [] } = useChatTransactions(activeChatId, true);
+    const [currentTxIndex, setCurrentTxIndex] = useState(0);
+
+    const currentTx = transactions[currentTxIndex] || null;
+
 
   const activeChatInfo = chats.find(c => c.id === activeChatId);
   const displayChatInfo = activeChatInfo || (activeChatId ? { 
@@ -71,7 +77,14 @@ export default function ChatPage() {
 
   // --- 3. SOCKETS & ACCIONES ---
   useChatSocket(activeChatId);
-  const { sendMessage, markAsRead, confirmTransaction, isSending } = useChatActions();
+const { 
+  sendMessage, 
+  markAsRead, 
+  confirmTransaction, 
+  cancelTransaction,
+  isSending 
+} = useChatActions();
+
 
   // --- HANDLERS ---
 
@@ -89,11 +102,11 @@ export default function ChatPage() {
       }
   };
 
-  const handleConfirmDelivery = async () => {
-  if (!transaction || !activeChatId) return;
+ const handleConfirmDelivery = async (tx: any) => {
+  if (!tx || !activeChatId) return;
   try {
     await confirmTransaction({
-      txId: transaction.id,
+      txId: tx.id,
       type: "delivery",
       chatUserId: activeChatId,
     });
@@ -102,11 +115,11 @@ export default function ChatPage() {
   }
 };
 
-const handleConfirmReceipt = async () => {
-  if (!transaction || !displayChatInfo || !activeChatId) return;
+const handleConfirmReceipt = async (tx: any) => {
+  if (!tx || !displayChatInfo || !activeChatId) return;
   try {
     await confirmTransaction({
-      txId: transaction.id,
+      txId: tx.id,
       type: "receipt",
       chatUserId: activeChatId,
     });
@@ -114,7 +127,7 @@ const handleConfirmReceipt = async () => {
     setPendingRatingData({
       sellerId: activeChatId,
       sellerName: displayChatInfo.nombre,
-      transactionId: transaction.id,
+      transactionId: tx.id,
     });
     setIsRateModalOpen(true);
   } catch (error) {
@@ -122,7 +135,23 @@ const handleConfirmReceipt = async () => {
   }
 };
 
+const handleCancelTx = async (tx: any) => {
+  if (!tx || !activeChatId) return;
+  try {
+    await cancelTransaction({
+      txId: tx.id,
+      chatUserId: activeChatId,
+    });
+  } catch (error) {
+    console.error("Error al cancelar transacción:", error);
+  }
+};
+
   // Efectos de navegación y lectura
+  useEffect(() => {
+  setCurrentTxIndex(0);
+}, [activeChatId, transactions.length]);
+
   useEffect(() => {
       const state = location.state as { toUser?: any };
       if (state?.toUser) { setActiveChatId(state.toUser.id); setMobileView('chat'); }
@@ -169,31 +198,44 @@ const handleConfirmReceipt = async () => {
                  </div>
               </div>
               
-              {transaction?.estadoId === 2 && transaction.esComprador && (
-                  <button 
-                    onClick={() => { 
-                        setPendingRatingData({ sellerId: activeChatId!, sellerName: displayChatInfo.nombre, transactionId: transaction.id }); 
-                        setIsRateModalOpen(true); 
-                    }} 
-                    className="flex items-center gap-2 text-amber-600 bg-amber-50 px-4 py-1.5 rounded-full text-sm font-bold hover:bg-amber-100 transition-colors"
-                  >
-                      <LuStar size={16} className="fill-amber-600" /> Calificar
-                  </button>
-              )}
+            {currentTx?.estadoId === 2 && currentTx.esComprador && (
+            <button
+                onClick={() => {
+                setPendingRatingData({
+                    sellerId: activeChatId!,
+                    sellerName: displayChatInfo.nombre,
+                    transactionId: currentTx.id,
+                });
+                setIsRateModalOpen(true);
+                }}
+                // ... clases
+            >
+                {/* ... */}
+            </button>
+            )}
+
             </div>
             
             {/* Barra de Transacción */}
-            {transaction && (
-                <TransactionStatusBar 
-                    tx={transaction}
+                {transactions.length > 0 && (
+                <TransactionCarousel
+                    transacciones={transactions}
+                    currentIndex={currentTxIndex}
+                    onChangeIndex={setCurrentTxIndex}
                     onConfirmDelivery={handleConfirmDelivery}
                     onConfirmReceipt={handleConfirmReceipt}
-                    onRate={() => { 
-                        setPendingRatingData({ sellerId: activeChatId!, sellerName: displayChatInfo.nombre, transactionId: transaction.id }); 
-                        setIsRateModalOpen(true); 
+                    onCancel={handleCancelTx}
+                    onRate={(tx) => {
+                    setPendingRatingData({
+                        sellerId: activeChatId!,
+                        sellerName: displayChatInfo!.nombre,
+                        transactionId: tx.id,
+                    });
+                    setIsRateModalOpen(true);
                     }}
                 />
-            )}
+                )}
+
             
             {/* Mensajes */}
             <ChatMessagesArea 
