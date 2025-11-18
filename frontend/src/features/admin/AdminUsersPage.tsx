@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // =====================================================================
-// Fila de la tabla: maneja el ban/undo-ban por usuario
+// Fila de la tabla: maneja ban / desban por usuario
 // =====================================================================
 
 interface UserRowProps {
@@ -32,12 +32,26 @@ const UserRow: React.FC<UserRowProps> = ({ user }) => {
   const banMutation = useAdminBanUser(user.id);
 
   const handleToggleBan = () => {
-    banMutation.mutate({ banned: !user.banned });
+    const nextBanned = !user.banned;
+
+    const mensaje = nextBanned
+      ? `¿Seguro que quieres BANEAR al usuario #${user.id} (@${user.usuario})?\n\n` +
+        'No podrá crear nuevas publicaciones ni interactuar hasta que lo desbanees.'
+      : `¿Seguro que quieres DESBANEAR al usuario #${user.id} (@${user.usuario})?\n\n` +
+        'Podrá volver a usar normalmente el marketplace.';
+
+    if (!window.confirm(mensaje)) return;
+
+    banMutation.mutate({ banned: nextBanned });
   };
+
+  const isBanned = user.banned;
 
   return (
     <tr
-      className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 transition-colors"
+      className={`border-b border-slate-100 last:border-0 hover:bg-slate-50/70 transition-colors ${
+        isBanned ? 'bg-red-50/40' : ''
+      }`}
     >
       {/* ID */}
       <td className="px-3 py-2 text-[11px] text-slate-500 font-mono">
@@ -66,15 +80,25 @@ const UserRow: React.FC<UserRowProps> = ({ user }) => {
         </Badge>
       </td>
 
-      {/* Estado */}
+      {/* Estado + Baneo */}
       <td className="px-3 py-2">
-        <span
-          className={`text-[11px] ${
-            user.banned ? 'text-red-600 font-semibold' : 'text-slate-700'
-          }`}
-        >
-          {user.estadoNombre || (user.banned ? 'Suspendido' : 'Activo')}
-        </span>
+        <div className="flex flex-col gap-1">
+          <span
+            className={`text-[11px] ${
+              isBanned ? 'text-red-700 font-semibold' : 'text-slate-700'
+            }`}
+          >
+            {user.estadoNombre || (isBanned ? 'Suspendido' : 'Activo')}
+          </span>
+          {isBanned && (
+            <Badge
+              variant="destructive"
+              className="w-fit text-[10px] uppercase tracking-wide"
+            >
+              BANEADO
+            </Badge>
+          )}
+        </div>
       </td>
 
       {/* Reputación */}
@@ -85,7 +109,7 @@ const UserRow: React.FC<UserRowProps> = ({ user }) => {
       {/* Acciones */}
       <td className="px-3 py-2 text-right">
         <Button
-          variant={user.banned ? 'outline' : 'destructive'}
+          variant={isBanned ? 'outline' : 'destructive'}
           size="sm"
           onClick={handleToggleBan}
           disabled={banMutation.isPending}
@@ -93,7 +117,7 @@ const UserRow: React.FC<UserRowProps> = ({ user }) => {
         >
           {banMutation.isPending
             ? 'Guardando...'
-            : user.banned
+            : isBanned
             ? 'Desbanear'
             : 'Banear'}
         </Button>
