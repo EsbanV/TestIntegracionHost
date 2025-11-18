@@ -48,7 +48,7 @@ export const TermsModal = ({ isOpen, onClose, onAccept }: TermsModalProps) => {
               <p><strong className="text-slate-800">2. Conducta:</strong> Se prohíbe estrictamente el lenguaje ofensivo, acoso o publicación de contenido ilegal. El incumplimiento resultará en la suspensión inmediata de la cuenta.</p>
               <p><strong className="text-slate-800">3. Privacidad de Datos:</strong> Tu número telefónico y correo serán visibles para otros usuarios únicamente con el fin de coordinar transacciones dentro del campus.</p>
               <p><strong className="text-slate-800">4. Responsabilidad:</strong> La plataforma actúa como intermediario de contacto. No nos hacemos responsables por el estado de los productos o el cumplimiento de los pagos entre estudiantes.</p>
-              <p className="text-xs text-slate-400 mt-4 pt-4 border-t border-slate-200">Última actualización: Noviembre 2024</p>
+              <p className="text-xs text-slate-400 mt-4 pt-4 border-t border-slate-200">Última actualización: Noviembre 2025</p>
             </div>
 
             {/* Footer */}
