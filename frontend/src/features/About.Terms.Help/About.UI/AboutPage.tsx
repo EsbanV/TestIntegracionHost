@@ -73,7 +73,7 @@ const AboutHeader = () => (
   >
     <div className="flex items-center justify-between rounded-full border border-white/10 bg-slate-900/70 px-6 py-3 backdrop-blur-xl shadow-2xl shadow-black/50">
       <div className="flex items-center gap-3">
-        <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">
+        <div className="h-8 w-8 rounded-lg flex items-center justify-center font-bold text-white">
                           <img 
                 
                   src={LogoMUCT} 
