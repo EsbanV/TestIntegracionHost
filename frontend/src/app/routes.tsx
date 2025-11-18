@@ -116,16 +116,7 @@ export function AppRoutes() {
             <Route path="/admin/usuarios" element={<AdminUsersPage />} />
             <Route path="/admin/productos" element={<AdminProductsPage />} />
             <Route path="/admin/transacciones" element={<AdminTransactionsPage />} />
-            <Route path="/admin/reportes" element={<AdminReportsPage />} />
 
-            {/* Contenido */}
-            <Route path="/admin/publicaciones" element={<AdminPostsPage />} />
-            <Route path="/admin/comentarios" element={<AdminCommentsPage />} />
-            <Route path="/admin/comunidad" element={<AdminCommunityPage />} />
-
-            {/* Configuración */}
-            <Route path="/admin/categorias" element={<AdminCategoriesPage />} />
-            <Route path="/admin/ajustes" element={<AdminSettingsPage />} />
           </Route>
 
       </Route> {/* Fin ProtectedRoute */}

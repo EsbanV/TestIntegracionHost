@@ -6,7 +6,7 @@ import {
   useAdminProducts,
   useAdminLookups,
   useAdminToggleProductVisibility,
-} from '@/hooks/admin.hooks';
+} from './admin.hooks';
 import type { AdminProductListItem } from './admin.types';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';

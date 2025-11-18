@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import AdminLayout from './AdminLayout';
 import { AdminSectionCard } from './Admin.Components';
-import { useAdminTransactions } from '@/hooks/admin.hooks';
+import { useAdminTransactions } from './admin.hooks';
 import type { AdminTransactionListItem } from './admin.types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
