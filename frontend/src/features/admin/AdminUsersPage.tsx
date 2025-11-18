@@ -5,13 +5,106 @@ import { AdminSectionCard } from './Admin.Components';
 import {
   useAdminUsers,
   useAdminLookups,
+  useAdminBanUser,
 } from './admin.hooks';
 import type { AdminUserListItem } from './admin.types';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+
+// =====================================================================
+// Fila de la tabla: maneja el ban/undo-ban por usuario
+// =====================================================================
+
+interface UserRowProps {
+  user: AdminUserListItem;
+}
+
+const UserRow: React.FC<UserRowProps> = ({ user }) => {
+  const banMutation = useAdminBanUser(user.id);
+
+  const handleToggleBan = () => {
+    banMutation.mutate({ banned: !user.banned });
+  };
+
+  return (
+    <tr
+      className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 transition-colors"
+    >
+      {/* ID */}
+      <td className="px-3 py-2 text-[11px] text-slate-500 font-mono">
+        #{user.id}
+      </td>
+
+      {/* Datos básicos */}
+      <td className="px-3 py-2">
+        <div className="flex flex-col">
+          <span className="font-medium text-slate-800">
+            {user.nombre || user.usuario}
+          </span>
+          <span className="text-[11px] text-slate-500">@{user.usuario}</span>
+        </div>
+      </td>
+
+      {/* Correo */}
+      <td className="px-3 py-2 text-[11px] text-slate-600">
+        {user.email}
+      </td>
+
+      {/* Rol */}
+      <td className="px-3 py-2">
+        <Badge variant="outline" className="text-[10px]">
+          {user.rol || 'Usuario'}
+        </Badge>
+      </td>
+
+      {/* Estado */}
+      <td className="px-3 py-2">
+        <span
+          className={`text-[11px] ${
+            user.banned ? 'text-red-600 font-semibold' : 'text-slate-700'
+          }`}
+        >
+          {user.estadoNombre || (user.banned ? 'Suspendido' : 'Activo')}
+        </span>
+      </td>
+
+      {/* Reputación */}
+      <td className="px-3 py-2 text-right text-[11px] text-slate-700">
+        {user.reputacion.toFixed(2)}
+      </td>
+
+      {/* Acciones */}
+      <td className="px-3 py-2 text-right">
+        <Button
+          variant={user.banned ? 'outline' : 'destructive'}
+          size="sm"
+          onClick={handleToggleBan}
+          disabled={banMutation.isPending}
+          className="text-[11px]"
+        >
+          {banMutation.isPending
+            ? 'Guardando...'
+            : user.banned
+            ? 'Desbanear'
+            : 'Banear'}
+        </Button>
+      </td>
+    </tr>
+  );
+};
+
+// =====================================================================
+// Página principal
+// =====================================================================
 
 export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
@@ -69,52 +162,52 @@ export default function AdminUsersPage() {
             <label className="text-xs font-medium text-slate-600 mb-1 block">
               Rol
             </label>
-                <Select
-                value={rolId !== undefined ? String(rolId) : 'all'}
-                onValueChange={(value) => {
-                    if (value === 'all') setRolId(undefined);
-                    else setRolId(Number(value));
-                    setPage(1);
-                }}
-                >
-                <SelectTrigger className="h-9 text-xs">
-                    <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {lookups?.roles.map((rol) => (
-                    <SelectItem key={rol.id} value={String(rol.id)}>
-                        {rol.nombre}
-                    </SelectItem>
-                    ))}
-                </SelectContent>
-                </Select>
+            <Select
+              value={rolId !== undefined ? String(rolId) : 'all'}
+              onValueChange={(value) => {
+                if (value === 'all') setRolId(undefined);
+                else setRolId(Number(value));
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {lookups?.roles.map((rol) => (
+                  <SelectItem key={rol.id} value={String(rol.id)}>
+                    {rol.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="w-full md:w-1/4">
             <label className="text-xs font-medium text-slate-600 mb-1 block">
               Estado
             </label>
-                <Select
-                value={estadoId !== undefined ? String(estadoId) : 'all'}
-                onValueChange={(value) => {
-                    if (value === 'all') setEstadoId(undefined);
-                    else setEstadoId(Number(value));
-                    setPage(1);
-                }}
-                >
-                <SelectTrigger className="h-9 text-xs">
-                    <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {lookups?.userStatuses.map((estado) => (
-                    <SelectItem key={estado.id} value={String(estado.id)}>
-                        {estado.nombre}
-                    </SelectItem>
-                    ))}
-                </SelectContent>
-                </Select>
+            <Select
+              value={estadoId !== undefined ? String(estadoId) : 'all'}
+              onValueChange={(value) => {
+                if (value === 'all') setEstadoId(undefined);
+                else setEstadoId(Number(value));
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {lookups?.userStatuses.map((estado) => (
+                  <SelectItem key={estado.id} value={String(estado.id)}>
+                    {estado.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <Button
@@ -140,6 +233,9 @@ export default function AdminUsersPage() {
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                    ID
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-slate-600">
                     Usuario
                   </th>
                   <th className="px-3 py-2 text-left font-semibold text-slate-600">
@@ -154,47 +250,20 @@ export default function AdminUsersPage() {
                   <th className="px-3 py-2 text-right font-semibold text-slate-600">
                     Reputación
                   </th>
+                  <th className="px-3 py-2 text-right font-semibold text-slate-600">
+                    Acciones
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white">
                 {data?.users?.map((u: AdminUserListItem) => (
-                  <tr
-                    key={u.id}
-                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 transition-colors"
-                  >
-                    <td className="px-3 py-2">
-                      <div className="flex flex-col">
-                        <span className="font-medium text-slate-800">
-                          {u.nombre || u.usuario}
-                        </span>
-                        <span className="text-[11px] text-slate-500">
-                          @{u.usuario}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-[11px] text-slate-600">
-                      {u.email}
-                    </td>
-                    <td className="px-3 py-2">
-                      <Badge variant="outline" className="text-[10px]">
-                        {u.rol || 'Usuario'}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className="text-[11px] text-slate-700">
-                        {u.estadoNombre || 'Activo'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right text-[11px] text-slate-700">
-                      {u.reputacion.toFixed(2)}
-                    </td>
-                  </tr>
+                  <UserRow key={u.id} user={u} />
                 ))}
 
                 {(!data || data.users.length === 0) && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={7}
                       className="px-3 py-4 text-center text-xs text-slate-500 italic"
                     >
                       No se encontraron usuarios con los filtros actuales.

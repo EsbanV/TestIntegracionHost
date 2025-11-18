@@ -96,6 +96,7 @@ export interface AdminLookupsResponse {
   categories: AdminCategory[];
 }
 
+
 // ==========================
 // 👥 USUARIOS
 // ==========================
