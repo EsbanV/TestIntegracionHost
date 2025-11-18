@@ -17,27 +17,29 @@ import LoginFooter from './About.Components/footer';
 /* ======================= FONDO AURORA + IMAGEN ======================= */
 
 const AuroraBackground = () => (
-<div className="absolute inset-0 -z-10 h-screen overflow-hidden">
-  <div className="sticky top-0 w-full h-screen overflow-hidden">
+  <div className="absolute inset-0 -z-10 overflow-hidden">
+    
+    {/* Imagen que cubre la pantalla sin dejar huecos */}
     <img
       src={BACKGROUND_IMAGE}
-      className="w-full h-full object-cover"
+      alt="Fondo MarketUCT"
+      className="absolute inset-0 w-full h-full object-cover object-top"
+      draggable="false"
     />
 
+    {/* Capa oscura */}
+    <div className="absolute inset-0 bg-slate-950/60" />
 
-    {/* Capa oscura encima para mejorar contraste del texto */}
-    <div className="absolute inset-0 bg-white-950/50" />
-
-    {/* Blobs / auroras */}
-    <div className="absolute -top-[50%] left-1/2 h-[50vw] w-[50vw] -translate-x-1/2 rounded-full bg-blue-500/20 blur-[100px] animate-pulse-slow" />
-    <div className="absolute top-[20%] left-[10%] h-[30vw] w-[30vw] rounded-full bg-purple-500/20 blur-[120px] animate-blob" />
+    {/* Blobs */}
+    <div className="absolute -top-[40%] left-1/2 h-[55vw] w-[55vw] -translate-x-1/2 rounded-full bg-blue-500/20 blur-[110px] animate-pulse-slow" />
+    <div className="absolute top-[15%] left-[10%] h-[30vw] w-[30vw] rounded-full bg-purple-500/20 blur-[120px] animate-blob" />
     <div className="absolute bottom-[10%] right-[10%] h-[40vw] w-[40vw] rounded-full bg-indigo-500/20 blur-[120px] animate-blob animation-delay-2000" />
 
-    {/* Grid por encima */}
-    <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-    </div>
-</div>
+    {/* Grid */}
+    <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
+  </div>
 );
+
 
 /* ======================= TEXTO CON GRADIENTE ======================= */
 
