@@ -28,6 +28,12 @@ import AdminPage from '@/features/admin/AdminPage';
 import AdminUsersPage from '@/features/admin/AdminUsersPage';
 import AdminProductsPage from '@/features/admin/AdminProductsPage';
 import AdminTransactionsPage from '@/features/admin/AdminTransactionsPage';
+import AdminReportsPage from '@/features/admin/AdminReportsPage';
+import AdminPostsPage from '@/features/admin/AdminPostsPage';
+import AdminCommentsPage from '@/features/admin/AdminCommentsPage';
+import AdminCommunityPage from '@/features/admin/AdminCommunityPage';
+import AdminCategoriesPage from '@/features/admin/AdminCategoriesPage';
+import AdminSettingsPage from '@/features/admin/AdminSettingsPage';
 
 
 
@@ -116,7 +122,16 @@ export function AppRoutes() {
             <Route path="/admin/usuarios" element={<AdminUsersPage />} />
             <Route path="/admin/productos" element={<AdminProductsPage />} />
             <Route path="/admin/transacciones" element={<AdminTransactionsPage />} />
+            <Route path="/admin/reportes" element={<AdminReportsPage />} />
 
+            {/* Contenido */}
+            <Route path="/admin/publicaciones" element={<AdminPostsPage />} />
+            <Route path="/admin/comentarios" element={<AdminCommentsPage />} />
+            <Route path="/admin/comunidad" element={<AdminCommunityPage />} />
+
+            {/* Configuración */}
+            <Route path="/admin/categorias" element={<AdminCategoriesPage />} />
+            <Route path="/admin/ajustes" element={<AdminSettingsPage />} />
           </Route>
 
       </Route> {/* Fin ProtectedRoute */}
