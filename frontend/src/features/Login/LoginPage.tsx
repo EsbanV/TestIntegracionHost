@@ -6,6 +6,8 @@ import { useAuth } from '@/app/context/AuthContext';
 
 // Assets
 import loginBg from '@/assets/img/FondoLogin.jpg'; 
+import LogoMUCT from "@/assets/img/logoMUCT.png";
+
 
 // Configuración
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -123,7 +125,11 @@ export default function LoginPage() {
             initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: "spring" }}
             className="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-blue-600/30 mb-6 rotate-3"
           >
-            <ShieldCheck className="text-white w-9 h-9" />
+                <img 
+                  src={LogoMUCT} 
+                  alt="MarketUCT" 
+                  className="h-8 w-auto object-contain" 
+                />
           </motion.div>
           <h1 className="text-3xl font-extrabold text-slate-900 mb-2 tracking-tight">MarketUCT</h1>
           <p className="text-slate-500 text-sm font-medium">
