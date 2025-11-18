@@ -21,8 +21,9 @@ interface TransactionBarProps {
   onConfirmDelivery: () => void;
   onConfirmReceipt: () => void;
   onRate: () => void;
-  onCancel?: () => void; // 👈 nuevo
+  onCancel?: () => void; // 👈 nuevo (opcional)
 }
+
 
 
 // ============================================================================
@@ -30,7 +31,13 @@ interface TransactionBarProps {
 // ============================================================================
 
 
-export const TransactionStatusBar = ({ tx, onConfirmDelivery, onConfirmReceipt, onRate }: TransactionBarProps) => {
+export const TransactionStatusBar: React.FC<TransactionBarProps> = ({
+  tx,
+  onConfirmDelivery,
+  onConfirmReceipt,
+  onRate,
+  onCancel, // 👈 agregar aquí
+}: TransactionBarProps) => {
   // (Lógica de estados igual que antes, solo ajustamos clases visuales si es necesario)
   // ... [Mantener el código de TransactionStatusBar igual, ya que no era el problema principal]
   // Pendiente
