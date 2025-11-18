@@ -1,14 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useOnboarding, formatWelcomeName } from '@/features/Onboarding/onboarding.hooks';
-
 import { 
   StepOneBasicInfo, 
   StepTwoCampus, 
   StepThreePhoto, 
   OnboardingFooter 
 } from '@/features/Onboarding/Onboarding.Components';
+import { TermsModal } from '@/features/Onboarding/TermsModal'; // Importamos el Modal
 
 export default function OnboardingPage() {
   const {
@@ -25,22 +25,41 @@ export default function OnboardingPage() {
     handleFinalSubmit
   } = useOnboarding();
 
+  // ✅ Estado para el Modal
+  const [showTerms, setShowTerms] = useState(false);
+
+  // ✅ Handler cuando acepta desde el Modal
+  const handleAcceptTerms = () => {
+    setFormData(prev => ({ ...prev, acceptedTerms: true }));
+  };
+
   const renderStepContent = () => {
     switch (step) {
       case 1: return <StepOneBasicInfo formData={formData} setFormData={setFormData} isLoading={isLoading} />;
       case 2: return <StepTwoCampus formData={formData} setFormData={setFormData} isLoading={isLoading} />;
-      // Pasamos formData al paso 3 para el checkbox
-      case 3: return <StepThreePhoto formData={formData} setFormData={setFormData} isLoading={isLoading} imagePreview={imagePreview} fileInputRef={fileInputRef} onImageSelect={handleImageSelect} />;
+      case 3: return (
+        <StepThreePhoto 
+          formData={formData} 
+          setFormData={setFormData} 
+          isLoading={isLoading} 
+          imagePreview={imagePreview} 
+          fileInputRef={fileInputRef} 
+          onImageSelect={handleImageSelect}
+          onOpenTerms={() => setShowTerms(true)} // Pasamos función
+        />
+      );
       default: return null;
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 relative">
+      
+      {/* Tarjeta Principal */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100"
+        className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100 z-0"
       >
         <div className="bg-slate-900 p-8 pb-16 text-center relative overflow-hidden">
           <div className="absolute top-[-50px] left-[-50px] w-32 h-32 bg-blue-600/20 rounded-full blur-2xl"></div>
@@ -51,7 +70,7 @@ export default function OnboardingPage() {
               Hola, {formatWelcomeName(user?.nombre)}
             </h1>
             <p className="text-blue-200 text-sm mt-1 font-medium">
-              Vamos a configurar tu cuenta
+              Vamos a configurar tu perfil universitario
             </p>
           </div>
         </div>
@@ -63,7 +82,7 @@ export default function OnboardingPage() {
               {[1, 2, 3].map((i) => (
                 <div 
                   key={i} 
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                  className={`h-1.5 rounded-full transition-all duration-500 ${
                     i <= step ? 'w-8 bg-blue-600' : 'w-2 bg-slate-200'
                   }`}
                 />
@@ -89,12 +108,19 @@ export default function OnboardingPage() {
                 handleFinalSubmit={handleFinalSubmit} 
                 isLoading={isLoading}
                 canContinue={step !== 1 || !!formData.usuario}
-                formData={formData} // <--- Importante: Pasamos formData al footer
+                formData={formData}
             />
 
           </div>
         </div>
       </motion.div>
+
+      {/* ✅ Renderizamos el Modal fuera del flujo visual de la tarjeta */}
+      <TermsModal 
+        isOpen={showTerms} 
+        onClose={() => setShowTerms(false)} 
+        onAccept={handleAcceptTerms} 
+      />
     </div>
   );
 }
