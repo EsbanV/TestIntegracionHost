@@ -95,7 +95,7 @@ export function Sidebar({ className }: SidebarProps) {
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
           // CLAVE: 'fixed' en móvil, 'sticky' en desktop. Mismo estilo visual original.
           className={`
-            flex flex-col text-slate-100 border-r border-slate-800 shadow-xl z-50 bg-slate-950
+            flex flex-col text-slate-100 border-r border-slate-800 shadow-xl z-50
             ${isMobile ? 'fixed h-full top-0 left-0' : 'sticky top-0 h-screen'} 
             ${className}
           `}
@@ -253,7 +253,7 @@ function SidebarItem({ icon, label, to, isCollapsed, isActive }: SidebarItemProp
       </TooltipTrigger>
       
       {isCollapsed && (
-        <TooltipContent side="right" className="bg-slate-800 text-slate-200 border-slate-700 ml-2 font-medium z-[60]">
+        <TooltipContent side="right" className="bg-slate-400 text-slate-200 border-slate-700 ml-2 font-medium z-[60]">
           {label}
         </TooltipContent>
       )}
