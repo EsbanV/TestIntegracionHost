@@ -2,9 +2,9 @@ import { useState, useEffect } from "react"
 import { NavLink, useNavigate, useLocation } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "@/app/context/AuthContext"
-import { getImageUrl } from "@/app/imageHelper"
+import { getImageUrl } from "@/app/imageHelper";
 
-// UI Components
+// UI Components (Shadcn)
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 // Icons
 import {
+  LayoutDashboard,
   MessageSquare,
   FileText,
   Users,
@@ -25,49 +26,41 @@ import {
   ChevronRight,
   Store,
   HelpCircle,
-  PlusCircle,
-  Menu
+  PlusCircle
 } from "lucide-react"
 
 // Assets
-import LogoMUCT from "@/assets/img/logoMUCT.png"
+import LogoMUCT from "@/assets/img/logoMUCT.png" // Asegúrate de que la ruta sea correcta
+import UserDefault from "@/assets/img/user_default.png"
 
 interface SidebarProps {
   className?: string
+  active?: string // Mantenemos la prop por compatibilidad, aunque usaremos useLocation
 }
 
 export function Sidebar({ className }: SidebarProps) {
-  // Estado inicial basado en el ancho de ventana
-  const [isCollapsed, setIsCollapsed] = useState(window.innerWidth < 1024)
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024)
-  
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
-  // 1. Detectar cambio de tamaño de ventana
+  // Ajustar automáticamente en pantallas pequeñas al cargar
   useEffect(() => {
     const handleResize = () => {
-      const mobile = window.innerWidth < 1024
-      setIsMobile(mobile)
-      if (mobile) setIsCollapsed(true) // Forzar colapso en móvil
+      if (window.innerWidth < 1024) setIsCollapsed(true)
+      else setIsCollapsed(false)
     }
-    
     window.addEventListener("resize", handleResize)
+    handleResize() // Check initial
     return () => window.removeEventListener("resize", handleResize)
   }, [])
-
-  // 2. Auto-colapsar al navegar (UX Móvil)
-  useEffect(() => {
-    if (isMobile) setIsCollapsed(true)
-  }, [location.pathname, isMobile])
 
   const handleLogout = () => {
     logout()
     navigate("/login", { replace: true })
   }
 
-  // Variantes de animación
+  // Variantes de animación para el contenedor
   const sidebarVariants = {
     expanded: { width: "260px" },
     collapsed: { width: "80px" },
@@ -75,136 +68,153 @@ export function Sidebar({ className }: SidebarProps) {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <>
-        {/* BACKDROP (Solo Móvil cuando está expandido) */}
-        <AnimatePresence>
-          {isMobile && !isCollapsed && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsCollapsed(true)}
-              className="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm"
-            />
-          )}
-        </AnimatePresence>
+      <motion.aside
+        initial={false}
+        animate={isCollapsed ? "collapsed" : "expanded"}
+        variants={sidebarVariants}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className={`relative h-screen sticky top-0 flex flex-col text-slate-100 border-r border-slate-800 shadow-xl z-50 ${className}`}
+      >
+        {/* --- HEADER: LOGO & TOGGLE --- */}
+        <div className="flex items-center justify-between p-4 h-16 border-b border-slate-800/50">
+          <AnimatePresence mode="wait">
+            {!isCollapsed && (
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="flex items-center gap-2 overflow-hidden whitespace-nowrap"
+              >
+                <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/20">
+                  <img src={LogoMUCT} alt="Logo" className="h-5 w-auto brightness-0 invert" />
+                </div>
+                <span className="font-bold text-lg tracking-tight text-slate-100">
+                  Market<span className="text-yellow-600">UCT</span>
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          {/* Botón Colapsar (Centrado si está colapsado) */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className={`text-slate-400 hover:text-white hover:bg-slate-800 transition-all ${isCollapsed ? 'mx-auto' : ''}`}
+          >
+            {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+          </Button>
+        </div>
 
-        <motion.aside
-          initial={false}
-          animate={isCollapsed ? "collapsed" : "expanded"}
-          variants={sidebarVariants}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className={`
-            flex flex-col text-slate-100 border-r border-slate-800 shadow-2xl z-50
-            /* ESTILO TRANSPARENTE SOLICITADO */
-            bg-slate-950/90 backdrop-blur-md
-            /* POSICIONAMIENTO RESPONSIVO */
-            ${isMobile ? 'fixed h-full top-0 left-0' : 'sticky top-0 h-screen'} 
-            ${className}
-          `}
-        >
-          {/* --- HEADER --- */}
-          <div className="flex items-center justify-between p-4 h-16 border-b border-slate-800/50 shrink-0">
-            <AnimatePresence mode="wait">
+        {/* --- NAV LINKS --- */}
+        <nav className="flex-1 flex flex-col gap-2 p-3 overflow-y-auto overflow-x-hidden scrollbar-hide">
+          
+          <div className="space-y-1">
+            <SidebarItem
+              icon={<Store size={20} />}
+              label="Marketplace"
+              to="/home"
+              isCollapsed={isCollapsed}
+              isActive={location.pathname === "/home"}
+            />
+            <SidebarItem
+              icon={<PlusCircle size={20} />}
+              label="Crear Publicación"
+              to="/crear"
+              isCollapsed={isCollapsed}
+              isActive={location.pathname === "/crear"}
+            />
+            <SidebarItem
+              icon={<MessageSquare size={20} />}
+              label="Chats"
+              to="/chats"
+              isCollapsed={isCollapsed}
+              isActive={location.pathname === "/chats"}
+            />
+            <SidebarItem
+              icon={<Users size={20} />}
+              label="Foro Comunidad"
+              to="/forums"
+              isCollapsed={isCollapsed}
+              isActive={location.pathname === "/forums"}
+            />
+          </div>
+
+          <Separator className=" my-2" />
+
+          <div className="space-y-1">
+            <SidebarItem
+              icon={<FileText size={20} />}
+              label="Términos y Condiciones"
+              to="/terminos"
+              isCollapsed={isCollapsed}
+              isActive={location.pathname === "/terminos"}
+            />
+            <SidebarItem
+              icon={<HelpCircle size={20} />}
+              label="Ayuda"
+              to="/ayuda"
+              isCollapsed={isCollapsed}
+              isActive={location.pathname === "/ayuda"}
+            />
+          </div>
+        </nav>
+
+        {/* --- FOOTER: USER PROFILE & LOGOUT --- */}
+        <div className="p-3 border-t border-slate-800 ">
+          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} gap-3`}>
+            
+            {/* User Info (Solo visible expandido) */}
+            <AnimatePresence>
               {!isCollapsed && (
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="flex items-center gap-2 overflow-hidden whitespace-nowrap"
+                <motion.div 
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "auto" }}
+                  exit={{ opacity: 0, width: 0 }}
+                  className="flex items-center gap-3 overflow-hidden"
                 >
-                  <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/20 shrink-0">
-                    <img src={LogoMUCT} alt="Logo" className="h-5 w-auto brightness-0 invert" />
+                  <Avatar className="h-9 w-9 border border-slate-700">
+                    <AvatarImage src={getImageUrl(user.fotoPerfilUrl)} />
+                    <AvatarFallback className=" text-slate-400">
+                      {user?.usuario?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col truncate">
+                    <span className="text-sm font-medium text-slate-200 truncate max-w-[120px]">
+                      {user?.usuario}
+                    </span>
+                    <span className="text-xs text-slate-500 truncate max-w-[120px]">
+                      {user?.role}
+                    </span>
                   </div>
-                  <span className="font-bold text-lg tracking-tight text-slate-100">
-                    Market<span className="text-yellow-600">UCT</span>
-                  </span>
                 </motion.div>
               )}
             </AnimatePresence>
-            
-            {/* Botón Toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className={`text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all ${isCollapsed ? 'mx-auto' : ''}`}
-            >
-              {isCollapsed ? (isMobile ? <Menu size={20} /> : <ChevronRight size={20} />) : <ChevronLeft size={20} />}
-            </Button>
+
+            {/* Logout Button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleLogout}
+                  variant="ghost"
+                  size={isCollapsed ? "icon" : "sm"}
+                  className={`${isCollapsed ? '' : 'ml-auto'} text-red-400 hover:text-red-300 hover:bg-red-500/10`}
+                >
+                  <LogOut size={20} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className=" text-slate-200 border-slate-700">
+                <p>Cerrar Sesión</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
-
-          {/* --- NAV LINKS --- */}
-          <nav className="flex-1 flex flex-col gap-2 p-3 overflow-y-auto overflow-x-hidden scrollbar-hide">
-            <div className="space-y-1">
-              <SidebarItem icon={<Store size={20} />} label="Marketplace" to="/home" isCollapsed={isCollapsed} isActive={location.pathname === "/home"} />
-              <SidebarItem icon={<PlusCircle size={20} />} label="Crear Publicación" to="/crear" isCollapsed={isCollapsed} isActive={location.pathname === "/crear"} />
-              <SidebarItem icon={<MessageSquare size={20} />} label="Chats" to="/chats" isCollapsed={isCollapsed} isActive={location.pathname === "/chats"} />
-              <SidebarItem icon={<Users size={20} />} label="Foro Comunidad" to="/forums" isCollapsed={isCollapsed} isActive={location.pathname === "/forums"} />
-            </div>
-
-            <Separator className="bg-slate-800/50 my-2" />
-
-            <div className="space-y-1">
-              <SidebarItem icon={<FileText size={20} />} label="Términos" to="/terminos" isCollapsed={isCollapsed} isActive={location.pathname === "/terminos"} />
-              <SidebarItem icon={<HelpCircle size={20} />} label="Ayuda" to="/ayuda" isCollapsed={isCollapsed} isActive={location.pathname === "/ayuda"} />
-            </div>
-          </nav>
-
-          {/* --- FOOTER --- */}
-          <div className="p-3 border-t border-slate-800 bg-slate-950/50 shrink-0">
-            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} gap-3`}>
-              
-              <AnimatePresence>
-                {!isCollapsed && (
-                  <motion.div 
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: "auto" }}
-                    exit={{ opacity: 0, width: 0 }}
-                    className="flex items-center gap-3 overflow-hidden"
-                  >
-                    <Avatar className="h-9 w-9 border border-slate-700 shrink-0">
-                      <AvatarImage src={getImageUrl(user?.fotoPerfilUrl)} />
-                      <AvatarFallback className="bg-slate-800 text-slate-400">
-                        {user?.usuario?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col truncate">
-                      <span className="text-sm font-medium text-slate-200 truncate max-w-[120px]">
-                        {user?.usuario}
-                      </span>
-                      <span className="text-xs text-slate-500 truncate max-w-[120px]">
-                        {user?.role}
-                      </span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    onClick={handleLogout}
-                    variant="ghost"
-                    size={isCollapsed ? "icon" : "sm"}
-                    className={`${isCollapsed ? '' : 'ml-auto'} text-red-400 hover:text-red-300 hover:bg-red-500/10`}
-                  >
-                    <LogOut size={20} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="bg-slate-800 text-slate-200 border-slate-700">
-                  <p>Cerrar Sesión</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          </div>
-        </motion.aside>
-      </>
+        </div>
+      </motion.aside>
     </TooltipProvider>
   )
 }
 
-// --- SUBCOMPONENTE ITEM ---
+// --- SUBCOMPONENTE: ITEM DE NAVEGACIÓN ---
 interface SidebarItemProps {
   icon: React.ReactNode
   label: string
@@ -222,16 +232,18 @@ function SidebarItem({ icon, label, to, isCollapsed, isActive }: SidebarItemProp
           className={`
             relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group
             ${isActive 
-              ? "bg-blue-600/90 text-white shadow-md shadow-blue-900/20 backdrop-blur-sm" 
-              : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/50"
+              ? "bg-blue-600 text-white shadow-md shadow-blue-900/20" 
+              : "text-slate-400 hover:text-slate-100 hover:bg-slate-400"
             }
             ${isCollapsed ? "justify-center" : ""}
           `}
         >
+          {/* Icono */}
           <span className={`flex-shrink-0 transition-colors ${isActive ? "text-white" : "text-slate-400 group-hover:text-slate-100"}`}>
             {icon}
           </span>
 
+          {/* Texto (Animado) */}
           <AnimatePresence>
             {!isCollapsed && (
               <motion.span
@@ -246,6 +258,7 @@ function SidebarItem({ icon, label, to, isCollapsed, isActive }: SidebarItemProp
             )}
           </AnimatePresence>
 
+          {/* Indicador Activo (Barra lateral) */}
           {isActive && !isCollapsed && (
             <motion.div
               layoutId="activeSidebarItem"
@@ -255,8 +268,9 @@ function SidebarItem({ icon, label, to, isCollapsed, isActive }: SidebarItemProp
         </NavLink>
       </TooltipTrigger>
       
+      {/* Tooltip solo cuando está colapsado */}
       {isCollapsed && (
-        <TooltipContent side="right" className="bg-slate-900/90 backdrop-blur text-slate-200 border-slate-700 ml-2 font-medium z-[60]">
+        <TooltipContent side="right" className=" text-slate-200 border-slate-700 ml-2 font-medium">
           {label}
         </TooltipContent>
       )}
