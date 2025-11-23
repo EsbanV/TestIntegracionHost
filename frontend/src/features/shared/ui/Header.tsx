@@ -125,16 +125,12 @@ export const Header: React.FC = () => {
   };
 
   return (
-    // Se eliminó z-40 para que no tape el sidebar móvil (que es z-50)
-    // Se agregó pl-14 md:pl-4 para dar espacio al toggle del sidebar en móvil si fuera necesario
     <header className="sticky top-0 z-30 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md shadow-sm h-16">
       <div className="flex h-full w-full items-center justify-between px-4 md:px-6">
         
-        {/* --- IZQUIERDA: TÍTULO DE PÁGINA --- */}
-        {/* Ya no necesitamos el menú hamburguesa ni el logo aquí, porque el Sidebar lo maneja */}
+        {/* --- IZQUIERDA: TÍTULO --- */}
         <div className="flex items-center">
           <h2 className="text-lg md:text-xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-            {/* En móvil, damos un margen extra a la izquierda para que no choque con el Sidebar comprimido */}
             <span className="lg:hidden w-8"></span> 
             {getPageTitle()}
           </h2>
@@ -143,19 +139,17 @@ export const Header: React.FC = () => {
         {/* --- DERECHA: BUSCADOR Y PERFIL --- */}
         <div className="flex items-center gap-3 md:gap-6">
           
-          {/* BUSCADOR (Lógica intacta) */}
+          {/* BUSCADOR */}
           <div 
             ref={searchRef}
             className={`relative transition-all duration-300 ease-in-out ${isSearchFocused ? 'w-full absolute left-0 px-4 bg-white h-full flex items-center z-50 md:static md:w-96 md:p-0' : 'w-auto md:w-64'}`}
           >
-             {/* Botón Lupa Móvil (Solo visible cuando NO está enfocado) */}
             {!isSearchFocused && (
                 <Button variant="ghost" size="icon" className="md:hidden text-slate-600" onClick={() => setIsSearchFocused(true)}>
                     <Search className="h-5 w-5" />
                 </Button>
             )}
 
-            {/* Input (Visible siempre en desktop, condicional en móvil) */}
             <div className={`relative group w-full ${!isSearchFocused ? 'hidden md:block' : 'block'}`}>
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${isSearchFocused ? 'text-blue-600' : 'text-slate-400'}`} />
               <Input
@@ -163,7 +157,6 @@ export const Header: React.FC = () => {
                 placeholder="Buscar usuarios..."
                 className={`pl-10 bg-slate-100/50 border-slate-200 focus:bg-white transition-all rounded-full h-10 w-full focus:ring-2 focus:ring-blue-100 focus:border-blue-400 ${isSearchFocused ? 'shadow-sm' : ''}`}
                 onFocus={() => setIsSearchFocused(true)}
-                // onBlur se maneja con el click outside ref
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -176,7 +169,6 @@ export const Header: React.FC = () => {
               )}
             </div>
 
-            {/* Resultados Dropdown */}
             <AnimatePresence>
               {isSearchFocused && searchValue.trim().length > 0 && (
                 <motion.div
@@ -267,3 +259,5 @@ export const Header: React.FC = () => {
     </header>
   )
 }
+
+export default Header; // <--- ESTA LÍNEA ES LA QUE FALTABA
