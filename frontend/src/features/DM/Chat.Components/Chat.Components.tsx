@@ -481,7 +481,8 @@ export const ChatInputArea = ({ onSend, isLoading }: ChatInputProps) => {
             onClick={() => fileRef.current?.click()}
             className="p-1.5 sm:p-2 text-slate-400 hover:bg-white hover:text-blue-600 rounded-lg transition-all shadow-sm hover:shadow"
           >
-            <LuImage size={18} className="sm:size-20" />
+            {/* Icono tamaño fijo (no gigante en escritorio) */}
+            <LuImage size={18} />
           </button>
           <button
             type="button"
@@ -492,7 +493,8 @@ export const ChatInputArea = ({ onSend, isLoading }: ChatInputProps) => {
                 : "text-slate-400 hover:bg-white"
             }`}
           >
-            <LuSmile size={18} className="sm:size-20" />
+            {/* Icono tamaño fijo */}
+            <LuSmile size={18} />
           </button>
         </div>
 

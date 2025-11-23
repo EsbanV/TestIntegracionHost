@@ -185,13 +185,13 @@ export default function ChatPage() {
         flex 
         h-[calc(100vh-4rem)]
         bg-slate-50 
-        overflow-hidden 
         border-t border-slate-200
         md:border md:rounded-xl 
         shadow-sm 
         m-0 
         md:m-4 
         lg:m-6
+        overflow-y-auto md:overflow-hidden
       "
     >
       {/* SIDEBAR */}
