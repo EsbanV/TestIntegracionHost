@@ -63,7 +63,6 @@ export default function ChatPage() {
   const { data: transactions = [] } = useChatTransactions(activeChatId, true);
   const [currentTxIndex, setCurrentTxIndex] = useState(0);
 
-  // Índice seguro (por si cambia el largo del array)
   const safeTxIndex =
     transactions.length === 0
       ? 0
@@ -85,18 +84,22 @@ export default function ChatPage() {
           avatar: undefined,
         } as unknown as Chat)
       : null);
-    const unreadCount = displayChatInfo?.noLeidos ?? 0;
-
+  const unreadCount = displayChatInfo?.noLeidos ?? 0;
 
   // --- SOCKETS & ACCIONES ---
   useChatSocket(activeChatId);
-  const { sendMessage, markAsRead, confirmTransaction, cancelTransaction, isSending } =
-    useChatActions();
+  const {
+    sendMessage,
+    markAsRead,
+    confirmTransaction,
+    cancelTransaction,
+    isSending,
+  } = useChatActions();
 
   // --- HANDLERS ---
 
   const handleSend = async (texto: string, file?: File) => {
-    if (!checkRateLimit()) return; // anti-spam
+    if (!checkRateLimit()) return;
     if (!activeChatId) return;
 
     try {
@@ -167,28 +170,37 @@ export default function ChatPage() {
     }
   }, [location]);
 
-  // Marcar como leído al abrir el chat o recibir nuevos mensajes
-// Marcar como leído al abrir el chat cuando hay mensajes sin leer
-    useEffect(() => {
+  // Marcar como leído al abrir el chat cuando hay mensajes sin leer
+  useEffect(() => {
     if (!activeChatId) return;
     if (unreadCount <= 0) return;
-
-    // Solo se ejecuta cuando entras a un chat que tiene noLeidos > 0
     markAsRead(activeChatId);
-    }, [activeChatId, unreadCount]);
-
+  }, [activeChatId, unreadCount, markAsRead]);
 
   // --- RENDER ---
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-slate-50 overflow-hidden rounded-xl border border-slate-200 shadow-sm m-4 md:m-6">
+    <div
+      className="
+        flex 
+        h-[calc(100vh-4rem)]
+        bg-slate-50 
+        overflow-hidden 
+        border-t border-slate-200
+        md:border md:rounded-xl 
+        shadow-sm 
+        m-0 
+        md:m-4 
+        lg:m-6
+      "
+    >
       {/* SIDEBAR */}
       <div
         className={`${
           mobileView === "list" ? "flex" : "hidden md:flex"
         } w-full md:w-80 lg:w-96 flex-col border-r border-slate-200 bg-white z-20`}
       >
-        <div className="p-4 border-b border-slate-100 font-bold text-lg text-slate-800 sticky top-0 bg-white z-10">
+        <div className="p-3 md:p-4 border-b border-slate-100 font-bold text-base md:text-lg text-slate-800 sticky top-0 bg-white z-10">
           Mensajes
         </div>
         <div className="flex-1 overflow-hidden">
@@ -215,8 +227,8 @@ export default function ChatPage() {
         {activeChatId && displayChatInfo ? (
           <>
             {/* Header */}
-            <div className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm z-10 shrink-0">
-              <div className="flex items-center gap-3">
+            <div className="h-14 md:h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shadow-sm z-10 shrink-0">
+              <div className="flex items-center gap-2 md:gap-3">
                 <button
                   onClick={() => setMobileView("list")}
                   className="md:hidden p-2 hover:bg-slate-100 rounded-full text-slate-600"
@@ -224,17 +236,16 @@ export default function ChatPage() {
                   <LuX />
                 </button>
                 <div>
-                  <h3 className="font-bold text-slate-800">
+                  <h3 className="font-bold text-slate-800 text-sm md:text-base">
                     {displayChatInfo.nombre}
                   </h3>
-                  <p className="text-xs text-green-600 font-medium flex items-center gap-1">
+                  <p className="text-[10px] md:text-xs text-green-600 font-medium flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500" />{" "}
                     En línea
                   </p>
                 </div>
               </div>
 
-              {/* Botón de calificar (solo cuando la transacción actual está completada y soy comprador) */}
               {currentTx?.estadoId === 2 && currentTx.esComprador && (
                 <button
                   onClick={() => {
@@ -286,16 +297,16 @@ export default function ChatPage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    className="absolute bottom-full left-0 right-0 mx-4 mb-2 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 z-20"
+                    className="absolute bottom-full left-0 right-0 mx-3 md:mx-4 mb-2 bg-red-50 border border-red-200 text-red-600 px-3 md:px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 z-20"
                   >
                     <div className="bg-red-100 p-1.5 rounded-full">
                       <LuClock className="w-4 h-4 text-red-600 animate-pulse" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-bold text-xs uppercase tracking-wide">
+                      <p className="font-bold text-[11px] md:text-xs uppercase tracking-wide">
                         Estás escribiendo muy rápido
                       </p>
-                      <p className="text-sm">
+                      <p className="text-xs md:text-sm">
                         Por favor espera <b>{timeLeft}s</b> para enviar más
                         mensajes.
                       </p>
@@ -311,11 +322,11 @@ export default function ChatPage() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50">
-            <div className="w-24 h-24 bg-white rounded-full shadow-sm flex items-center justify-center mb-4">
-              <LuMessageCircle size={48} className="text-slate-200" />
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 px-6">
+            <div className="w-20 h-20 md:w-24 md:h-24 bg-white rounded-full shadow-sm flex items-center justify-center mb-4">
+              <LuMessageCircle size={40} className="text-slate-200 md:size-48" />
             </div>
-            <p className="font-medium text-lg text-slate-500">
+            <p className="font-medium text-base md:text-lg text-slate-500 text-center">
               Selecciona un chat para comenzar
             </p>
           </div>
