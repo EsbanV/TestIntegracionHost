@@ -4,11 +4,11 @@ import Header from './Header'
 import { Sidebar } from './Sidebar'
 
 interface PageLayoutProps {
-  /** Muestra u oculta la barra lateral (en desktop). Default: true */
+  /** Muestra u oculta la barra lateral. Default: true */
   showSidebar?: boolean
   /** Muestra u oculta la barra superior. Default: true */
   showHeader?: boolean
-  /** Habilita el widget de chat flotante. Default: true (se oculta automático en /chats) */
+  /** Habilita el widget de chat flotante. Default: true */
   showFloatingChat?: boolean
 }
 
@@ -19,31 +19,30 @@ export default function PageLayout({
 }: PageLayoutProps) {
   const { pathname } = useLocation()
   
-  // Detectar si estamos en la vista de chat completa para ajustar el scroll del contenedor
+  // Detectar si estamos en la vista de chat completa
   const isDM = pathname.startsWith('/chats')
-
-  // Lógica de visualización del Chat Flotante:
-  // Se muestra si la prop es true Y NO estamos en la página de chat completa
   const shouldRenderFloatingChat = showFloatingChat && !isDM
 
   return (
     <div className="flex h-screen w-full bg-slate-50/50 overflow-hidden">
       
-      {/* 1. Sidebar Controlable */}
-      {showSidebar && (
-        <Sidebar className="hidden md:flex flex-shrink-0" />
-      )}
+      {/* 1. Sidebar Inteligente */}
+      {/* Ahora maneja su propia responsividad (Fixed/Collapsed en móvil, Sticky en desktop) */}
+      {showSidebar && <Sidebar />}
 
       {/* 2. Contenedor Principal */}
-      <div className="flex flex-1 flex-col min-w-0">
+      {/* NOTA: Agregamos 'pl-20' (80px) solo en móvil para compensar la Sidebar 'fixed'.
+         En desktop ('lg:pl-0'), la sidebar es 'sticky' y ocupa su propio espacio en el flex.
+      */}
+      <div className={`
+        flex flex-1 flex-col min-w-0 transition-all duration-300
+        ${showSidebar ? 'pl-20 lg:pl-0' : ''}
+      `}>
         
-        {/* 2a. Header Controlable */}
+        {/* 2a. Header */}
         {showHeader && <Header />}
 
-        {/* 2b. Área de Contenido
-            - Si es DM: overflow-hidden (el chat maneja su scroll)
-            - Si no: overflow-y-auto (scroll normal de la página)
-        */}
+        {/* 2b. Área de Contenido */}
         <main 
           className={`
             flex-1 w-full relative
@@ -54,7 +53,7 @@ export default function PageLayout({
         </main>
       </div>
 
-      {/* 3. Chat Flotante Controlable */}
+      {/* 3. Chat Flotante */}
       {shouldRenderFloatingChat && <FloatingChat />}
     </div>
   )
