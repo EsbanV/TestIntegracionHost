@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/app/context/AuthContext";
+import API from "@/api/axiosInstance"; // <--- Importamos tu instancia
 import type { 
   UserProfile, 
   UpdateProfileData, 
@@ -10,110 +11,12 @@ import type {
   UsePublicationsFeedProps
 } from "./perfil.types";
 
-const URL_BASE = import.meta.env.VITE_API_URL;
-
-// --- FETCHERS ---
-
-// 1. Perfil Privado (Mi cuenta)
-const fetchMyProfileRequest = async (token: string | null): Promise<UserProfile> => {
-  if (!token) throw new Error("No token");
-  
-  const res = await fetch(`${URL_BASE}/api/users/profile`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  
-  const data: ProfileApiResponse = await res.json();
-  
-  if (!res.ok || !data.success) {
-    throw new Error("Error al cargar perfil");
-  }
-
-  // Normalizar datos: Convertir 'resumen' a 'stats' para la UI
-  const { resumen, ...userData } = data.data;
-  return {
-    ...userData,
-    stats: {
-      ventas: resumen?.totalVentas || 0,
-      publicaciones: resumen?.totalProductos || 0,
-      compras: resumen?.totalCompras || 0
-    }
-  };
-};
-
-// 2. Perfil Público (Otro usuario)
-const fetchPublicProfileRequest = async (userId: number): Promise<UserProfile> => {
-  const res = await fetch(`${URL_BASE}/api/users/public/${userId}`);
-  
-  const data: ProfileApiResponse = await res.json();
-  
-  if (!res.ok || !data.success) {
-    throw new Error("Usuario no encontrado");
-  }
-  
-  return data.data; 
-};
-
-const fetchReviewsRequest = async (userId: number): Promise<ReviewsData> => {
-  const res = await fetch(`${URL_BASE}/api/users/reviews/user/${userId}`);
-  const data = await res.json();
-  
-  if (!res.ok || !data.ok) {
-      return { ok: false, reviews: [], stats: { total: 0, promedio: "0" } };
-  }
-  return data;
-};
-
-const updateProfileRequest = async (data: UpdateProfileData, token: string | null) => {
-  if (!token) throw new Error("No token");
-  
-  const res = await fetch(`${URL_BASE}/api/users/profile`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    credentials: 'include',
-    body: JSON.stringify(data),
-  });
-  
-  const result = await res.json();
-  
-  if (!res.ok || !result.ok) {
-      throw new Error(result.message || "Error al actualizar");
-  }
-  return result.user;
-};
-
-const uploadProfilePhotoRequest = async (file: File, token: string | null) => {
-  if (!token) throw new Error("No token");
-  
-  const formData = new FormData();
-  formData.append('photo', file);
-
-  const res = await fetch(`${URL_BASE}/api/upload/profile-photo`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    credentials: 'include',
-    body: formData,
-  });
-  
-  const result = await res.json();
-  if (!res.ok || !result.ok) throw new Error(result.message || "Error al subir imagen");
-  return result;
-};
-
-// --- HOOK DE PUBLICACIONES (Feed) ---
-const fetchUserProductsRequest = async (userId: number) => {
-  const res = await fetch(`${URL_BASE}/api/products/user/${userId}?limit=50`); 
-  const data = await res.json();
-  if (!res.ok) throw new Error("Error al cargar productos del usuario");
-  return data.products || [];
-};
+// --- FETCHERS SIMPLIFICADOS (Dentro del hook es mejor, pero los dejamos como helpers puros) ---
+// Nota: Ya no necesitamos pasar 'token', Axios lo inyecta si existe en localStorage.
 
 // --- HOOK PRINCIPAL ---
-
 export const useProfile = (profileIdParam?: string) => {
-  const { token, user: sessionUser } = useAuth();
+  const { user: sessionUser } = useAuth();
   const queryClient = useQueryClient();
   
   // Determinar si es mi perfil
@@ -128,15 +31,36 @@ export const useProfile = (profileIdParam?: string) => {
   // 1. Query Perfil
   const profileQuery = useQuery({
     queryKey: ["userProfile", targetUserId],
-    queryFn: () => {
+    queryFn: async () => {
         if (!targetUserId) return null;
-        return isOwnProfile 
-            ? fetchMyProfileRequest(token) 
-            : fetchPublicProfileRequest(targetUserId);
+        
+        let responseData;
+        
+        if (isOwnProfile) {
+            // A. Perfil Privado (Mi cuenta)
+            const { data } = await API.get<ProfileApiResponse>('/users/profile');
+            if (!data.success) throw new Error("Error al cargar perfil");
+            responseData = data.data;
+        } else {
+            // B. Perfil Público
+            const { data } = await API.get<ProfileApiResponse>(`/users/public/${targetUserId}`);
+            if (!data.success) throw new Error("Usuario no encontrado");
+            responseData = data.data;
+        }
+
+        // Normalizar datos: backend devuelve 'resumen', UI espera 'stats'
+        // Hacemos esto aquí para que el componente reciba data limpia
+        const { resumen, ...userData } = responseData;
+        return {
+            ...userData,
+            stats: {
+                ventas: resumen?.totalVentas || 0,
+                publicaciones: resumen?.totalProductos || 0,
+                compras: resumen?.totalCompras || 0
+            }
+        } as UserProfile;
     },
     enabled: !!targetUserId,
-    // ⚠️ ELIMINADO: initialData causaba el bug al usar datos incompletos de la sesión.
-    // Ahora forzamos que siempre cargue los datos frescos del backend.
   });
 
   const user = profileQuery.data;
@@ -144,11 +68,19 @@ export const useProfile = (profileIdParam?: string) => {
   // 2. Query Reseñas
   const reviewsQuery = useQuery({
     queryKey: ["reviews", targetUserId],
-    queryFn: () => fetchReviewsRequest(targetUserId!),
+    queryFn: async () => {
+        try {
+            const { data } = await API.get(`/users/reviews/user/${targetUserId}`);
+            return data.ok ? data : { ok: false, reviews: [], stats: { total: 0, promedio: "0" } };
+        } catch (error) {
+            // Retornamos estructura vacía en error para no romper la UI
+            return { ok: false, reviews: [], stats: { total: 0, promedio: "0" } };
+        }
+    },
     enabled: !!targetUserId,
   });
 
-  // Sincronizar formulario cuando llegan los datos REALES del backend
+  // Sincronizar formulario
   useEffect(() => {
     if (user && isOwnProfile) {
       setFormData({
@@ -161,20 +93,32 @@ export const useProfile = (profileIdParam?: string) => {
     }
   }, [user, isOwnProfile]);
 
-  // 3. Mutaciones
+  // 3. Mutaciones (Update & Upload)
   const updateMutation = useMutation({
-    mutationFn: (data: UpdateProfileData) => updateProfileRequest(data, token),
+    mutationFn: async (data: UpdateProfileData) => {
+       const { data: res } = await API.put('/users/profile', data);
+       if (!res.ok) throw new Error(res.message || "Error al actualizar");
+       return res.user;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["userProfile"] });
       setIsEditing(false);
     },
-    onError: (err) => alert(err.message),
+    onError: (err: any) => alert(err.message || "Error al actualizar perfil"),
   });
 
   const photoMutation = useMutation({
-    mutationFn: (file: File) => uploadProfilePhotoRequest(file, token),
+    mutationFn: async (file: File) => {
+        const formData = new FormData();
+        formData.append('photo', file);
+        
+        // Axios detecta FormData y ajusta el header Content-Type automáticamente
+        const { data } = await API.post('/upload/profile-photo', formData);
+        if (!data.ok) throw new Error(data.message || "Error al subir imagen");
+        return data;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["userProfile"] }),
-    onError: (err) => alert(err.message),
+    onError: (err: any) => alert(err.message || "Error al subir foto"),
   });
 
   return {
@@ -182,7 +126,7 @@ export const useProfile = (profileIdParam?: string) => {
     isLoadingProfile: profileQuery.isLoading,
     isErrorProfile: profileQuery.isError,
     
-    reviewData: reviewsQuery.data,
+    reviewData: reviewsQuery.data as ReviewsData,
     isLoadingReviews: reviewsQuery.isLoading,
     
     isOwnProfile,
@@ -197,23 +141,26 @@ export const useProfile = (profileIdParam?: string) => {
 };
 
 // --- HOOK DE PUBLICACIONES (Feed) ---
-export const usePublicationsFeed = ({ 
-  authorId,
-}: UsePublicationsFeedProps) => {
+export const usePublicationsFeed = ({ authorId }: UsePublicationsFeedProps) => {
   
   const userId = authorId ? parseInt(authorId) : null;
 
   const { data: posts = [], isLoading, isError, error } = useQuery({
     queryKey: ["user-products", userId],
-    queryFn: () => fetchUserProductsRequest(userId!),
+    queryFn: async () => {
+        const { data } = await API.get(`/products/user/${userId}`, {
+            params: { limit: 50 }
+        });
+        return data.products || [];
+    },
     enabled: !!userId,
   });
 
   const hasResults = posts.length > 0;
   const totalResults = posts.length;
 
+  // Mapeo de datos para la UI
   const items: PublicationItem[] = posts.map((post: any) => {
-    // Lógica robusta para imágenes
     const mainImage = post.imagenes?.[0]?.url 
                    || post.imagenUrl          
                    || null;
