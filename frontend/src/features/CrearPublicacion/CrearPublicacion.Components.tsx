@@ -75,11 +75,14 @@ interface ImageGalleryProps {
 }
 
 export const ImageGalleryPanel = ({ images, isLoading, onRemove, onUpload }: ImageGalleryProps) => (
-  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm sticky top-6">
+  // CAMBIO: 'sticky top-6' solo en lg (desktop). En móvil fluye normal (relative).
+  <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm relative lg:sticky lg:top-6">
     <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
       <ImageIcon size={20} className="text-blue-600" /> Galería
     </h2>
     
+    {/* CAMBIO: Se mantiene grid-cols-2 que funciona bien en móvil,
+        pero aseguramos gap-3 para que no se peguen */}
     <div className="grid grid-cols-2 gap-3 mb-4">
       {images.map((file, idx) => (
         <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 group shadow-sm">
@@ -88,7 +91,8 @@ export const ImageGalleryPanel = ({ images, isLoading, onRemove, onUpload }: Ima
           <button 
             type="button"
             onClick={() => onRemove(idx)}
-            className="absolute top-1.5 right-1.5 bg-white/90 text-slate-600 p-1 rounded-full hover:bg-red-50 hover:text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-all transform scale-90 group-hover:scale-100"
+            // CAMBIO: Opacidad ajustada para que en móvil (donde no hay hover del mouse) sea más fácil interactuar si se necesita
+            className="absolute top-1.5 right-1.5 bg-white/90 text-slate-600 p-1 rounded-full hover:bg-red-50 hover:text-red-500 shadow-sm opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all transform lg:scale-90 lg:group-hover:scale-100"
             disabled={isLoading}
           >
             <X size={14} />
@@ -103,7 +107,7 @@ export const ImageGalleryPanel = ({ images, isLoading, onRemove, onUpload }: Ima
           <div className="p-3 bg-slate-50 rounded-full mb-2 group-hover:bg-blue-100 transition-colors">
               <Upload className="text-slate-400 group-hover:text-blue-500" size={20} />
           </div>
-          <span className="text-xs text-slate-500 font-bold uppercase tracking-wide">Subir Foto</span>
+          <span className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wide text-center px-2">Subir Foto</span>
           <input type="file" accept="image/*" className="hidden" onChange={onUpload} disabled={isLoading} multiple />
         </label>
       )}

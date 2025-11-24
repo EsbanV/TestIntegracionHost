@@ -14,27 +14,27 @@ import {
 
 export default function CreateProductPage() {
   
-  // Lógica extraída al Hook
   const {
     formData, images, isLoading, error, success,
     handleChange, handleImageUpload, removeImage, handleSubmit, handleCancel
   } = useCreatePublication();
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] py-10 px-4 sm:px-6">
+    // CAMBIO: py-6 en móvil, lg:py-10 en escritorio
+    <div className="min-h-screen bg-[#F8FAFC] py-6 lg:py-10 px-4 sm:px-6">
       <div className="max-w-5xl mx-auto">
         
         {/* Header */}
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="mb-6 lg:mb-8"
         >
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Vender Producto</h1>
-          <p className="text-slate-500 mt-2">Publica tu artículo en el marketplace universitario.</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">Vender Producto</h1>
+          <p className="text-sm lg:text-base text-slate-500 mt-2">Publica tu artículo en el marketplace universitario.</p>
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           
           {/* COLUMNA IZQUIERDA: FORMULARIO */}
           <motion.div 
@@ -43,7 +43,8 @@ export default function CreateProductPage() {
             transition={{ delay: 0.1 }}
             className="lg:col-span-2 space-y-6"
           >
-            <form onSubmit={handleSubmit} className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-8">
+            {/* CAMBIO: p-5 en móvil para ganar espacio, sm:p-8 en escritorio */}
+            <form onSubmit={handleSubmit} className="bg-white p-5 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-8">
               
               {/* Info Principal */}
               <div className="space-y-5">
@@ -63,7 +64,8 @@ export default function CreateProductPage() {
                    />
                 </div>
 
-                <div className="grid grid-cols-2 gap-5">
+                {/* CAMBIO: grid-cols-1 en móvil (inputs apilados), sm:grid-cols-2 en tablet/desktop */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
                     <Label>Precio (CLP)</Label>
                     <div className="relative">
@@ -104,6 +106,7 @@ export default function CreateProductPage() {
                    <h2 className="text-lg font-semibold text-slate-800">Categorización</h2>
                 </div>
 
+                {/* CAMBIO: grid-cols-1 en móvil, sm:grid-cols-2 en tablet/desktop */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
                     <Label>Categoría</Label>
@@ -164,14 +167,15 @@ export default function CreateProductPage() {
                   <button
                       onClick={handleSubmit}
                       disabled={isLoading}
-                      className="w-full py-3.5 px-4 bg-slate-900 text-white rounded-xl font-bold shadow-lg shadow-slate-900/20 hover:bg-slate-800 hover:shadow-slate-900/30 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      // CAMBIO: padding ajustado ligeramente
+                      className="w-full py-3.5 px-4 bg-slate-900 text-white rounded-xl font-bold shadow-lg shadow-slate-900/20 hover:bg-slate-800 hover:shadow-slate-900/30 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm lg:text-base"
                   >
                       {isLoading ? <Loader2 className="animate-spin" size={20} /> : "Publicar Ahora"}
                   </button>
                   <button
                       onClick={handleCancel}
                       disabled={isLoading}
-                      className="w-full py-3 px-4 bg-white text-slate-600 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-800 transition-all"
+                      className="w-full py-3 px-4 bg-white text-slate-600 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-800 transition-all text-sm lg:text-base"
                   >
                       Cancelar
                   </button>
