@@ -81,7 +81,7 @@ export const useFavorites = () => {
   const { data: favorites = new Set<number>() } = useQuery({
     queryKey: ['favorites'],
     queryFn: async () => {
-       const { data } = await API.get('/favorites', { params: { limit: 100 } });
+       const { data } = await API.get('/api/favorites', { params: { limit: 100 } });
        if (data.ok) return new Set<number>(data.favorites.map((fav: any) => fav.productoId));
        return new Set<number>();
     },
@@ -93,9 +93,9 @@ export const useFavorites = () => {
       const isFav = favorites.has(productId);
       
       if (isFav) {
-        await API.delete(`/favorites/${productId}`);
+        await API.delete(`/api/favorites/${productId}`);
       } else {
-        await API.post('/favorites', { productoId: productId });
+        await API.post('/api/favorites', { productoId: productId });
       }
       
       return { productId, added: !isFav };
@@ -127,7 +127,7 @@ export function useContactSeller() {
       if (!token) return { ok: false, created: false, transactionId: 0, message: "No autenticado" };
 
       try {
-        const { data } = await API.post("/transactions", {
+        const { data } = await API.post("/api/transactions", {
             productId,
             quantity: 1,
         });
@@ -152,7 +152,7 @@ export function useContactSeller() {
       if (!token || !content.trim()) return false;
 
       try {
-        const { data } = await API.post("/chat/send", {
+        const { data } = await API.post("/api/chat/send", {
             destinatarioId: toUserId,
             contenido: content,
             tipo: "texto",
@@ -197,7 +197,7 @@ export function usePostsWithFilters({ searchTerm, categoryId }: UsePostsOptions)
       else setIsFetchingNextPage(true);
       setIsError(false);
 
-      const { data } = await API.get('/products', {
+      const { data } = await API.get('/api/products', {
           params: {
               page: pageNum,
               limit: 12,
