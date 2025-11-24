@@ -24,13 +24,13 @@ import {
 
 import type { Chat } from "@/features/DM/chat.types";
 
-export default function ChatPage() {
+const ChatPage: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
 
-  // --- ESTADOS ---
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
   const [mobileView, setMobileView] = useState<"list" | "chat">("list");
+
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
   const [pendingRatingData, setPendingRatingData] = useState<{
     sellerId: number;
@@ -53,11 +53,11 @@ export default function ChatPage() {
     isFetchingNextPage,
   } = useChatList(true);
 
-  const chats = chatListData?.allChats || [];
+  const chats = chatListData?.allChats ?? [];
 
   // --- MENSAJES ---
   const { data: messagesData } = useChatMessages(activeChatId, true);
-  const messages = messagesData?.allMessages || [];
+  const messages = messagesData?.allMessages ?? [];
 
   // --- TRANSACCIONES ACTIVAS POR CHAT ---
   const { data: transactions = [] } = useChatTransactions(activeChatId, true);
@@ -73,21 +73,23 @@ export default function ChatPage() {
 
   // Info del chat activo
   const activeChatInfo = chats.find((c) => c.id === activeChatId);
-  const displayChatInfo =
-    activeChatInfo ||
+  const displayChatInfo: Chat | null =
+    activeChatInfo ??
     (activeChatId
       ? ({
-          nombre: "Cargando usuario...",
           id: activeChatId,
+          nombre: "Cargando usuario...",
+          avatar: undefined,
           mensajes: [],
           noLeidos: 0,
-          avatar: undefined,
         } as unknown as Chat)
       : null);
+
   const unreadCount = displayChatInfo?.noLeidos ?? 0;
 
-  // --- SOCKETS & ACCIONES ---
+  // --- SOCKET + ACCIONES ---
   useChatSocket(activeChatId);
+
   const {
     sendMessage,
     markAsRead,
@@ -98,14 +100,14 @@ export default function ChatPage() {
 
   // --- HANDLERS ---
 
-  const handleSend = async (texto: string, file?: File) => {
+  const handleSend = async (text: string, file?: File) => {
     if (!checkRateLimit()) return;
     if (!activeChatId) return;
 
     try {
-      await sendMessage({ chatId: activeChatId, text: texto, file });
-    } catch (e) {
-      console.error(e);
+      await sendMessage({ chatId: activeChatId, text, file });
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -154,35 +156,32 @@ export default function ChatPage() {
     }
   };
 
-  // --- EFECTOS ---
-
-  // Reset índice de carrusel cuando cambia de chat o cambia número de transacciones
+  // Reset índice de transacción cuando cambia chat o cantidad
   useEffect(() => {
     setCurrentTxIndex(0);
   }, [activeChatId, transactions.length]);
 
-  // Navegar directo a un usuario desde el Home
+  // Navegar desde el home con state { toUser }
   useEffect(() => {
-    const state = location.state as { toUser?: any };
+    const state = location.state as { toUser?: { id: number } } | undefined;
     if (state?.toUser) {
       setActiveChatId(state.toUser.id);
       setMobileView("chat");
     }
   }, [location]);
 
-  // Marcar como leído al abrir el chat cuando hay mensajes sin leer
+  // Marcar como leído al abrir chat
   useEffect(() => {
     if (!activeChatId) return;
     if (unreadCount <= 0) return;
     markAsRead(activeChatId);
   }, [activeChatId, unreadCount, markAsRead]);
 
-  // --- RENDER ---
-
   return (
     <div
       className="
         flex
+        h-[calc(100vh-4rem)]
         bg-slate-50
         border-t border-slate-200
         md:border md:rounded-xl
@@ -190,10 +189,10 @@ export default function ChatPage() {
         m-0
         md:m-4
         lg:m-6
-        md:h-[calc(100vh-4rem)]
+        overflow-hidden
       "
     >
-      {/* SIDEBAR */}
+      {/* SIDEBAR LISTA DE CHATS */}
       <div
         className={`${
           mobileView === "list" ? "flex" : "hidden md:flex"
@@ -262,7 +261,7 @@ export default function ChatPage() {
               )}
             </div>
 
-            {/* Barra de Transacciones (carrusel) */}
+            {/* Carrusel de transacciones */}
             {transactions.length > 0 && (
               <TransactionCarousel
                 transacciones={transactions}
@@ -282,13 +281,13 @@ export default function ChatPage() {
               />
             )}
 
-            {/* Mensajes */}
+            {/* Mensajes (esta parte es la que scrollea) */}
             <ChatMessagesArea
               mensajes={messages}
               currentUserId={user?.id || 0}
             />
 
-            {/* Input + aviso anti-spam */}
+            {/* Input + aviso anti-spam pegado abajo */}
             <div className="relative">
               <AnimatePresence>
                 {isLimited && (
@@ -342,4 +341,6 @@ export default function ChatPage() {
       </div>
     </div>
   );
-}
+};
+
+export default ChatPage;

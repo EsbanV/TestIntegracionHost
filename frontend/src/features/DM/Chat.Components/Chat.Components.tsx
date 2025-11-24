@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
+import EmojiPicker, { Theme } from "emoji-picker-react";
 
-// Icons
 import {
   LuSearch,
   LuCheck,
@@ -19,15 +18,16 @@ import {
   LuMessageCircle,
   LuChevronLeft,
   LuChevronRight,
-  LuX,
-  LuGripHorizontal,
 } from "react-icons/lu";
 
-// UI Components
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
 import type { Chat, Mensaje, TransaccionActiva } from "../chat.types";
+
+//
+// 1. Barra de estado de transacción
+//
 
 interface TransactionBarProps {
   tx: TransaccionActiva;
@@ -37,24 +37,29 @@ interface TransactionBarProps {
   onCancel?: () => void;
 }
 
-// ============================================================================
-// 1. BARRA DE TRANSACCIÓN
-// ============================================================================
-
 export const TransactionStatusBar: React.FC<TransactionBarProps> = ({
   tx,
   onConfirmDelivery,
   onConfirmReceipt,
   onRate,
   onCancel,
-}: TransactionBarProps) => {
-  // Pendiente
+}) => {
+  // Pendiente de envío (vendedor aún no confirma)
   if (tx.estadoId === 1 && !tx.confirmacionVendedor) {
     return (
       <div className="bg-blue-50 border-b border-blue-100 px-3 md:px-4 py-3 flex items-center justify-between shrink-0 shadow-sm z-10">
         <div className="flex items-center gap-3 overflow-hidden">
-          {/* contenido original omitido para brevedad visual */}
-          {/* ... */}
+          <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+            <LuShoppingBag className="text-blue-600" size={18} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-blue-800 truncate">
+              Compra en proceso
+            </p>
+            <p className="text-[11px] text-blue-700/80 truncate">
+              El vendedor debe confirmar que realizará la entrega.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -68,7 +73,7 @@ export const TransactionStatusBar: React.FC<TransactionBarProps> = ({
             </Button>
           ) : (
             <span className="text-[11px] md:text-xs text-slate-400 italic">
-              Esperando envío...
+              Esperando al vendedor...
             </span>
           )}
 
@@ -87,12 +92,22 @@ export const TransactionStatusBar: React.FC<TransactionBarProps> = ({
     );
   }
 
-  // En Camino
+  // En camino (vendedor confirmó, falta el comprador)
   if (tx.estadoId === 1 && tx.confirmacionVendedor && !tx.confirmacionComprador) {
     return (
       <div className="bg-amber-50 border-b border-amber-100 px-3 md:px-4 py-3 flex items-center justify-between shrink-0 shadow-sm z-10">
         <div className="flex items-center gap-3 overflow-hidden">
-          {/* ... */}
+          <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+            <LuTruck className="text-amber-600" size={18} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-amber-900 truncate">
+              Producto en camino
+            </p>
+            <p className="text-[11px] text-amber-800/80 truncate">
+              Confirma cuando hayas recibido el producto.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -106,7 +121,7 @@ export const TransactionStatusBar: React.FC<TransactionBarProps> = ({
             </Button>
           ) : (
             <span className="text-[11px] md:text-xs text-slate-400 italic">
-              Esperando confirmación...
+              Esperando confirmación del comprador...
             </span>
           )}
 
@@ -125,24 +140,29 @@ export const TransactionStatusBar: React.FC<TransactionBarProps> = ({
     );
   }
 
-  // Completado
+  // Completada
   if (tx.estadoId === 2) {
     return (
       <div className="bg-green-50 border-b border-green-100 px-2 md:px-3 py-2 flex items-center justify-center gap-2 text-green-700 text-[11px] md:text-xs font-medium shrink-0 shadow-sm z-10">
-        <LuCheckCheck size={14} /> Transacción finalizada
+        <LuPackageCheck size={14} /> Transacción finalizada
         {tx.esComprador && (
           <button
             onClick={onRate}
             className="ml-2 underline hover:text-green-800 flex items-center gap-1"
           >
-            <LuStar size={10} /> Calificar
+            <LuStar size={12} /> Calificar vendedor
           </button>
         )}
       </div>
     );
   }
+
   return null;
 };
+
+//
+// 2. Carrusel de transacciones activas
+//
 
 interface TransactionCarouselProps {
   transacciones: TransaccionActiva[];
@@ -167,18 +187,18 @@ export const TransactionCarousel: React.FC<TransactionCarouselProps> = ({
 
   const tx = transacciones[currentIndex];
   if (!tx) return null;
+
   const canPrev = currentIndex > 0;
   const canNext = currentIndex < transacciones.length - 1;
 
   return (
     <div className="bg-white border-b border-slate-200/70 shadow-sm shrink-0">
-      {/* Nav superior para elegir transacción */}
       <div className="flex items-center justify-between px-3 md:px-4 py-1.5 text-[10px] md:text-[11px] text-slate-500 bg-slate-50/70">
         <div className="flex items-center gap-2 min-w-0">
           <span className="font-semibold text-slate-700">
             Compra {currentIndex + 1} de {transacciones.length}
           </span>
-          <span className="truncate max-w-[120px] sm:max-w-[160px] text-slate-500">
+          <span className="truncate max-w-[120px] sm:max-w-[180px] text-slate-500">
             {tx.producto?.nombre}
           </span>
         </div>
@@ -211,9 +231,9 @@ export const TransactionCarousel: React.FC<TransactionCarouselProps> = ({
   );
 };
 
-// ============================================================================
-// 2. LISTA DE CHATS
-// ============================================================================
+//
+// 3. Sidebar con lista de chats
+//
 
 interface ChatListProps {
   chats: Chat[];
@@ -224,14 +244,14 @@ interface ChatListProps {
   isFetchingNextPage?: boolean;
 }
 
-export const ChatListSidebar = ({
+export const ChatListSidebar: React.FC<ChatListProps> = ({
   chats,
   activeChatId,
   onSelect,
   hasNextPage,
   fetchNextPage,
   isFetchingNextPage,
-}: ChatListProps) => (
+}) => (
   <div className="flex flex-col h-full bg-white">
     <div className="p-3 border-b border-slate-100 sticky top-0 bg-white z-10">
       <div className="relative">
@@ -255,14 +275,14 @@ export const ChatListSidebar = ({
             <div
               key={chat.id}
               onClick={() => onSelect(chat.id)}
-              className={`flex items-center gap-3 p-3 md:p-3.5 cursor-pointer border-b border-slate-50 transition-all duration-200 hover:bg-slate-50 ${
+              className={`flex items-center gap-3 p-3.5 cursor-pointer border-b border-slate-50 transition-all duration-200 hover:bg-slate-50 ${
                 activeChatId === chat.id
                   ? "bg-blue-50/60 border-l-4 border-l-blue-500 pl-3"
                   : "border-l-4 border-l-transparent pl-4"
               }`}
             >
               <div className="relative shrink-0">
-                <Avatar className="h-9 w-9 md:h-10 md:w-10 border border-slate-100 bg-white">
+                <Avatar className="h-10 w-10 border border-slate-100 bg-white">
                   <AvatarImage src={chat.avatar} className="object-cover" />
                   <AvatarFallback className="bg-indigo-50 text-indigo-600 font-bold text-xs">
                     {chat.nombre ? chat.nombre.charAt(0).toUpperCase() : "?"}
@@ -272,6 +292,7 @@ export const ChatListSidebar = ({
                   <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full shadow-sm"></span>
                 )}
               </div>
+
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-baseline mb-0.5">
                   <h4
@@ -327,18 +348,15 @@ export const ChatListSidebar = ({
   </div>
 );
 
-// ============================================================================
-// 3. MENSAJES
-// ============================================================================
+//
+// 4. Área de mensajes (scrollable, input pegado abajo)
+//
 
-export const ChatMessagesArea = ({
-  mensajes,
-  currentUserId,
-}: {
+export const ChatMessagesArea: React.FC<{
   mensajes: Mensaje[];
   currentUserId: number;
-}) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+}> = ({ mensajes, currentUserId }) => {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -348,30 +366,32 @@ export const ChatMessagesArea = ({
 
   return (
     <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5 sm:space-y-3 bg-[#F8F9FC]">
-      {mensajes.map((msg, index) => {
+      {mensajes.map((msg) => {
         const isSystem = msg.tipo === "sistema";
-        if (isSystem)
+
+        if (isSystem) {
           return (
             <motion.div
+              key={msg.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              key={msg.id}
               className="flex justify-center my-3 sm:my-4"
             >
               <div className="bg-slate-100 border border-slate-200 rounded-full px-3 sm:px-4 py-1.5 text-[10px] text-slate-500 flex items-center gap-2 shadow-sm">
-                <LuCircleAlert size={12} className="text-slate-400" />{" "}
+                <LuCircleAlert size={12} className="text-slate-400" />
                 {msg.texto}
               </div>
             </motion.div>
           );
+        }
 
-        const isMe = msg.autor === "yo";
+        const isMe = msg.autor === "yo" || msg.autorId === currentUserId;
 
         return (
           <motion.div
+            key={msg.id}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            key={msg.id}
             className={`flex w-full ${
               isMe ? "justify-end" : "justify-start"
             }`}
@@ -415,25 +435,29 @@ export const ChatMessagesArea = ({
           </motion.div>
         );
       })}
+
       <div ref={scrollRef} />
     </div>
   );
 };
 
-// ============================================================================
-// 4. INPUT AREA
-// ============================================================================
+//
+// 5. Input de mensaje
+//
 
 interface ChatInputProps {
   onSend: (text: string, file?: File) => void;
   isLoading: boolean;
 }
 
-export const ChatInputArea = ({ onSend, isLoading }: ChatInputProps) => {
+export const ChatInputArea: React.FC<ChatInputProps> = ({
+  onSend,
+  isLoading,
+}) => {
   const [text, setText] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -445,7 +469,9 @@ export const ChatInputArea = ({ onSend, isLoading }: ChatInputProps) => {
   };
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) onSend("", e.target.files[0]);
+    if (e.target.files?.[0]) {
+      onSend("", e.target.files[0]);
+    }
     e.target.value = "";
   };
 
@@ -458,7 +484,7 @@ export const ChatInputArea = ({ onSend, isLoading }: ChatInputProps) => {
   return (
     <div className="p-2.5 sm:p-3 bg-white border-t border-slate-100 relative shrink-0 shadow-inner-sm z-20">
       {showEmoji && (
-        <div className="absolute bottom-16 left-2 sm:left-4 z-50 shadow-2xl rounded-xl border border-slate-200 overflow-hidden">
+        <div className="absolute bottom-16 left-2 sm:left-4 z-50 shadow-2xl rounded-xl border border-slate-200 overflow-hidden bg-white">
           <EmojiPicker
             onEmojiClick={(e) => setText((prev) => prev + e.emoji)}
             width={280}
@@ -474,26 +500,24 @@ export const ChatInputArea = ({ onSend, isLoading }: ChatInputProps) => {
         onSubmit={handleSubmit}
         className="flex items-end gap-1.5 sm:gap-2"
       >
-        {/* Botones Adjuntar */}
+        {/* Botones adjuntar */}
         <div className="flex gap-0.5 bg-slate-50 p-1 rounded-xl border border-slate-100 h-[40px] sm:h-[44px] items-center shrink-0">
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
             className="p-1.5 sm:p-2 text-slate-400 hover:bg-white hover:text-blue-600 rounded-lg transition-all shadow-sm hover:shadow"
           >
-            {/* Icono tamaño fijo (no gigante en escritorio) */}
             <LuImage size={18} />
           </button>
           <button
             type="button"
-            onClick={() => setShowEmoji(!showEmoji)}
+            onClick={() => setShowEmoji((prev) => !prev)}
             className={`p-1.5 sm:p-2 rounded-lg transition-all shadow-sm hover:shadow ${
               showEmoji
                 ? "bg-yellow-50 text-yellow-500"
                 : "text-slate-400 hover:bg-white"
             }`}
           >
-            {/* Icono tamaño fijo */}
             <LuSmile size={18} />
           </button>
         </div>
@@ -506,7 +530,7 @@ export const ChatInputArea = ({ onSend, isLoading }: ChatInputProps) => {
           onChange={handleFile}
         />
 
-        {/* Input Wrapper */}
+        {/* Textarea */}
         <div className="flex-1 bg-slate-50 rounded-2xl border border-slate-100 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-300 focus-within:bg-white transition-all flex items-center min-h-[40px] sm:min-h-[44px] py-0.5 sm:py-1">
           <textarea
             ref={textareaRef}
@@ -525,11 +549,13 @@ export const ChatInputArea = ({ onSend, isLoading }: ChatInputProps) => {
           />
         </div>
 
-        {/* Botón Enviar */}
+        {/* Botón enviar */}
         <Button
           type="submit"
           size="icon"
-          disabled={(!text.trim() && !fileRef.current?.files?.length) || isLoading}
+          disabled={
+            (!text.trim() && !fileRef.current?.files?.length) || isLoading
+          }
           className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-[40px] w-[40px] sm:h-[44px] sm:w-[44px] shrink-0 shadow-md shadow-blue-200 disabled:opacity-50 disabled:shadow-none transition-all active:scale-95"
         >
           {isLoading ? (
