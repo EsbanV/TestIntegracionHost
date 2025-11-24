@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/app/context/AuthContext';
 import { getImageUrl } from '@/app/imageHelper';
 import { CAMPUS_OPTIONS, OnboardingFormData } from './onboarding.types';
-import API from '@/api/axiosInstance';
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 export const formatWelcomeName = (fullName?: string) => {
   if (!fullName) return "Usuario";
@@ -13,18 +14,19 @@ export const formatWelcomeName = (fullName?: string) => {
 };
 
 export const useOnboarding = () => {
-  const { user, login } = useAuth(); 
+  const { user, token, login } = useAuth();
   const navigate = useNavigate();
   
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   
+  // Estado del formulario
   const [formData, setFormData] = useState<OnboardingFormData>({
     usuario: user?.usuario || '',
     telefono: '',
     direccion: '',
     campus: CAMPUS_OPTIONS[0],
-    acceptedTerms: false 
+    acceptedTerms: false // <--- Inicializado en false
   });
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -43,6 +45,9 @@ export const useOnboarding = () => {
   const handleBack = () => setStep(prev => prev - 1);
 
   const handleFinalSubmit = async () => {
+    if (!token) return;
+    
+    // Validación extra de seguridad
     if (!formData.acceptedTerms) {
         alert("Debes aceptar los términos y condiciones.");
         return;
@@ -53,44 +58,55 @@ export const useOnboarding = () => {
     try {
       let finalPhotoUrl = user?.fotoPerfilUrl;
 
+      // 1. Subir Foto
       if (selectedImage) {
         const imageFormData = new FormData();
         imageFormData.append('photo', selectedImage);
 
-        const { data: dataImg } = await API.post('/upload/profile-photo', imageFormData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+        const resImg = await fetch(`${API_URL}/api/upload/profile-photo`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: imageFormData
         });
         
+        const dataImg = await resImg.json();
         if (dataImg.ok) finalPhotoUrl = dataImg.photoUrl;
       }
 
-      const { data: dataProfile } = await API.put('/users/profile', {
-        usuario: formData.usuario,
-        telefono: formData.telefono,
-        direccion: formData.direccion,
-        campus: formData.campus
+      // 2. Actualizar Perfil (Excluimos acceptedTerms del envío)
+      const resProfile = await fetch(`${API_URL}/api/users/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          usuario: formData.usuario,
+          telefono: formData.telefono,
+          direccion: formData.direccion,
+          campus: formData.campus
+        })
       });
+
+      const dataProfile = await resProfile.json();
 
       if (dataProfile.ok) {
         const updatedUser = { 
           ...user!, 
-          ...formData, 
+          ...formData, // Esto guarda acceptedTerms en local, pero no afecta al backend
           fotoPerfilUrl: finalPhotoUrl
         };
 
-        const currentToken = localStorage.getItem('authToken') || ''; 
         const currentRefreshToken = localStorage.getItem('refresh_token') || '';
-        
-        login(currentToken, currentRefreshToken, updatedUser);
+        login(token, currentRefreshToken, updatedUser);
         navigate('/home', { replace: true });
       } else {
         alert("Error al guardar: " + (dataProfile.message || "Intente nuevamente"));
       }
 
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error crítico en onboarding:", error);
-      const msg = error.response?.data?.message || "Ocurrió un error de conexión.";
-      alert(msg);
+      alert("Ocurrió un error de conexión.");
     } finally {
       setIsLoading(false);
     }

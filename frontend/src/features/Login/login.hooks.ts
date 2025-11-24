@@ -2,10 +2,11 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/app/context/AuthContext';
 import type { GoogleAuthResponse } from './login.types';
-import API from '@/api/axiosInstance';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const API_URL = import.meta.env.VITE_API_URL;
 
+// --- UTILIDAD INTERNA ---
 const decodeJwt = (token: string) => {
   try {
     const base64Url = token.split('.')[1];
@@ -26,6 +27,7 @@ export const useGoogleLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
+  // 1. Inicializar Google
   useEffect(() => {
     const w = window as any;
     
@@ -57,6 +59,7 @@ export const useGoogleLogin = () => {
     }
   }, []);
 
+  // 2. Callback
   const handleGoogleCallback = async (response: any) => {
     const idToken = response.credential;
     const payload = decodeJwt(idToken);
@@ -70,14 +73,20 @@ export const useGoogleLogin = () => {
     setError(null);
 
     try {
-      const { data } = await API.post<GoogleAuthResponse>('/auth/google', {
-        idToken: idToken,
-        email: payload.email,
-        name: payload.name || payload.given_name,
-        picture: payload.picture
+      const res = await fetch(`${API_URL}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken: idToken,
+          email: payload.email,
+          name: payload.name || payload.given_name,
+          picture: payload.picture
+        }),
       });
 
-      if (data.ok) {
+      const data: GoogleAuthResponse = await res.json();
+
+      if (res.ok && data.ok) {
         login(data.accessToken, data.refreshToken, data.user);
         
         const role = data.user.role?.toUpperCase();
@@ -95,9 +104,7 @@ export const useGoogleLogin = () => {
 
     } catch (err: any) {
       console.error("Login Error:", err);
-      const errorMessage = err.message || "Ocurrió un error de conexión.";
-      setError(errorMessage);
-
+      setError(err.message || "Ocurrió un error de conexión.");
     } finally {
       setIsLoading(false);
     }

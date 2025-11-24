@@ -1,10 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/app/context/AuthContext";
-import API from "@/api/axiosInstance"; // <--- Importamos tu instancia
-import type { Post } from "./home.types";
+import type { Post, StartTransactionApiResponse } from "./home.types";
 
-// --- UTILS (Solo dejamos los de formato, eliminamos fetchWithAuth) ---
+// URL Base del backend
+const API_URL = import.meta.env.VITE_API_URL;
+const URL_BASE = import.meta.env.VITE_API_URL;
+
+
+// --- UTILS ---
 export const formatCLP = (amount: number) => {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(amount);
 };
@@ -23,31 +27,70 @@ export const getInitials = (name?: string) => {
   return name.substring(0, 2).toUpperCase();
 };
 
+export async function fetchWithAuth<T>(
+  url: string,
+  token: string | null,
+  options: RequestInit = {}
+): Promise<T> {
+  if (!token) {
+    throw new Error("No autenticado");
+  }
+
+  const res = await fetch(`${URL_BASE}${url}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    },
+  });
+
+  const rawData: any = await res.json();
+
+  if (!res.ok) {
+    // si el backend manda { message: string }, lo aprovechamos
+    throw new Error(rawData?.message || "Error en la petición");
+  }
+
+  // aquí ya es “éxito”, casteamos a T
+  return rawData as T;
+}
+
+
+
 // --- HOOKS DE DATOS ---
 
-// 1. Obtener Posts (Infinite Query)
+// 1. Obtener Posts (Paginado + Filtros)
 export const usePosts = (searchTerm: string, categoryId: string) => {
-  
+  const { token } = useAuth();
+
   return useInfiniteQuery({
     queryKey: ['marketplace-posts', searchTerm, categoryId],
     queryFn: async ({ pageParam = 1 }) => {
-      const { data } = await API.get('/products', {
-        params: {
-          page: pageParam,
-          limit: 12,
-          search: searchTerm || undefined,
-          category: categoryId || undefined
-        }
+      const params = new URLSearchParams({
+        page: pageParam.toString(),
+        limit: '12',
+        ...(searchTerm && { search: searchTerm }),
+        ...(categoryId && { category: categoryId })
       });
-      return data;
+
+      const res = await fetch(`${API_URL}/api/products?${params.toString()}`, {
+         // Headers opcionales si tu API pública requiere token, sino quitar
+         headers: token ? { 'Authorization': `Bearer ${token}` } : {} 
+      });
+      
+      if (!res.ok) throw new Error('Error fetching posts');
+      return res.json();
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
+       // Asumiendo que tu API devuelve { pagination: { totalPages, page } }
        if (lastPage.pagination.page < lastPage.pagination.totalPages) {
           return lastPage.pagination.page + 1;
        }
        return undefined;
     },
+    // Aplanar datos para fácil consumo
     select: (data) => ({
        posts: data.pages.flatMap((page: any) => 
           page.products.map((p: any) => ({
@@ -59,13 +102,19 @@ export const usePosts = (searchTerm: string, categoryId: string) => {
              categoria: p.categoria,
              estado: p.estado,
              fechaAgregado: p.fechaAgregado,
+             // Mapear vendedor y sus datos
              vendedor: {
-                ...p.vendedor,
-                fotoPerfilUrl: p.vendedor.fotoPerfilUrl 
+                id: p.vendedor.id,
+                nombre: p.vendedor.nombre,
+                usuario: p.vendedor.usuario, // Este es el dato clave
+                fotoPerfilUrl: p.vendedor.fotoPerfilUrl, // Ahora sí vendrá lleno
+                campus: p.vendedor.campus,
+                reputacion: p.vendedor.reputacion
              },
+             // Mapear imágenes (normalizar URL)
              imagenes: p.imagenes?.map((img: any) => ({
                 id: img.id,
-                url: img.urlImagen || img.url 
+                url: img.urlImagen || img.url // Ajustar según tu API
              })) || []
           }))
        ) as Post[]
@@ -78,28 +127,43 @@ export const useFavorites = () => {
   const { token } = useAuth();
   const queryClient = useQueryClient();
   
+  // Cargar favoritos iniciales
   const { data: favorites = new Set<number>() } = useQuery({
     queryKey: ['favorites'],
     queryFn: async () => {
-       const { data } = await API.get('/api/favorites', { params: { limit: 100 } });
+       if (!token) return new Set<number>();
+       const res = await fetch(`${API_URL}/api/favorites?limit=100`, { 
+          headers: { 'Authorization': `Bearer ${token}` } 
+       });
+       const data = await res.json();
        if (data.ok) return new Set<number>(data.favorites.map((fav: any) => fav.productoId));
        return new Set<number>();
     },
     enabled: !!token
   });
 
+  // Mutación para togglear
   const toggleMutation = useMutation({
     mutationFn: async (productId: number) => {
+      if (!token) throw new Error("No autenticado");
+      
       const isFav = favorites.has(productId);
+      const method = isFav ? 'DELETE' : 'POST';
+      const url = isFav ? `${API_URL}/api/favorites/${productId}` : `${API_URL}/api/favorites`;
       
-      if (isFav) {
-        await API.delete(`/api/favorites/${productId}`);
-      } else {
-        await API.post('/api/favorites', { productoId: productId });
-      }
+      const res = await fetch(url, { 
+         method, 
+         headers: { 
+            'Authorization': `Bearer ${token}`, 
+            'Content-Type': 'application/json' 
+         }, 
+         body: isFav ? undefined : JSON.stringify({ productoId: productId }) 
+      });
       
+      if (!res.ok) throw new Error("Error al actualizar favorito");
       return { productId, added: !isFav };
     },
+    // Actualización optimista o invalidación
     onSuccess: () => {
        queryClient.invalidateQueries({ queryKey: ['favorites'] });
     }
@@ -111,7 +175,9 @@ export const useFavorites = () => {
   };
 };
 
-// 3. Hook de Contacto y Transacción
+// 3. Hook de Contacto (Iniciar Transacción)
+// home.hooks.ts (fragmento)
+
 type StartTransactionResult = {
   ok: boolean;
   created: boolean;
@@ -122,41 +188,75 @@ type StartTransactionResult = {
 export function useContactSeller() {
   const { token } = useAuth();
 
+  // Crear / retomar transacción SIEMPRE a nivel de PRODUCTO
   const startTransaction = useCallback(
     async (productId: number, _sellerId: number): Promise<StartTransactionResult> => {
-      if (!token) return { ok: false, created: false, transactionId: 0, message: "No autenticado" };
+      if (!token) {
+        return {
+          ok: false,
+          created: false,
+          transactionId: 0,
+          message: "No autenticado",
+        };
+      }
 
       try {
-        const { data } = await API.post("/api/transactions", {
+        // Llamamos directamente al POST de transacciones
+        const data = await fetchWithAuth<{
+          ok: boolean;
+          created: boolean;
+          id?: number;
+          transactionId?: number;
+          message?: string;
+        }>("/api/transactions", token, {
+          method: "POST",
+          body: JSON.stringify({
             productId,
             quantity: 1,
+          }),
         });
+
+        const txId = data.transactionId ?? data.id ?? 0;
 
         return {
           ok: data.ok,
           created: data.created,
-          transactionId: data.transactionId ?? data.id ?? 0,
+          transactionId: txId,
           message: data.message,
         };
       } catch (err: any) {
         console.error("Error al iniciar transacción:", err);
-        const msg = err.response?.data?.message || err.message || "Error al iniciar la compra";
-        return { ok: false, created: false, transactionId: 0, message: msg };
+        return {
+          ok: false,
+          created: false,
+          transactionId: 0,
+          message: err?.message || "Error al iniciar la compra",
+        };
       }
     },
     [token]
   );
 
+  // Enviar mensaje inicial al vendedor (se usa en el modal)
   const sendMessage = useCallback(
     async (toUserId: number, content: string): Promise<boolean> => {
-      if (!token || !content.trim()) return false;
+      if (!token) return false;
+      if (!content.trim()) return false;
 
       try {
-        const { data } = await API.post("/api/chat/send", {
-            destinatarioId: toUserId,
-            contenido: content,
-            tipo: "texto",
-        });
+        const data = await fetchWithAuth<{ ok: boolean }>(
+          "/api/chat/send",
+          token,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              destinatarioId: toUserId,
+              contenido: content,
+              tipo: "texto",
+            }),
+          }
+        );
+
         return !!data.ok;
       } catch (err) {
         console.error("Error al enviar mensaje:", err);
@@ -166,7 +266,10 @@ export function useContactSeller() {
     [token]
   );
 
-  return { startTransaction, sendMessage };
+  return {
+    startTransaction,
+    sendMessage,
+  };
 }
 
 interface UsePostsOptions {
@@ -180,15 +283,17 @@ export function usePostsWithFilters({ searchTerm, categoryId }: UsePostsOptions)
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   
+  // Estado de paginación
   const [page, setPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(true);
   const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
 
+  // Reiniciar lista cuando cambian los filtros
   useEffect(() => {
     setPosts([]);
     setPage(1);
     setHasNextPage(true);
-    fetchData(1, true);
+    fetchData(1, true); // true = es una nueva búsqueda
   }, [searchTerm, categoryId]);
 
   const fetchData = async (pageNum: number, isNewSearch: boolean = false) => {
@@ -197,16 +302,21 @@ export function usePostsWithFilters({ searchTerm, categoryId }: UsePostsOptions)
       else setIsFetchingNextPage(true);
       setIsError(false);
 
-      const { data } = await API.get('/api/products', {
-          params: {
-              page: pageNum,
-              limit: 12,
-              search: searchTerm || undefined,
-              category: categoryId || undefined
-          }
-      });
+      // Construir Query Params
+      const params = new URLSearchParams();
+      params.append('page', pageNum.toString());
+      params.append('limit', '12'); // Traer 12 productos por carga
+      if (searchTerm) params.append('search', searchTerm);
+      if (categoryId) params.append('category', categoryId);
+
+      const response = await fetch(`${API_URL}/api/products?${params.toString()}`);
+      
+      if (!response.ok) throw new Error('Error al cargar productos');
+
+      const data = await response.json();
 
       if (data.ok) {
+        // Mapear datos del backend al formato de tu Frontend
         const newPosts: Post[] = data.products.map((p: any) => ({
           id: p.id,
           nombre: p.nombre,
@@ -214,26 +324,34 @@ export function usePostsWithFilters({ searchTerm, categoryId }: UsePostsOptions)
           precioActual: p.precioActual,
           cantidad: p.cantidad,
           categoria: p.categoria,
-          estado: p.estado,
+          estado: p.estado, // 'Disponible', etc.
           fechaAgregado: p.fechaAgregado,
           vendedor: {
-            ...p.vendedor,
-            fotoPerfilUrl: p.vendedor.fotoPerfilUrl,
+            id: p.vendedor.id,
+            usuario: p.vendedor.usuario,
+            nombre: p.vendedor.nombre,
+            fotoPerfilUrl: p.vendedor.fotoPerfilUrl, // Asegúrate que el backend mande esto si existe
+            reputacion: p.vendedor.reputacion,
+            campus: p.vendedor.campus
           },
+          // Mapeo crítico: Backend envía 'urlImagen', UI espera 'url'
           imagenes: p.imagenes.map((img: any) => ({
             id: img.id,
-            url: img.urlImagen
+            url: img.urlImagen // <--- AQUÍ HACEMOS LA CONEXIÓN
           }))
         }));
 
         setPosts(prev => isNewSearch ? newPosts : [...prev, ...newPosts]);
-        setHasNextPage(pageNum < data.pagination.totalPages);
+        
+        // Verificar si quedan más páginas
+        const totalPages = data.pagination.totalPages;
+        setHasNextPage(pageNum < totalPages);
       }
 
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       setIsError(true);
-      setError(err);
+      setError(err as Error);
     } finally {
       setIsLoading(false);
       setIsFetchingNextPage(false);
@@ -252,8 +370,8 @@ export function usePostsWithFilters({ searchTerm, categoryId }: UsePostsOptions)
     posts,
     hasNextPage,
     fetchNextPage,
-    isLoading,
-    isFetchingNextPage,
+    isLoading, // Carga inicial
+    isFetchingNextPage, // Carga de scroll infinito
     isError,
     error
   };
