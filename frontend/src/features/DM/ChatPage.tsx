@@ -178,20 +178,20 @@ const ChatPage: React.FC = () => {
   }, [activeChatId, unreadCount, markAsRead]);
 
   return (
-    <div
-      className="
-        flex
-        h-[calc(100vh-4rem)]
-        bg-slate-50
-        border-t border-slate-200
-        md:border md:rounded-xl
-        shadow-sm
-        m-0
-        md:m-4
-        lg:m-6
-        overflow-hidden
-      "
-    >
+<div
+  className="
+    flex 
+    h-full
+    bg-slate-50 
+    overflow-hidden 
+    border-t border-slate-200
+    md:border md:rounded-xl 
+    shadow-sm 
+    m-0 
+    md:m-4 
+    lg:m-6
+  "
+>
       {/* SIDEBAR LISTA DE CHATS */}
       <div
         className={`${

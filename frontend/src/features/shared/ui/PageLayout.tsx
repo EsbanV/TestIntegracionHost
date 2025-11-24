@@ -34,24 +34,26 @@ export default function PageLayout({
       {/* NOTA: Agregamos 'pl-20' (80px) solo en móvil para compensar la Sidebar 'fixed'.
          En desktop ('lg:pl-0'), la sidebar es 'sticky' y ocupa su propio espacio en el flex.
       */}
-      <div className={`
-        flex flex-1 flex-col min-w-0 transition-all duration-300
-        ${showSidebar ? 'pl-20 lg:pl-0' : ''}
-      `}>
-        
-        {/* 2a. Header */}
+      <div
+        className={`
+          flex flex-1 flex-col min-w-0 min-h-0 transition-all duration-300
+          ${showSidebar ? 'pl-20 lg:pl-0' : ''}
+        `}
+      >
+        {/* Header superior */}
         {showHeader && <Header />}
 
-        {/* 2b. Área de Contenido */}
-        <main 
+        {/* Área de contenido */}
+        <main
           className={`
-            flex-1 w-full relative
+            flex-1 min-h-0 w-full relative flex flex-col
             ${isDM ? 'overflow-hidden' : 'overflow-y-auto p-4 md:p-6 scroll-smooth'}
           `}
         >
           <Outlet />
         </main>
       </div>
+
 
       {/* 3. Chat Flotante */}
       {shouldRenderFloatingChat && <FloatingChat />}
