@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { NavLink, useNavigate, useLocation } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "@/app/context/AuthContext"
-import { getImageUrl } from "@/app/imageHelper";
+import { getImageUrl } from "@/app/imageHelper"
 
 // UI Components
 import { Button } from "@/components/ui/button"
@@ -26,7 +26,6 @@ import {
   Store,
   HelpCircle,
   PlusCircle,
-  Menu // Importamos icono de menú para móvil
 } from "lucide-react"
 
 // Assets
@@ -37,10 +36,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({ className }: SidebarProps) {
-  // Inicializamos colapsado si es pantalla pequeña
   const [isCollapsed, setIsCollapsed] = useState(window.innerWidth < 1024)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024)
-  
+
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -50,14 +48,19 @@ export function Sidebar({ className }: SidebarProps) {
     const handleResize = () => {
       const mobile = window.innerWidth < 1024
       setIsMobile(mobile)
-      // Si pasamos a móvil, forzamos colapso para no tapar pantalla
-      if (mobile) setIsCollapsed(true)
+
+      // En desktop dejamos la barra expandida por defecto
+      if (!mobile) {
+        setIsCollapsed(false)
+      }
     }
+
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
   }, [])
 
-  // Auto-cerrar en móvil al navegar
+  // Auto-cerrar en móvil al navegar (solo relevante para la versión antigua lateral,
+  // pero lo dejamos por si más adelante hay otra vista móvil)
   useEffect(() => {
     if (isMobile) setIsCollapsed(true)
   }, [location.pathname, isMobile])
@@ -72,31 +75,90 @@ export function Sidebar({ className }: SidebarProps) {
     collapsed: { width: "80px" },
   }
 
+  // ==========================
+  //   VERSIÓN MÓVIL: BOTTOM BAR
+  // ==========================
+  if (isMobile) {
+    return (
+      <TooltipProvider delayDuration={0}>
+        <nav
+          className="
+            fixed bottom-0 left-0 right-0 z-50
+            h-16 bg-slate-950/95 border-t border-slate-800/80
+            shadow-[0_-4px_20px_rgba(15,23,42,0.9)]
+            backdrop-blur-md
+          "
+        >
+          <div className="flex h-full items-center justify-around px-1">
+            <MobileNavItem
+              icon={<Store size={20} />}
+              label="Inicio"
+              to="/home"
+              isActive={location.pathname === "/home"}
+            />
+            <MobileNavItem
+              icon={<PlusCircle size={20} />}
+              label="Crear"
+              to="/crear"
+              isActive={location.pathname === "/crear"}
+            />
+            <MobileNavItem
+              icon={<MessageSquare size={20} />}
+              label="Chats"
+              to="/chats"
+              isActive={location.pathname.startsWith("/chats")}
+            />
+            <MobileNavItem
+              icon={<Users size={20} />}
+              label="Foro"
+              to="/forums"
+              isActive={location.pathname === "/forums"}
+            />
+
+            {/* Logout como acción aparte */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="
+                    flex flex-col items-center justify-center gap-0.5
+                    text-[11px] font-medium
+                    text-slate-400 hover:text-red-300
+                    transition-colors px-2
+                  "
+                >
+                  <LogOut size={18} />
+                  <span>Salir</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="top"
+                className="bg-slate-800 text-slate-200 border-slate-700"
+              >
+                Cerrar sesión
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </nav>
+      </TooltipProvider>
+    )
+  }
+
+  // ==========================
+  //   VERSIÓN DESKTOP: LATERAL IZQUIERDA (igual estética)
+  // ==========================
   return (
     <TooltipProvider delayDuration={0}>
       <>
-        {/* BACKDROP (Solo Móvil y Expandido) */}
-        <AnimatePresence>
-          {isMobile && !isCollapsed && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsCollapsed(true)}
-              className="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm"
-            />
-          )}
-        </AnimatePresence>
-
         <motion.aside
           initial={false}
           animate={isCollapsed ? "collapsed" : "expanded"}
           variants={sidebarVariants}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          // CLAVE: 'fixed' en móvil, 'sticky' en desktop. Mismo estilo visual original.
           className={`
             flex flex-col text-slate-100 border-r border-slate-800 shadow-xl z-50
-            ${isMobile ? 'fixed h-full top-0 left-0' : 'sticky top-0 h-screen'} 
+            sticky top-0 h-screen
             ${className}
           `}
         >
@@ -111,7 +173,11 @@ export function Sidebar({ className }: SidebarProps) {
                   className="flex items-center gap-2 overflow-hidden whitespace-nowrap"
                 >
                   <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/20">
-                    <img src={LogoMUCT} alt="Logo" className="h-5 w-auto brightness-0 invert" />
+                    <img
+                      src={LogoMUCT}
+                      alt="Logo"
+                      className="h-5 w-auto brightness-0 invert"
+                    />
                   </div>
                   <span className="font-bold text-lg tracking-tight text-slate-100">
                     Market<span className="text-yellow-600">UCT</span>
@@ -119,42 +185,87 @@ export function Sidebar({ className }: SidebarProps) {
                 </motion.div>
               )}
             </AnimatePresence>
-            
-            {/* Botón Toggle (Chevron o Menu en móvil) */}
+
+            {/* Botón Toggle */}
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className={`text-slate-400 hover:text-white hover:bg-slate-800 transition-all ${isCollapsed ? 'mx-auto' : ''}`}
+              className={`text-slate-400 hover:text-white hover:bg-slate-800 transition-all ${
+                isCollapsed ? "mx-auto" : ""
+              }`}
             >
-              {isCollapsed ? (isMobile ? <Menu size={20} /> : <ChevronRight size={20} />) : <ChevronLeft size={20} />}
+              {isCollapsed ? (
+                <ChevronRight size={20} />
+              ) : (
+                <ChevronLeft size={20} />
+              )}
             </Button>
           </div>
 
-          {/* --- NAV LINKS (Igual al original) --- */}
+          {/* --- NAV LINKS --- */}
           <nav className="flex-1 flex flex-col gap-2 p-3 overflow-y-auto overflow-x-hidden scrollbar-hide">
             <div className="space-y-1">
-              <SidebarItem icon={<Store size={20} />} label="Marketplace" to="/home" isCollapsed={isCollapsed} isActive={location.pathname === "/home"} />
-              <SidebarItem icon={<PlusCircle size={20} />} label="Crear Publicación" to="/crear" isCollapsed={isCollapsed} isActive={location.pathname === "/crear"} />
-              <SidebarItem icon={<MessageSquare size={20} />} label="Chats" to="/chats" isCollapsed={isCollapsed} isActive={location.pathname === "/chats"} />
-              <SidebarItem icon={<Users size={20} />} label="Foro Comunidad" to="/forums" isCollapsed={isCollapsed} isActive={location.pathname === "/forums"} />
+              <SidebarItem
+                icon={<Store size={20} />}
+                label="Marketplace"
+                to="/home"
+                isCollapsed={isCollapsed}
+                isActive={location.pathname === "/home"}
+              />
+              <SidebarItem
+                icon={<PlusCircle size={20} />}
+                label="Crear Publicación"
+                to="/crear"
+                isCollapsed={isCollapsed}
+                isActive={location.pathname === "/crear"}
+              />
+              <SidebarItem
+                icon={<MessageSquare size={20} />}
+                label="Chats"
+                to="/chats"
+                isCollapsed={isCollapsed}
+                isActive={location.pathname === "/chats"}
+              />
+              <SidebarItem
+                icon={<Users size={20} />}
+                label="Foro Comunidad"
+                to="/forums"
+                isCollapsed={isCollapsed}
+                isActive={location.pathname === "/forums"}
+              />
             </div>
 
             <Separator className="bg-slate-800/50 my-2" />
 
             <div className="space-y-1">
-              <SidebarItem icon={<FileText size={20} />} label="Términos y Condiciones" to="/terminos" isCollapsed={isCollapsed} isActive={location.pathname === "/terminos"} />
-              <SidebarItem icon={<HelpCircle size={20} />} label="Ayuda" to="/ayuda" isCollapsed={isCollapsed} isActive={location.pathname === "/ayuda"} />
+              <SidebarItem
+                icon={<FileText size={20} />}
+                label="Términos y Condiciones"
+                to="/terminos"
+                isCollapsed={isCollapsed}
+                isActive={location.pathname === "/terminos"}
+              />
+              <SidebarItem
+                icon={<HelpCircle size={20} />}
+                label="Ayuda"
+                to="/ayuda"
+                isCollapsed={isCollapsed}
+                isActive={location.pathname === "/ayuda"}
+              />
             </div>
           </nav>
 
-          {/* --- FOOTER (Igual al original) --- */}
+          {/* --- FOOTER --- */}
           <div className="p-3 border-t border-slate-800 bg-slate-950/30 shrink-0">
-            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} gap-3`}>
-              
+            <div
+              className={`flex items-center ${
+                isCollapsed ? "justify-center" : "justify-between"
+              } gap-3`}
+            >
               <AnimatePresence>
                 {!isCollapsed && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, width: 0 }}
                     animate={{ opacity: 1, width: "auto" }}
                     exit={{ opacity: 0, width: 0 }}
@@ -184,12 +295,17 @@ export function Sidebar({ className }: SidebarProps) {
                     onClick={handleLogout}
                     variant="ghost"
                     size={isCollapsed ? "icon" : "sm"}
-                    className={`${isCollapsed ? '' : 'ml-auto'} text-red-400 hover:text-red-300 hover:bg-red-500/10`}
+                    className={`${
+                      isCollapsed ? "" : "ml-auto"
+                    } text-red-400 hover:text-red-300 hover:bg-red-500/10`}
                   >
                     <LogOut size={20} />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="bg-slate-800 text-slate-200 border-slate-700">
+                <TooltipContent
+                  side="right"
+                  className="bg-slate-800 text-slate-200 border-slate-700"
+                >
                   <p>Cerrar Sesión</p>
                 </TooltipContent>
               </Tooltip>
@@ -201,7 +317,7 @@ export function Sidebar({ className }: SidebarProps) {
   )
 }
 
-// --- SUBCOMPONENTE ITEM (Sin cambios visuales) ---
+// --- SUBCOMPONENTE ITEM (Desktop) ---
 interface SidebarItemProps {
   icon: React.ReactNode
   label: string
@@ -210,7 +326,13 @@ interface SidebarItemProps {
   isActive: boolean
 }
 
-function SidebarItem({ icon, label, to, isCollapsed, isActive }: SidebarItemProps) {
+function SidebarItem({
+  icon,
+  label,
+  to,
+  isCollapsed,
+  isActive,
+}: SidebarItemProps) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -218,14 +340,21 @@ function SidebarItem({ icon, label, to, isCollapsed, isActive }: SidebarItemProp
           to={to}
           className={`
             relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group
-            ${isActive 
-              ? "bg-blue-600 text-white shadow-md shadow-blue-900/20" 
-              : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+            ${
+              isActive
+                ? "bg-blue-600 text-white shadow-md shadow-blue-900/20"
+                : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
             }
             ${isCollapsed ? "justify-center" : ""}
           `}
         >
-          <span className={`flex-shrink-0 transition-colors ${isActive ? "text-white" : "text-slate-400 group-hover:text-slate-100"}`}>
+          <span
+            className={`flex-shrink-0 transition-colors ${
+              isActive
+                ? "text-white"
+                : "text-slate-400 group-hover:text-slate-100"
+            }`}
+          >
             {icon}
           </span>
 
@@ -251,13 +380,44 @@ function SidebarItem({ icon, label, to, isCollapsed, isActive }: SidebarItemProp
           )}
         </NavLink>
       </TooltipTrigger>
-      
+
       {isCollapsed && (
-        <TooltipContent side="right" className="bg-slate-400 text-slate-200 border-slate-700 ml-2 font-medium z-[60]">
+        <TooltipContent
+          side="right"
+          className="bg-slate-400 text-slate-200 border-slate-700 ml-2 font-medium z-[60]"
+        >
           {label}
         </TooltipContent>
       )}
     </Tooltip>
+  )
+}
+
+// --- Ítem para bottom bar móvil ---
+interface MobileNavItemProps {
+  icon: React.ReactNode
+  label: string
+  to: string
+  isActive: boolean
+}
+
+function MobileNavItem({ icon, label, to, isActive }: MobileNavItemProps) {
+  return (
+    <NavLink
+      to={to}
+      className={`
+        flex flex-col items-center justify-center gap-0.5
+        text-[11px] font-medium px-2
+        ${
+          isActive
+            ? "text-blue-400"
+            : "text-slate-400 hover:text-slate-100"
+        }
+      `}
+    >
+      {icon}
+      <span>{label}</span>
+    </NavLink>
   )
 }
 

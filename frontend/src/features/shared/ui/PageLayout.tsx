@@ -18,27 +18,22 @@ export default function PageLayout({
   showFloatingChat = true,
 }: PageLayoutProps) {
   const { pathname } = useLocation()
-  
+
   // Detectar si estamos en la vista de chat completa
   const isDM = pathname.startsWith('/chats')
   const shouldRenderFloatingChat = showFloatingChat && !isDM
 
   return (
     <div className="flex h-screen w-full bg-slate-50/50 overflow-hidden">
-      
-      {/* 1. Sidebar Inteligente */}
-      {/* Ahora maneja su propia responsividad (Fixed/Collapsed en móvil, Sticky en desktop) */}
+      {/* 1. Sidebar / Bottom bar (se encarga sola de la responsividad) */}
       {showSidebar && <Sidebar />}
 
       {/* 2. Contenedor Principal */}
-      {/* NOTA: Agregamos 'pl-20' (80px) solo en móvil para compensar la Sidebar 'fixed'.
-         En desktop ('lg:pl-0'), la sidebar es 'sticky' y ocupa su propio espacio en el flex.
-      */}
       <div
-        className={`
-          flex flex-1 flex-col min-w-0 min-h-0 transition-all duration-300
-          ${showSidebar ? 'pl-20 lg:pl-0' : ''}
-        `}
+        className="
+          flex flex-1 flex-col min-w-0 min-h-0
+          transition-all duration-300
+        "
       >
         {/* Header superior */}
         {showHeader && <Header />}
@@ -47,13 +42,21 @@ export default function PageLayout({
         <main
           className={`
             flex-1 min-h-0 w-full relative flex flex-col
-            ${isDM ? 'overflow-hidden' : 'overflow-y-auto p-4 md:p-6 scroll-smooth'}
+            ${
+              isDM
+                ? 'overflow-hidden'
+                : 'overflow-y-auto p-4 md:p-6 scroll-smooth'
+            }
+            ${
+              showSidebar
+                ? 'pb-20 lg:pb-0' // deja espacio para la bottom bar en móvil
+                : ''
+            }
           `}
         >
           <Outlet />
         </main>
       </div>
-
 
       {/* 3. Chat Flotante */}
       {shouldRenderFloatingChat && <FloatingChat />}
