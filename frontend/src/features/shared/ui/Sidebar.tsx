@@ -84,7 +84,7 @@ export function Sidebar({ className }: SidebarProps) {
         <nav
           className="
             fixed bottom-0 left-0 right-0 z-50
-            h-16 bg-slate-950/95 border-t border-slate-800/80
+            h-16 border-t border-slate-800/80
             shadow-[0_-4px_20px_rgba(15,23,42,0.9)]
             backdrop-blur-md
           "
