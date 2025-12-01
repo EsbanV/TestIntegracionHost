@@ -19,7 +19,6 @@ import {
 export default function MyPublicationsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  // Usamos el hook consolidado
   const { 
     publications, 
     isLoading, 
@@ -45,23 +44,25 @@ export default function MyPublicationsPage() {
   };
 
   return (
-    <div className="flex h-full bg-slate-50/50">
+    // Fondo transparente para heredar el patrón global. Texto semántico.
+    <div className="flex h-full w-full text-foreground">
       <main className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth w-full">
         <div className="max-w-4xl mx-auto space-y-8 pb-20">
           
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                <LuFileText className="text-blue-600" /> Mis Publicaciones
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight flex items-center gap-2">
+                <LuFileText className="text-primary" /> Mis Publicaciones
               </h1>
-              <p className="text-slate-500 text-sm mt-1">
+              <p className="text-muted-foreground text-sm mt-1">
                 Gestiona el contenido que has compartido con la comunidad.
               </p>
             </div>
             
             <Link to="/forums">
-              <Button className="bg-blue-600 hover:bg-blue-700 gap-2 shadow-sm hover:shadow-md transition-all">
+              {/* Botón Primary Semántico */}
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shadow-lg shadow-primary/20 transition-all">
                 <LuPlus className="w-4 h-4" /> Nueva Publicación
               </Button>
             </Link>
@@ -72,19 +73,21 @@ export default function MyPublicationsPage() {
               {isLoading ? (
                 <MyPublicationsSkeleton />
               ) : isError ? (
-                <div className="p-8 text-center bg-red-50 rounded-xl border border-red-100 text-red-600">
+                // Estado de Error Semántico (Destructive)
+                <div className="p-8 text-center bg-destructive/10 rounded-xl border border-destructive/20 text-destructive">
                   <p>No se pudieron cargar tus publicaciones.</p>
                   <p className="text-xs opacity-75 mt-1">{(error as Error)?.message}</p>
                 </div>
               ) : publications.length === 0 ? (
-                <div className="py-16 text-center bg-white rounded-xl border border-dashed border-slate-300">
-                  <div className="inline-flex p-4 rounded-full bg-slate-50 mb-4">
-                    <LuFileText className="w-8 h-8 text-slate-400" />
+                // Estado Vacío Semántico (Card + Muted)
+                <div className="py-16 text-center bg-card rounded-xl border border-dashed border-border">
+                  <div className="inline-flex p-4 rounded-full bg-muted mb-4">
+                    <LuFileText className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-medium text-slate-900">No tienes publicaciones aún</h3>
-                  <p className="text-slate-500 mb-6 text-sm">Comparte algo interesante con la comunidad hoy.</p>
+                  <h3 className="text-lg font-medium text-foreground">No tienes publicaciones aún</h3>
+                  <p className="text-muted-foreground mb-6 text-sm">Comparte algo interesante con la comunidad hoy.</p>
                   <Link to="/forums">
-                    <Button variant="outline">Ir al Foro</Button>
+                    <Button variant="outline" className="border-border hover:bg-muted text-foreground">Ir al Foro</Button>
                   </Link>
                 </div>
               ) : (

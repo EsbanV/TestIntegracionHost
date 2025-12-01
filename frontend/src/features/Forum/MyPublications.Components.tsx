@@ -74,8 +74,8 @@ export const EditablePublicationCard = ({
         className="relative"
     >
       <Card
-        className={`transition-all duration-300 border-slate-200 group ${
-          isEditing ? "ring-2 ring-blue-100 border-blue-300 shadow-md" : "hover:shadow-md bg-white"
+        className={`transition-all duration-300 border-border bg-card group ${
+          isEditing ? "ring-2 ring-primary/20 border-primary shadow-md" : "hover:shadow-md"
         }`}
       >
         <CardContent className="p-6">
@@ -89,8 +89,8 @@ export const EditablePublicationCard = ({
                     variant="secondary"
                     className={`${
                       post.visto
-                        ? "bg-green-50 text-green-700 hover:bg-green-100"
-                        : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                        ? "bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20"
+                        : "bg-primary/10 text-primary hover:bg-primary/20"
                     }`}
                   >
                     {post.visto ? (
@@ -99,26 +99,26 @@ export const EditablePublicationCard = ({
                       "Nuevo"
                     )}
                   </Badge>
-                  <span className="text-xs text-slate-500 flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <LuCalendar className="w-3 h-3" /> {formattedDate}
                   </span>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-1 leading-snug">{post.titulo}</h3>
-                  <p className="text-slate-600 text-sm leading-relaxed line-clamp-2">
+                  <h3 className="text-lg font-bold text-foreground mb-1 leading-snug">{post.titulo}</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed line-clamp-2">
                     {post.cuerpo}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 sm:flex-col sm:border-l sm:pl-4 sm:border-slate-100 self-start shrink-0">
+              <div className="flex items-center gap-1 sm:flex-col sm:border-l sm:pl-4 sm:border-border self-start shrink-0">
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={onEditStart}
                   disabled={isProcessing}
-                  className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 h-8 w-8"
+                  className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-8 w-8"
                   title="Editar"
                 >
                   <LuPencil className="w-4 h-4" />
@@ -130,7 +130,7 @@ export const EditablePublicationCard = ({
                       variant="ghost"
                       size="icon"
                       disabled={isProcessing}
-                      className="text-slate-400 hover:text-red-600 hover:bg-red-50 h-8 w-8"
+                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 w-8"
                       title="Eliminar"
                     >
                       {isProcessing ? <LuLoader className="w-4 h-4 animate-spin" /> : <LuTrash2 className="w-4 h-4" />}
@@ -145,7 +145,7 @@ export const EditablePublicationCard = ({
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={onDelete} className="bg-red-600 hover:bg-red-700">
+                      <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                         Eliminar
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -160,29 +160,29 @@ export const EditablePublicationCard = ({
               animate={{ opacity: 1 }}
               className="space-y-4"
             >
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
-                <h3 className="font-semibold text-blue-700 flex items-center gap-2 text-sm">
+              <div className="flex items-center justify-between pb-2 border-b border-border mb-2">
+                <h3 className="font-semibold text-primary flex items-center gap-2 text-sm">
                   <LuPencil className="w-4 h-4" /> Editando Publicación
                 </h3>
               </div>
 
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Título</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Título</label>
                   <Input
                     value={titulo}
                     onChange={(e) => setTitulo(e.target.value)}
                     disabled={isProcessing}
-                    className="bg-white font-medium border-slate-200"
+                    className="bg-background font-medium border-input"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Contenido</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Contenido</label>
                   <Textarea
                     value={cuerpo}
                     onChange={(e) => setCuerpo(e.target.value)}
                     disabled={isProcessing}
-                    className="bg-white min-h-[100px] resize-none border-slate-200"
+                    className="bg-background min-h-[100px] resize-none border-input"
                   />
                 </div>
               </div>
@@ -193,7 +193,7 @@ export const EditablePublicationCard = ({
                   size="sm"
                   onClick={onEditCancel}
                   disabled={isProcessing}
-                  className="text-slate-500"
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   Cancelar
                 </Button>
@@ -201,7 +201,7 @@ export const EditablePublicationCard = ({
                   size="sm"
                   onClick={() => onSave({ id: post.id, titulo, cuerpo })}
                   disabled={isProcessing || !titulo.trim() || !cuerpo.trim()}
-                  className="bg-blue-600 hover:bg-blue-700 gap-2"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
                 >
                   {isProcessing ? <LuLoader className="w-3 h-3 animate-spin" /> : <LuSave className="w-3 h-3" />}
                   Guardar
@@ -219,19 +219,19 @@ export const EditablePublicationCard = ({
 export const MyPublicationsSkeleton = () => (
   <div className="space-y-4">
     {[1, 2, 3].map((i) => (
-      <div key={i} className="p-6 border border-slate-200 rounded-xl bg-white space-y-3 shadow-sm">
+      <div key={i} className="p-6 border border-border rounded-xl bg-card space-y-3 shadow-sm">
         <div className="flex justify-between gap-4">
           <div className="space-y-3 w-full">
             <div className="flex gap-2">
-              <Skeleton className="h-5 w-16 rounded-full" />
-              <Skeleton className="h-5 w-32 rounded-full" />
+              <Skeleton className="h-5 w-16 rounded-full bg-muted" />
+              <Skeleton className="h-5 w-32 rounded-full bg-muted" />
             </div>
-            <Skeleton className="h-6 w-3/4 rounded" />
-            <Skeleton className="h-4 w-full rounded" />
+            <Skeleton className="h-6 w-3/4 rounded bg-muted" />
+            <Skeleton className="h-4 w-full rounded bg-muted/50" />
           </div>
-          <div className="flex flex-col gap-2 border-l border-slate-100 pl-4">
-            <Skeleton className="h-8 w-8 rounded" />
-            <Skeleton className="h-8 w-8 rounded" />
+          <div className="flex flex-col gap-2 border-l border-border pl-4">
+            <Skeleton className="h-8 w-8 rounded bg-muted" />
+            <Skeleton className="h-8 w-8 rounded bg-muted" />
           </div>
         </div>
       </div>
