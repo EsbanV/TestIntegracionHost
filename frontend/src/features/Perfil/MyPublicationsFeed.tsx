@@ -7,7 +7,7 @@ interface MyPublicationsFeedProps {
   selectedCategoryId?: string;
   authorId?: string;
   onStatsChange?: (hasResults: boolean, totalResults: number) => void;
-  onProductClick?: (item: any) => void; // Nuevo prop
+  onProductClick?: (item: any) => void;
 }
 
 const MyPublicationsFeed: React.FC<MyPublicationsFeedProps> = ({ 
@@ -50,7 +50,7 @@ const MyPublicationsFeed: React.FC<MyPublicationsFeedProps> = ({
        isFetchingNextPage={isFetchingNextPage}
        lastPostRef={lastPostElementRef}
        showEditButton={!authorId}
-       onItemClick={onProductClick} // Conectamos el click
+       onItemClick={onProductClick}
     />
   );
 };

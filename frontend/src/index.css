@@ -9,6 +9,7 @@
 
 @theme {
   /* Enlazamos el sistema de colores de Tailwind con nuestras CSS vars */
+  --color-background: var(--background);
   --color-foreground: var(--foreground);
 
   --color-primary: var(--primary);
@@ -46,6 +47,7 @@
 
 :root {
   /* Fondo base blanco, contenido gris muy oscuro (casi negro) */
+  --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
 
   /* Tarjetas y paneles sobre fondo blanco */
@@ -110,6 +112,8 @@
 
 /* MODO OSCURO: mantiene la identidad azul, pero con fondo casi negro */
 .dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
 
   --card: oklch(0.145 0 0);
   --card-foreground: oklch(0.985 0 0);

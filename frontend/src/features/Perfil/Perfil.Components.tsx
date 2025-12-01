@@ -2,6 +2,8 @@ import React, { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from 'react-router-dom';
 import { getImageUrl } from "@/app/imageHelper";
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
 // UI Shadcn
 import { Button } from "@/components/ui/button";
@@ -12,25 +14,49 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Icons
+// Icons (Lucide React estandarizado)
 import { 
-  LuPencil, LuSave, LuMail, LuCalendar, LuStar, LuShieldCheck,
-  LuCamera, LuLoader, LuGhost, LuShoppingBag, LuEye, LuUser
-} from "react-icons/lu";
+  Pencil, Save, Mail, Calendar, Star, ShieldCheck,
+  Camera, Loader2, Ghost, ShoppingBag, Eye, User
+} from "lucide-react";
 
-import type { Review, UserProfile, PublicationItem } from "./perfil.types";
+import type { Review, UserProfile } from "./perfil.types";
 import { formatCLP } from "@/utils/format"; 
 
-// ... [Mantener ProfileField y ProfileSkeleton igual que antes] ...
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+// ============================================================================
+// 1. ATOMS & UTILS
+// ============================================================================
+
 export const ProfileField = ({ label, value, icon, canEdit = false, editComponent }: { label: string, value: string, icon?: React.ReactNode, canEdit?: boolean, editComponent?: React.ReactNode }) => (
   <div className="space-y-1.5">
-    <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide flex items-center gap-1.5">{icon} {label}</Label>
-    <div className="h-9 flex items-center">
+    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+      {icon} {label}
+    </Label>
+    <div className="min-h-[2.25rem] flex items-center">
       <AnimatePresence mode="wait">
         {canEdit && editComponent ? (
-          <motion.div key="editing" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="w-full">{editComponent}</motion.div>
+          <motion.div 
+            key="editing" 
+            initial={{ opacity: 0, x: -10 }} 
+            animate={{ opacity: 1, x: 0 }} 
+            exit={{ opacity: 0, x: 10 }} 
+            className="w-full"
+          >
+            {editComponent}
+          </motion.div>
         ) : (
-          <motion.p key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm font-medium text-slate-900 truncate w-full">{value}</motion.p>
+          <motion.p 
+            key="view" 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            className="text-sm font-medium text-foreground truncate w-full"
+          >
+            {value}
+          </motion.p>
         )}
       </AnimatePresence>
     </div>
@@ -38,20 +64,27 @@ export const ProfileField = ({ label, value, icon, canEdit = false, editComponen
 );
 
 export const ProfileSkeleton = () => (
-  <div className="space-y-6 max-w-5xl mx-auto">
-    <Skeleton className="h-48 w-full rounded-t-2xl bg-slate-200" />
-    <div className="px-6 -mt-16 flex gap-6">
-      <Skeleton className="h-32 w-32 rounded-full border-4 border-white bg-slate-300" />
-      <div className="pt-16 space-y-2 w-full max-w-md">
-         <Skeleton className="h-8 w-1/2 bg-slate-200" />
-         <Skeleton className="h-4 w-1/3 bg-slate-200" />
+  <div className="space-y-6 max-w-5xl mx-auto px-4 mt-4">
+    <Skeleton className="h-48 w-full rounded-t-2xl bg-muted" />
+    <div className="px-6 -mt-16 flex flex-col md:flex-row gap-6">
+      <Skeleton className="h-32 w-32 rounded-full border-4 border-background bg-muted-foreground/20" />
+      <div className="pt-4 md:pt-16 space-y-3 w-full max-w-md">
+         <Skeleton className="h-8 w-3/4 bg-muted" />
+         <Skeleton className="h-4 w-1/2 bg-muted" />
       </div>
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+        <Skeleton className="h-64 bg-muted rounded-xl" />
+        <div className="col-span-2 space-y-4">
+            <Skeleton className="h-12 w-full bg-muted rounded-xl" />
+            <Skeleton className="h-48 w-full bg-muted rounded-xl" />
+        </div>
     </div>
   </div>
 );
 
 // ============================================================================
-// 2. HERO SECTION (Modificado para editar Usuario)
+// 2. HERO SECTION
 // ============================================================================
 
 interface HeroProps {
@@ -63,7 +96,6 @@ interface HeroProps {
   isUploadingPhoto: boolean;
   onUploadPhoto: (file: File) => void;
   readOnly?: boolean;
-  // 👇 Nuevas props para la edición del header
   editUsername?: string;
   onEditUsernameChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
@@ -81,27 +113,34 @@ export const ProfileHero = ({
   };
 
   return (
-    <div className="relative">
-      <div className="h-48 w-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-2xl shadow-sm"></div>
+    <div className="relative group">
+      {/* Banner con gradiente semántico (Primary -> Primary/80) */}
+      <div className="h-48 w-full bg-gradient-to-r from-primary to-primary/80 rounded-t-2xl shadow-sm"></div>
       
-      <Card className="relative -mt-16 mx-4 md:mx-0 border-none shadow-lg overflow-visible">
+      <Card className="relative -mt-16 mx-4 md:mx-0 border-none shadow-lg overflow-visible bg-card">
         <CardContent className="pt-0 pb-6 px-6">
           <div className="flex flex-col md:flex-row gap-6 items-start">
             
             {/* Avatar */}
-            <div className="relative -mt-12 group shrink-0">
-              <div className="p-1.5 bg-white rounded-full shadow-sm relative">
-                <Avatar className="h-32 w-32 border-4 border-white shadow-inner">
+            <div className="relative -mt-12 group/avatar shrink-0">
+              <div className="p-1.5 bg-card rounded-full shadow-sm relative">
+                <Avatar className="h-32 w-32 border-4 border-card shadow-inner bg-muted">
                   <AvatarImage src={getImageUrl(user.fotoPerfilUrl)} alt={user.usuario} className="object-cover" />
-                  <AvatarFallback className="text-4xl bg-slate-100 text-slate-400">{user.usuario.charAt(0).toUpperCase()}</AvatarFallback>
+                  <AvatarFallback className="text-4xl bg-muted text-muted-foreground">
+                    {user.usuario.charAt(0).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
 
                 {!readOnly && (
                   <div 
-                    className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover/avatar:opacity-100 transition-opacity cursor-pointer backdrop-blur-sm"
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    {isUploadingPhoto ? <LuLoader className="text-white w-8 h-8 animate-spin" /> : <LuCamera className="text-white w-8 h-8" />}
+                    {isUploadingPhoto ? (
+                      <Loader2 className="text-white w-8 h-8 animate-spin" />
+                    ) : (
+                      <Camera className="text-white w-8 h-8" />
+                    )}
                   </div>
                 )}
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
@@ -112,46 +151,74 @@ export const ProfileHero = ({
             <div className="flex-1 mt-4 md:mt-2 w-full">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="w-full max-w-lg">
-                  <div className="flex items-center gap-3 mb-1 h-12"> 
-                    {/* 👇 LÓGICA DE EDICIÓN DEL USUARIO AQUÍ */}
+                  <div className="flex items-center gap-3 mb-1 min-h-[3rem]"> 
                     {isEditing && !readOnly ? (
                         <div className="relative w-full max-w-xs">
-                           <LuUser className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500 w-5 h-5" />
+                           <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                            <Input 
                               value={editUsername}
                               onChange={onEditUsernameChange}
-                              className="text-2xl font-bold text-slate-900 pl-10 h-12 border-blue-300 bg-blue-50/50 focus:bg-white transition-colors"
+                              className="text-xl font-bold pl-9 h-10 bg-muted/50 focus:bg-background transition-colors"
                               placeholder="Nombre de usuario"
                               autoFocus
                            />
                         </div>
                     ) : (
-                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight truncate">{user.usuario}</h1>
+                        <h1 className="text-3xl font-bold text-foreground tracking-tight truncate">
+                          {user.usuario}
+                        </h1>
                     )}
                     
                     {!isEditing && (
-                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 shrink-0">{user.role}</Badge>
+                        <Badge variant="secondary" className="shrink-0">
+                          {user.role}
+                        </Badge>
                     )}
                   </div>
                   
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500 mt-2">
-                    <span className="flex items-center gap-1.5"><LuMail className="w-4 h-4" /> {user.correo}</span>
-                    <span className="flex items-center gap-1.5"><LuCalendar className="w-4 h-4" /> Miembro desde {user.fechaRegistro ? new Date(user.fechaRegistro).getFullYear() : '2024'}</span>
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mt-1">
+                    <span className="flex items-center gap-1.5">
+                      <Mail className="w-4 h-4" /> {user.correo}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4" /> 
+                      Miembro desde {user.fechaRegistro ? new Date(user.fechaRegistro).getFullYear() : '2024'}
+                    </span>
                   </div>
                 </div>
 
                 {/* Botones de Acción */}
                 {!readOnly && (
-                  <div className="flex gap-2 w-full md:w-auto shrink-0">
+                  <div className="flex gap-2 w-full md:w-auto shrink-0 mt-2 md:mt-0">
                     {!isEditing ? (
-                      <Button onClick={() => setIsEditing(true)} variant="outline" className="gap-2 w-full md:w-auto border-blue-200 text-blue-700 hover:bg-blue-50">
-                        <LuPencil className="w-4 h-4" /> Editar Perfil
+                      <Button 
+                        onClick={() => setIsEditing(true)} 
+                        variant="outline" 
+                        className="gap-2 w-full md:w-auto"
+                      >
+                        <Pencil className="w-4 h-4" /> Editar Perfil
                       </Button>
                     ) : (
                       <div className="flex gap-2 w-full md:w-auto">
-                        <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSaving}>Cancelar</Button>
-                        <Button onClick={onSave} disabled={isSaving} className="gap-2 bg-blue-600 hover:bg-blue-700">
-                          {isSaving ? "Guardando..." : <><LuSave className="w-4 h-4" /> Guardar</>}
+                        <Button 
+                          variant="ghost" 
+                          onClick={() => setIsEditing(false)} 
+                          disabled={isSaving}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button 
+                          onClick={onSave} 
+                          disabled={isSaving} 
+                          className="gap-2"
+                        >
+                          {isSaving ? (
+                            <Loader2 className="w-4 h-4 animate-spin" /> 
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4" /> Guardar
+                            </>
+                          )}
                         </Button>
                       </div>
                     )}
@@ -166,20 +233,34 @@ export const ProfileHero = ({
   );
 };
 
-// ... [Mantener ProfileStatsCard, ReviewsList, PublicationsList igual que antes] ...
-// (Asegúrate de que PublicationsList y el resto sigan en el archivo)
+// ============================================================================
+// 3. STATS & LISTS
+// ============================================================================
+
 export const ProfileStatsCard = ({ user }: { user: UserProfile }) => (
-  <Card className="bg-gradient-to-br from-slate-900 to-slate-800 text-white border-none shadow-lg">
-    <CardContent className="p-6">
-      <h3 className="text-sm font-medium text-slate-300 mb-4 uppercase tracking-wider">Estadísticas</h3>
+  // Usamos bg-primary y text-primary-foreground para que destaque pero respete el tema
+  <Card className="bg-primary text-primary-foreground border-none shadow-lg overflow-hidden relative">
+    {/* Decoración de fondo sutil */}
+    <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+      <Star size={100} />
+    </div>
+    
+    <CardContent className="p-6 relative z-10">
+      <h3 className="text-xs font-bold text-primary-foreground/80 mb-4 uppercase tracking-wider">
+        Estadísticas
+      </h3>
       <div className="grid grid-cols-2 gap-4">
-        <div className="p-3 rounded-lg bg-white/5 backdrop-blur-sm">
+        <div className="p-3 rounded-lg bg-primary-foreground/10 backdrop-blur-sm border border-primary-foreground/20">
           <p className="text-2xl font-bold">{Number(user.reputacion).toFixed(1)}</p>
-          <div className="flex items-center gap-1 text-amber-400 text-sm"><LuStar className="fill-current" /> Reputación</div>
+          <div className="flex items-center gap-1 text-primary-foreground/80 text-xs mt-1">
+            <Star className="fill-current w-3 h-3" /> Reputación
+          </div>
         </div>
-        <div className="p-3 rounded-lg bg-white/5 backdrop-blur-sm">
+        <div className="p-3 rounded-lg bg-primary-foreground/10 backdrop-blur-sm border border-primary-foreground/20">
           <p className="text-2xl font-bold">{user.resumen?.totalVentas || user.stats?.ventas || 0}</p>
-          <div className="flex items-center gap-1 text-blue-300 text-sm"><LuShieldCheck /> Ventas</div>
+          <div className="flex items-center gap-1 text-primary-foreground/80 text-xs mt-1">
+            <ShieldCheck className="w-3 h-3" /> Ventas
+          </div>
         </div>
       </div>
     </CardContent>
@@ -189,31 +270,46 @@ export const ProfileStatsCard = ({ user }: { user: UserProfile }) => (
 export const ReviewsList = ({ reviews }: { reviews: Review[] }) => (
   <div className="grid gap-4">
     {reviews.map((review) => (
-      <div key={review.id} className="flex gap-4 p-4 rounded-lg bg-slate-50 border border-slate-100 transition-colors hover:border-slate-200">
-        <Avatar className="h-10 w-10 bg-slate-200">
+      <div 
+        key={review.id} 
+        className="flex gap-4 p-4 rounded-xl bg-card border border-border transition-colors hover:bg-accent/5"
+      >
+        <Avatar className="h-10 w-10 border border-border">
             <AvatarImage src={getImageUrl(review.calificador.fotoPerfilUrl)} />
-            <AvatarFallback className="bg-indigo-100 text-indigo-600 font-bold">
+            <AvatarFallback className="bg-muted text-muted-foreground font-bold">
               {review.calificador.nombre.charAt(0).toUpperCase()}
             </AvatarFallback>
         </Avatar>
         <div className="flex-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-slate-900 text-sm">{review.calificador.nombre}</span>
-              <div className="flex text-amber-400">
+              <span className="font-semibold text-foreground text-sm">
+                {review.calificador.nombre}
+              </span>
+              <div className="flex text-yellow-500">
                 {[...Array(5)].map((_, i) => (
-                  <LuStar key={i} className={`w-3 h-3 ${i < Number(review.puntuacion) ? 'fill-current' : 'text-slate-200'}`} />
+                  <Star 
+                    key={i} 
+                    className={cn(
+                      "w-3 h-3",
+                      i < Number(review.puntuacion) ? "fill-current" : "text-muted"
+                    )} 
+                  />
                 ))}
               </div>
             </div>
-            <span className="text-[10px] text-slate-400">{new Date(review.fecha).toLocaleDateString()}</span>
+            <span className="text-[10px] text-muted-foreground">
+              {new Date(review.fecha).toLocaleDateString()}
+            </span>
           </div>
           
-          <p className="text-slate-600 mt-1 text-sm leading-snug">"{review.comentario}"</p>
+          <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+            "{review.comentario}"
+          </p>
           
           {review.transaccion?.producto && (
-            <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white border border-slate-100 text-[10px] text-slate-500">
-              <LuShoppingBag size={10} /> {review.transaccion.producto.nombre}
+            <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/50 text-muted-foreground text-[10px] font-medium border border-border">
+              <ShoppingBag size={10} /> {review.transaccion.producto.nombre}
             </div>
           )}
         </div>
@@ -224,10 +320,10 @@ export const ReviewsList = ({ reviews }: { reviews: Review[] }) => (
 
 export const EmptyReviews = () => (
   <div className="text-center py-12">
-    <div className="inline-flex p-3 bg-slate-50 rounded-full mb-3">
-        <LuGhost className="text-slate-300 w-6 h-6" />
+    <div className="inline-flex p-4 bg-muted rounded-full mb-3">
+        <Ghost className="text-muted-foreground w-6 h-6" />
     </div>
-    <p className="text-slate-500 text-sm">Aún no hay reseñas para este usuario.</p>
+    <p className="text-muted-foreground text-sm">Aún no hay reseñas para este usuario.</p>
   </div>
 );
 
@@ -236,19 +332,23 @@ export const PublicationsList = ({
 }: any) => {
   if (isLoading) return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-       {[1,2,3].map(i => <Skeleton key={i} className="h-64 rounded-xl bg-slate-100" />)}
+       {[1,2,3].map(i => <Skeleton key={i} className="h-[300px] rounded-2xl bg-muted" />)}
     </div>
   );
   
-  if (isError) return <div className="p-6 bg-red-50 text-red-600 rounded-lg text-center border border-red-100">Error al cargar publicaciones.</div>;
+  if (isError) return (
+    <div className="p-6 bg-destructive/10 text-destructive rounded-lg text-center border border-destructive/20 text-sm font-medium">
+      Error al cargar publicaciones.
+    </div>
+  );
   
   if (!hasResults) return (
-    <Card className="border-dashed border-2 border-slate-200 bg-slate-50/50">
-      <CardContent className="flex flex-col items-center justify-center py-16 text-slate-400">
-         <div className="p-4 bg-white rounded-full mb-4 shadow-sm">
-            <LuGhost size={32} className="text-slate-300" />
+    <Card className="border-dashed border-2 bg-muted/20">
+      <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+         <div className="p-4 bg-background rounded-full mb-4 shadow-sm">
+            <Ghost size={32} className="text-muted-foreground/50" />
          </div>
-         <h3 className="text-lg font-semibold text-slate-600">Sin publicaciones</h3>
+         <h3 className="text-lg font-semibold text-foreground">Sin publicaciones</h3>
          <p className="text-sm">Este usuario aún no ha publicado nada.</p>
       </CardContent>
     </Card>
@@ -264,66 +364,81 @@ export const PublicationsList = ({
                animate={{ opacity: 1, y: 0 }}
                transition={{ delay: index * 0.05 }}
                ref={index === items.length - 1 ? lastPostRef : null}
-               className="group relative bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+               className="group relative bg-card text-card-foreground rounded-2xl shadow-sm border border-border overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full flex flex-col"
                onClick={() => onItemClick && onItemClick(post)}
              >
-                <div className="relative aspect-[4/3] w-full bg-slate-100 overflow-hidden">
+                {/* Imagen */}
+                <div className="relative aspect-[4/3] w-full bg-muted overflow-hidden">
                    {post.image ? (
-                     <img src={getImageUrl(post.image)} alt={post.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+                     <img 
+                        src={getImageUrl(post.image)} 
+                        alt={post.title} 
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                        loading="lazy" 
+                     />
                    ) : (
-                     <div className="h-full w-full flex flex-col items-center justify-center text-slate-300 bg-slate-50">
-                        <LuShoppingBag className="w-10 h-10 mb-2 opacity-50"/>
+                     <div className="h-full w-full flex flex-col items-center justify-center text-muted-foreground bg-muted">
+                        <ShoppingBag className="w-10 h-10 mb-2 opacity-50"/>
                         <span className="text-xs font-medium">Sin foto</span>
                      </div>
                    )}
+                   
+                   {/* Badge Categoría */}
                    <div className="absolute top-3 left-3">
-                      <Badge variant="secondary" className="bg-white/90 backdrop-blur text-slate-800 shadow-sm border-0 font-medium">
+                      <Badge variant="secondary" className="bg-background/80 backdrop-blur text-foreground shadow-sm border border-border font-medium">
                         {post.categoryName || "Varios"}
                       </Badge>
                    </div>
-                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                      <Button size="sm" className="bg-white text-slate-900 hover:bg-slate-100 shadow-lg font-medium">
-                         <LuEye className="w-4 h-4 mr-2" /> Ver Detalle
+                   
+                   {/* Overlay Hover */}
+                   <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-[1px]">
+                      <Button size="sm" className="bg-background text-foreground hover:bg-background/90 font-medium shadow-lg">
+                         <Eye className="w-4 h-4 mr-2" /> Ver Detalle
                       </Button>
                    </div>
                 </div>
-                <div className="p-5 flex flex-col h-[160px]">
+
+                {/* Contenido Texto */}
+                <div className="p-4 flex flex-col flex-1">
                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="text-base font-bold text-slate-900 line-clamp-2 leading-tight flex-1 mr-2">
+                      <h3 className="text-sm font-bold text-foreground line-clamp-2 leading-tight">
                         {post.title}
                       </h3>
                    </div>
-                   <div className="mt-auto space-y-3">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-lg font-bold text-emerald-600">{formatCLP(post.price || 0)}</span>
+                   
+                   <div className="mt-auto pt-3 border-t border-border flex items-end justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1 mb-0.5">
+                            <Calendar className="w-3 h-3" /> Publicado
+                        </span>
+                        <span className="text-lg font-bold text-primary">
+                            {formatCLP(post.price || 0)}
+                        </span>
                       </div>
-                      <div className="flex items-center justify-between pt-3 border-t border-slate-50">
-                         <div className="flex items-center gap-1 text-xs text-slate-400">
-                            <LuCalendar className="w-3 h-3" />
-                            <span>Publicado recientemente</span>
-                         </div>
-                         {showEditButton && (
+                      
+                      {showEditButton && (
                            <Button 
-                             variant="ghost" 
+                             variant="secondary" 
                              size="sm" 
-                             className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2"
-                             onClick={(e) => {
-                               e.stopPropagation(); 
-                             }}
+                             className="h-7 text-xs px-2.5"
+                             onClick={(e) => { e.stopPropagation(); }}
                              asChild
                            >
                              <Link to={`/editar/${post.id}`}>
-                               <LuPencil className="w-3 h-3 mr-1" /> Editar
+                               <Pencil className="w-3 h-3 mr-1.5" /> Editar
                              </Link>
                            </Button>
-                         )}
-                      </div>
+                      )}
                    </div>
                 </div>
              </motion.div>
           ))}
        </div>
-       {isFetchingNextPage && <div className="flex justify-center py-4"><LuLoader className="animate-spin text-blue-600" /></div>}
+       {isFetchingNextPage && (
+          <div className="flex justify-center py-6">
+            <Loader2 className="animate-spin text-primary w-6 h-6" />
+          </div>
+       )}
     </div>
   );
 };
