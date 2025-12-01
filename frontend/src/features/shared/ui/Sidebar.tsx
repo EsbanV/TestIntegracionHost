@@ -72,7 +72,6 @@ export function Sidebar({ className }: SidebarProps) {
 
   // ==========================
   //   VERSIÓN MÓVIL: BOTTOM BAR
-  //   Nota: Usamos bg-card/90 para que sea gris oscuro (no negro) con blur
   // ==========================
   if (isMobile) {
     return (
@@ -80,7 +79,9 @@ export function Sidebar({ className }: SidebarProps) {
         <nav
           className="
             fixed bottom-0 left-0 right-0 z-50
-            h-16 bg-card/90 backdrop-blur-xl
+            h-16 
+            /* Fondo CARD para que coincida con el gris oscuro de superficies */
+            bg-card/90 backdrop-blur-xl
             border-t border-border
             shadow-[0_-4px_20px_rgba(0,0,0,0.2)]
             pb-safe
@@ -133,7 +134,6 @@ export function Sidebar({ className }: SidebarProps) {
 
   // ==========================
   //   VERSIÓN DESKTOP: LATERAL
-  //   Nota: Usamos bg-card para el tono gris y border-border para la separación
   // ==========================
   return (
     <TooltipProvider delayDuration={0}>
@@ -143,8 +143,12 @@ export function Sidebar({ className }: SidebarProps) {
         variants={sidebarVariants}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className={`
-          flex flex-col bg-card border-r border-border shadow-xl shadow-black/5 z-50
-          sticky top-0 h-screen
+          flex flex-col 
+          /* CLAVE: bg-card para el gris oscuro (Zinc 900) */
+          bg-card 
+          border-r border-border 
+          shadow-xl shadow-black/5 
+          z-50 sticky top-0 h-screen
           ${className}
         `}
       >
@@ -166,7 +170,7 @@ export function Sidebar({ className }: SidebarProps) {
                     className="h-5 w-auto brightness-0 invert"
                   />
                 </div>
-                <span className="font-bold text-lg tracking-tight text-card-foreground">
+                <span className="font-bold text-lg tracking-tight text-foreground">
                   Market<span className="text-primary">UCT</span>
                 </span>
               </motion.div>
@@ -241,7 +245,7 @@ export function Sidebar({ className }: SidebarProps) {
         </nav>
 
         {/* --- FOOTER USER --- */}
-        {/* Fondo sutilmente diferente al gris de la card para separar visualmente */}
+        {/* bg-muted/20 para separar sutilmente el área de usuario */}
         <div className="p-3 border-t border-border bg-muted/20 shrink-0">
           <div
             className={`flex items-center ${
@@ -258,12 +262,12 @@ export function Sidebar({ className }: SidebarProps) {
                 >
                   <Avatar className="h-9 w-9 border border-border shadow-sm shrink-0">
                     <AvatarImage src={getImageUrl(user.fotoPerfilUrl)} />
-                    <AvatarFallback className="bg-primary/20 text-primary font-bold">
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold">
                       {user?.usuario?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col truncate">
-                    <span className="text-sm font-semibold text-card-foreground truncate">
+                    <span className="text-sm font-semibold text-foreground truncate">
                       {user?.usuario}
                     </span>
                     <span className="text-[10px] text-muted-foreground font-medium truncate uppercase tracking-wider">
@@ -388,6 +392,7 @@ function MobileNavItem({ icon, label, to, isActive }: MobileNavItemProps) {
       </div>
       <span>{label}</span>
       
+      {/* Indicador de punto activo móvil */}
       {isActive && (
         <motion.div 
           layoutId="mobileActive"

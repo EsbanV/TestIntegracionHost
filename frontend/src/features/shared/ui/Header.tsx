@@ -122,7 +122,9 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur-md shadow-sm transition-all duration-200">
+    // CAMBIO CLAVE: bg-card/80 en lugar de bg-background. 
+    // Esto iguala el tono con la Sidebar y crea contraste con el fondo negro de la página.
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-card/80 backdrop-blur-xl shadow-sm transition-all duration-200">
       <div className="flex h-16 w-full items-center justify-between px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
         
         {/* --- IZQUIERDA: LOGO Y TÍTULO --- */}
@@ -133,7 +135,7 @@ export const Header: React.FC = () => {
             onClick={() => navigate("/home")}
           >
             {/* Contenedor del logo con primary para branding consistente */}
-            <div className="h-8 w-8 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center shadow-md shadow-primary/20">
+            <div className="h-8 w-8 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
               <img src={LogoMUCT} alt="Logo" className="h-5 w-auto object-contain brightness-0 invert" />
             </div>
             
@@ -162,12 +164,12 @@ export const Header: React.FC = () => {
             className={`
               relative transition-all duration-300 ease-in-out z-50
               ${isSearchFocused 
-                ? 'w-full md:w-96 absolute left-0 right-0 px-4 md:relative md:px-0 md:left-auto md:right-auto bg-background md:bg-transparent h-full md:h-auto flex items-center' 
+                ? 'w-full md:w-96 absolute left-0 right-0 px-4 md:relative md:px-0 md:left-auto md:right-auto bg-card md:bg-transparent h-full md:h-auto flex items-center' 
                 : 'w-auto md:w-72'}
             `}
           >
             {/* Input Wrapper */}
-            <div className={`relative group w-full ${isSearchFocused ? 'shadow-lg md:shadow-none rounded-b-xl md:rounded-none' : ''}`}>
+            <div className={`relative group w-full ${isSearchFocused ? 'shadow-2xl shadow-black/10 md:shadow-none rounded-b-xl md:rounded-none' : ''}`}>
               <Search 
                 className={`
                   absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors z-10
@@ -179,10 +181,12 @@ export const Header: React.FC = () => {
                 type="search"
                 placeholder="Buscar usuarios..."
                 className={`
-                  pl-10 bg-muted/50 border-border 
-                  focus:bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary 
+                  pl-10 
+                  /* Fondo sutilmente diferente al header (muted) para que parezca un campo de entrada */
+                  bg-muted/50 border-transparent
+                  focus:bg-muted/80 focus:ring-2 focus:ring-primary/20 focus:border-primary/50
                   transition-all rounded-full h-10 w-full text-sm placeholder:text-muted-foreground text-foreground
-                  ${!isSearchFocused && "cursor-pointer hover:bg-muted"}
+                  ${!isSearchFocused && "cursor-pointer hover:bg-muted/70"}
                 `}
                 onFocus={() => setIsSearchFocused(true)}
                 value={searchValue}
@@ -205,7 +209,8 @@ export const Header: React.FC = () => {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.98 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute top-12 left-0 w-full bg-card rounded-xl border border-border shadow-xl overflow-hidden ring-1 ring-foreground/5 mt-1 md:mt-2"
+                  // Usamos bg-popover para asegurar que flote correctamente con el color adecuado
+                  className="absolute top-12 left-0 w-full bg-popover rounded-xl border border-border shadow-xl overflow-hidden ring-1 ring-foreground/5 mt-1 md:mt-2"
                 >
                   {searchResults.length > 0 ? (
                     <div className="py-2">
@@ -216,7 +221,7 @@ export const Header: React.FC = () => {
                         <div 
                           key={u.id} 
                           onClick={() => handleUserSelect(u.id)} 
-                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted cursor-pointer transition-colors group border-l-2 border-transparent hover:border-primary"
+                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors group border-l-2 border-transparent hover:border-primary"
                         >
                           <Avatar className="h-8 w-8 border border-border">
                             <AvatarImage src={getImageUrl(u.fotoPerfilUrl)} />
@@ -235,7 +240,7 @@ export const Header: React.FC = () => {
                       <div className="h-px bg-border my-1 mx-2" />
                       <div 
                         onClick={handleViewAllResults} 
-                        className="px-4 py-2.5 text-center cursor-pointer hover:bg-muted transition-colors text-xs font-semibold text-primary hover:text-primary/80"
+                        className="px-4 py-2.5 text-center cursor-pointer hover:bg-muted/50 transition-colors text-xs font-semibold text-primary hover:text-primary/80"
                       >
                         Ver todos los resultados
                       </div>
@@ -243,7 +248,7 @@ export const Header: React.FC = () => {
                   ) : (
                     !isSearching && (
                       <div className="p-6 text-center">
-                         <div className="mx-auto w-10 h-10 bg-muted rounded-full flex items-center justify-center mb-2">
+                         <div className="mx-auto w-10 h-10 bg-muted/50 rounded-full flex items-center justify-center mb-2">
                            <Users className="h-5 w-5 text-muted-foreground" />
                          </div>
                          <p className="text-sm text-muted-foreground">No encontramos usuarios.</p>
@@ -261,35 +266,35 @@ export const Header: React.FC = () => {
               <DropdownMenuTrigger asChild>
                 <Button 
                   variant="ghost" 
-                  className="relative h-10 w-10 rounded-full hover:bg-muted p-0 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-2 transition-all ml-1"
+                  className="relative h-10 w-10 rounded-full hover:bg-muted/50 p-0 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-2 transition-all ml-1"
                 >
                   <Avatar className="h-9 w-9 border border-border transition-transform hover:scale-105 cursor-pointer bg-background shadow-sm">
                     <AvatarImage src={getImageUrl(user?.fotoPerfilUrl)} className="object-cover" />
-                    <AvatarFallback className="bg-primary text-primary-foreground font-bold text-sm">
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
                       {user?.usuario?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-60 mt-2 p-2 bg-card border-border text-card-foreground" align="end" forceMount>
-                <div className="px-2 py-2 mb-1 bg-muted/50 rounded-lg">
+              <DropdownMenuContent className="w-60 mt-2 p-2 bg-popover border-border text-popover-foreground" align="end" forceMount>
+                <div className="px-2 py-2 mb-1 bg-muted/30 rounded-lg">
                     <p className="text-sm font-semibold text-foreground truncate">{user?.usuario}</p>
                     <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                 </div>
                 
-                <DropdownMenuItem onClick={() => navigate("/perfil")} className="cursor-pointer rounded-md focus:bg-muted">
+                <DropdownMenuItem onClick={() => navigate("/perfil")} className="cursor-pointer rounded-md focus:bg-muted/50">
                   <User className="mr-2 h-4 w-4 text-muted-foreground" /> Mi Perfil
                 </DropdownMenuItem>
                 
-                <DropdownMenuItem onClick={() => navigate("/mis-publicaciones")} className="cursor-pointer rounded-md focus:bg-muted">
+                <DropdownMenuItem onClick={() => navigate("/mis-publicaciones")} className="cursor-pointer rounded-md focus:bg-muted/50">
                   <FileText className="mr-2 h-4 w-4 text-muted-foreground" /> Mis Publicaciones
                 </DropdownMenuItem>
 
-                <DropdownMenuItem onClick={() => navigate("/favoritos")} className="cursor-pointer rounded-md focus:bg-muted">
+                <DropdownMenuItem onClick={() => navigate("/favoritos")} className="cursor-pointer rounded-md focus:bg-muted/50">
                   <Heart className="mr-2 h-4 w-4 text-muted-foreground" /> Favoritos
                 </DropdownMenuItem>
 
-                <DropdownMenuItem onClick={() => navigate("/ayuda")} className="cursor-pointer rounded-md focus:bg-muted">
+                <DropdownMenuItem onClick={() => navigate("/ayuda")} className="cursor-pointer rounded-md focus:bg-muted/50">
                   <HelpCircle className="mr-2 h-4 w-4 text-muted-foreground" /> Ayuda
                 </DropdownMenuItem>
                 
