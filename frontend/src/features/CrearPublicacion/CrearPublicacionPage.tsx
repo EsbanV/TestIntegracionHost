@@ -20,8 +20,9 @@ export default function CreateProductPage() {
   } = useCreatePublication();
 
   return (
-    // CAMBIO: py-6 en móvil, lg:py-10 en escritorio
-    <div className="min-h-screen bg-[#F8FAFC] py-6 lg:py-10 px-4 sm:px-6">
+    // ELIMINADO: bg-[#F8FAFC] fijo. 
+    // AHORA: Transparente para ver el patrón de puntos del body, con texto semántico.
+    <div className="min-h-screen py-6 lg:py-10 px-4 sm:px-6 text-foreground">
       <div className="max-w-5xl mx-auto">
         
         {/* Header */}
@@ -30,8 +31,8 @@ export default function CreateProductPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-6 lg:mb-8"
         >
-          <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">Vender Producto</h1>
-          <p className="text-sm lg:text-base text-slate-500 mt-2">Publica tu artículo en el marketplace universitario.</p>
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Vender Producto</h1>
+          <p className="text-sm lg:text-base text-muted-foreground mt-2">Publica tu artículo en el marketplace universitario.</p>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
@@ -43,14 +44,14 @@ export default function CreateProductPage() {
             transition={{ delay: 0.1 }}
             className="lg:col-span-2 space-y-6"
           >
-            {/* CAMBIO: p-5 en móvil para ganar espacio, sm:p-8 en escritorio */}
-            <form onSubmit={handleSubmit} className="bg-white p-5 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-8">
+            {/* Form Container: bg-card + border-border */}
+            <form onSubmit={handleSubmit} className="bg-card p-5 sm:p-8 rounded-2xl border border-border shadow-sm space-y-8">
               
               {/* Info Principal */}
               <div className="space-y-5">
-                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                   <FileText className="text-slate-400" size={20} />
-                   <h2 className="text-lg font-semibold text-slate-800">Detalles Principales</h2>
+                <div className="flex items-center gap-2 pb-2 border-b border-border">
+                   <FileText className="text-muted-foreground" size={20} />
+                   <h2 className="text-lg font-semibold text-foreground">Detalles Principales</h2>
                 </div>
                 
                 <div>
@@ -64,12 +65,11 @@ export default function CreateProductPage() {
                    />
                 </div>
 
-                {/* CAMBIO: grid-cols-1 en móvil (inputs apilados), sm:grid-cols-2 en tablet/desktop */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
                     <Label>Precio (CLP)</Label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
+                    <div className="relative group">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 group-focus-within:text-primary transition-colors" />
                       <Input 
                         name="precio" 
                         type="number" 
@@ -83,8 +83,8 @@ export default function CreateProductPage() {
                   </div>
                   <div>
                     <Label>Stock Disponible</Label>
-                    <div className="relative">
-                       <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
+                    <div className="relative group">
+                       <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 group-focus-within:text-primary transition-colors" />
                        <Input 
                           name="stock" 
                           type="number" 
@@ -101,12 +101,11 @@ export default function CreateProductPage() {
 
               {/* Detalles Adicionales */}
               <div className="space-y-5 pt-2">
-                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                   <Tag className="text-slate-400" size={20} />
-                   <h2 className="text-lg font-semibold text-slate-800">Categorización</h2>
+                <div className="flex items-center gap-2 pb-2 border-b border-border">
+                   <Tag className="text-muted-foreground" size={20} />
+                   <h2 className="text-lg font-semibold text-foreground">Categorización</h2>
                 </div>
 
-                {/* CAMBIO: grid-cols-1 en móvil, sm:grid-cols-2 en tablet/desktop */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
                     <Label>Categoría</Label>
@@ -119,12 +118,12 @@ export default function CreateProductPage() {
                   </div>
                   <div>
                     <Label>Campus de Entrega</Label>
-                    <div className="relative">
+                    <div className="relative group">
                       <Select name="campus" value={formData.campus} onChange={handleChange} disabled={isLoading} className="pl-10">
                           <option value="">Cualquiera</option>
                           {CAMPUS_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
                       </Select>
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4 pointer-events-none" />
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 pointer-events-none group-hover:text-primary transition-colors" />
                     </div>
                   </div>
                 </div>
@@ -139,7 +138,7 @@ export default function CreateProductPage() {
                     disabled={isLoading}
                   />
                   <div className="flex justify-end mt-1">
-                     <span className={clsx("text-xs font-medium", formData.descripcion.length > 900 ? "text-amber-500" : "text-slate-400")}>
+                     <span className={clsx("text-xs font-medium", formData.descripcion.length > 900 ? "text-amber-500" : "text-muted-foreground")}>
                         {formData.descripcion.length}/1000
                      </span>
                   </div>
@@ -167,15 +166,16 @@ export default function CreateProductPage() {
                   <button
                       onClick={handleSubmit}
                       disabled={isLoading}
-                      // CAMBIO: padding ajustado ligeramente
-                      className="w-full py-3.5 px-4 bg-slate-900 text-white rounded-xl font-bold shadow-lg shadow-slate-900/20 hover:bg-slate-800 hover:shadow-slate-900/30 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm lg:text-base"
+                      // Botón Principal: bg-primary text-primary-foreground
+                      className="w-full py-3.5 px-4 bg-primary text-primary-foreground rounded-xl font-bold shadow-lg shadow-primary/25 hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm lg:text-base"
                   >
                       {isLoading ? <Loader2 className="animate-spin" size={20} /> : "Publicar Ahora"}
                   </button>
                   <button
                       onClick={handleCancel}
                       disabled={isLoading}
-                      className="w-full py-3 px-4 bg-white text-slate-600 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-800 transition-all text-sm lg:text-base"
+                      // Botón Cancelar: bg-card border-border
+                      className="w-full py-3 px-4 bg-card text-muted-foreground border border-border rounded-xl font-bold hover:bg-muted hover:text-foreground transition-all text-sm lg:text-base"
                   >
                       Cancelar
                   </button>
