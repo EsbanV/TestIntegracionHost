@@ -58,47 +58,83 @@ async function fetchWithAuth<T>(url: string, token: string | null, options: Requ
 // ============================================================================
 // 1. HOOK DE SOCKET (Conexión y Eventos)
 // ============================================================================
-export const useChatSocket = (
-  activeChatId: number | null
-) => {
+// En chat.hooks.ts
+
+export const useChatSocket = (activeChatId: number | null) => {
   const { token } = useAuth();
   const queryClient = useQueryClient();
   const socketRef = useRef<Socket | null>(null);
+  
+  // 1. Usamos useRef para mantener el ID actualizado sin reiniciar el efecto del socket
+  const activeChatIdRef = useRef(activeChatId);
+
+  // Actualizamos la referencia cada vez que cambia el componente, 
+  // pero esto NO dispara el useEffect de abajo.
+  useEffect(() => {
+    activeChatIdRef.current = activeChatId;
+  }, [activeChatId]);
 
   useEffect(() => {
     if (!token) return;
 
+    // A. Inicialización ÚNICA (Solo depende del token)
+    console.log("🔌 Inicializando Socket...");
     socketRef.current = io(URL_BASE, {
       auth: { token },
-      transports: ['websocket', 'polling']
+      transports: ["websocket", "polling"],
+      // Opcional: reconexión automática
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
 
     const socket = socketRef.current;
 
-    socket.on("connect", () => console.log("🟢 Socket Conectado"));
+    // B. Debugging de conexión
+    socket.on("connect", () => console.log("🟢 Socket Conectado ID:", socket.id));
+    socket.on("connect_error", (err) => console.error("🔴 Error Socket:", err.message));
+    socket.on("disconnect", (reason) => console.warn("🟡 Socket Desconectado:", reason));
 
-    // Manejo de mensajes entrantes
+    // C. Manejo de mensajes
     socket.on("new_message", (msg: any) => {
-      // 1. Siempre invalidar la lista de chats (para actualizar el último mensaje y contadores)
+      console.log("📩 Mensaje recibido por socket:", msg);
+
+      // 1. Siempre refrescar la lista lateral (para mostrar "nuevo mensaje" y contadores)
       queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
 
-      // 2. Si el mensaje pertenece al chat abierto, invalidar sus mensajes
-      if (activeChatId && (msg.remitente.id === activeChatId || msg.destinatario.id === activeChatId)) {
-         queryClient.invalidateQueries({ queryKey: chatKeys.conversation(activeChatId) });
-         // Opcional: Optimistic update aquí si quieres velocidad extrema
+      // 2. Verificar si el mensaje pertenece al chat que el usuario está viendo AHORA MISMO.
+      // Usamos .current para leer el valor en tiempo real sin reiniciar el socket.
+      const currentChatId = activeChatIdRef.current;
+      
+      const esRemitente = msg.remitente?.id === currentChatId;
+      const esDestinatario = msg.destinatario?.id === currentChatId; // Caso raro pero posible si me auto-envío
+
+      if (currentChatId && (esRemitente || esDestinatario)) {
+         console.log("🔄 Refrescando chat activo:", currentChatId);
+         queryClient.invalidateQueries({ queryKey: chatKeys.conversation(currentChatId) });
       }
     });
 
-    // Manejo de eventos de transacción (entrega/recibo)
+    // D. Eventos de transacción
     socket.on("transaction_event", (data: any) => {
-      if (activeChatId) {
-        queryClient.invalidateQueries({ queryKey: chatKeys.transaction(activeChatId) });
-        queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
+      console.log("💰 Evento transacción:", data);
+      const currentChatId = activeChatIdRef.current;
+      
+      // Refrescar siempre listas
+      queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
+
+      // Si estamos en el chat relevante, refrescar transacciones y mensajes
+      if (currentChatId) {
+        queryClient.invalidateQueries({ queryKey: chatKeys.transaction(currentChatId) });
+        queryClient.invalidateQueries({ queryKey: chatKeys.conversation(currentChatId) });
       }
     });
 
-    return () => { socket.disconnect(); };
-  }, [token, activeChatId, queryClient]);
+    // Limpieza al desmontar (solo si cambia el token o se desmonta la app)
+    return () => {
+      console.log("🔌 Desconectando socket...");
+      socket.disconnect();
+    };
+  }, [token, queryClient]); // <--- NOTA: activeChatId YA NO está aquí
 
   return socketRef;
 };
