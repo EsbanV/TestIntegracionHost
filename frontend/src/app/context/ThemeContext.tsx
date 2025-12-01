@@ -24,19 +24,16 @@ export function ThemeProvider({
   children,
   defaultTheme = "system",
   storageKey = "vite-ui-theme",
+  ...props // <--- 1. AGREGAR ESTO AQUÍ
 }: ThemeProviderProps) {
-  // 1. Intentamos leer del localStorage, si no, usamos el default (system)
   const [theme, setTheme] = useState<Theme>(
     () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
   )
 
   useEffect(() => {
     const root = window.document.documentElement
-
-    // Limpiamos clases previas
     root.classList.remove("light", "dark")
 
-    // 2. Lógica para "System"
     if (theme === "system") {
       const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
         .matches
@@ -47,16 +44,12 @@ export function ThemeProvider({
       return
     }
 
-    // 3. Lógica para manual ("light" o "dark")
     root.classList.add(theme)
   }, [theme])
 
-  // 4. Escuchar cambios del sistema en tiempo real
   useEffect(() => {
     if (theme !== "system") return;
-
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    
     const handleChange = () => {
       const root = window.document.documentElement;
       if (mediaQuery.matches) {
@@ -67,7 +60,6 @@ export function ThemeProvider({
         root.classList.remove("dark");
       }
     };
-
     mediaQuery.addEventListener("change", handleChange);
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, [theme]);
@@ -81,18 +73,16 @@ export function ThemeProvider({
   }
 
   return (
+    // 2. AHORA SÍ FUNCIONA PORQUE 'props' YA ESTÁ DEFINIDO ARRIBA
     <ThemeContext.Provider value={value} {...props}>
       {children}
     </ThemeContext.Provider>
   )
 }
 
-// Hook personalizado para usar el tema en cualquier componente
 export const useTheme = () => {
   const context = useContext(ThemeContext)
-
   if (context === undefined)
     throw new Error("useTheme must be used within a ThemeProvider")
-
   return context
 }
