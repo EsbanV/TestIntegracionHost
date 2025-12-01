@@ -45,149 +45,75 @@ export default function FloatingChat() {
   });
 
   // Lista de chats
-  const {
-    data: chatListData,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useChatList(isOpen);
+  const { data: chatListData, fetchNextPage, hasNextPage, isFetchingNextPage } = useChatList(isOpen);
   const chats = chatListData?.allChats || [];
-  const totalUnread = chats.reduce(
-    (acc, c) => acc + (c.noLeidos || 0),
-    0
-  );
+  const totalUnread = chats.reduce((acc, c) => acc + (c.noLeidos || 0), 0);
 
   // Mensajes
-  const { data: messagesData } = useChatMessages(
-    activeChatId,
-    isOpen && view === "chat"
-  );
+  const { data: messagesData } = useChatMessages(activeChatId, isOpen && view === "chat");
   const messages = messagesData?.allMessages || [];
 
-  // Transacciones activas (múltiples)
-  const { data: transactions = [] } = useChatTransactions(
-    activeChatId,
-    isOpen && view === "chat"
-  );
+  // Transacciones
+  const { data: transactions = [] } = useChatTransactions(activeChatId, isOpen && view === "chat");
   const [currentTxIndex, setCurrentTxIndex] = useState(0);
 
-  // índice seguro para el carrusel
-  const safeTxIndex =
-    transactions.length === 0
-      ? 0
-      : Math.min(currentTxIndex, transactions.length - 1);
+  const safeTxIndex = transactions.length === 0 ? 0 : Math.min(currentTxIndex, transactions.length - 1);
+  const currentTx = transactions.length > 0 ? transactions[safeTxIndex] ?? null : null;
 
-  const currentTx =
-    transactions.length > 0 ? transactions[safeTxIndex] ?? null : null;
-
-  // resetear índice cuando cambia de chat o cambia el nº de transacciones
-  useEffect(() => {
-    setCurrentTxIndex(0);
-  }, [activeChatId, transactions.length]);
+  useEffect(() => { setCurrentTxIndex(0); }, [activeChatId, transactions.length]);
 
   const activeChatInfo = chats.find((c) => c.id === activeChatId);
-  const displayChatInfo =
-    activeChatInfo ||
-    (activeChatId
-      ? ({ nombre: "...", id: activeChatId } as unknown as Chat)
-      : null);
-
+  const displayChatInfo = activeChatInfo || (activeChatId ? ({ nombre: "...", id: activeChatId } as unknown as Chat) : null);
   const unreadCount = activeChatInfo?.noLeidos ?? 0;
 
   useChatSocket(activeChatId);
 
-  const {
-    sendMessage,
-    markAsRead,
-    confirmTransaction,
-    cancelTransaction,
-    isSending,
-  } = useChatActions();
+  const { sendMessage, markAsRead, confirmTransaction, cancelTransaction, isSending } = useChatActions();
 
   const handleSelectChat = (id: number) => {
     setActiveChatId(id);
     setView("chat");
-    // markAsRead(id);  // <- puedes comentar/eliminar esto
   };
 
-
   const handleSend = async (texto: string, file?: File) => {
-    if (!checkRateLimit()) return;
-    if (!activeChatId) return;
-
-    try {
-      await sendMessage({ chatId: activeChatId, text: texto, file });
-    } catch {
-      /* opcional: console.error */
-    }
+    if (!checkRateLimit() || !activeChatId) return;
+    try { await sendMessage({ chatId: activeChatId, text: texto, file }); } catch {}
   };
 
   const handleConfirmDelivery = async (tx: any) => {
     if (!tx || !activeChatId) return;
-    await confirmTransaction({
-      txId: tx.id,
-      type: "delivery",
-      chatUserId: activeChatId,
-    });
+    await confirmTransaction({ txId: tx.id, type: "delivery", chatUserId: activeChatId });
   };
 
   const handleConfirmReceipt = async (tx: any) => {
     if (!tx || !activeChatId) return;
-    await confirmTransaction({
-      txId: tx.id,
-      type: "receipt",
-      chatUserId: activeChatId,
-    });
-
+    await confirmTransaction({ txId: tx.id, type: "receipt", chatUserId: activeChatId });
     if (displayChatInfo) {
-      setPendingRatingData({
-        sellerId: activeChatId,
-        sellerName: displayChatInfo.nombre,
-        transactionId: tx.id,
-      });
+      setPendingRatingData({ sellerId: activeChatId, sellerName: displayChatInfo.nombre, transactionId: tx.id });
       setIsRateModalOpen(true);
     }
   };
 
   const handleCancelTx = async (tx: any) => {
     if (!tx || !activeChatId) return;
-    await cancelTransaction({
-      txId: tx.id,
-      chatUserId: activeChatId,
-    });
+    await cancelTransaction({ txId: tx.id, chatUserId: activeChatId });
   };
 
-  // marcar como leído cuando el chat flotante está abierto y llegan mensajes nuevos
   useEffect(() => {
-    if (!activeChatId) return;
-    if (!isOpen || view !== "chat") return;
-    if (unreadCount <= 0) return;
-
+    if (!activeChatId || !isOpen || view !== "chat" || unreadCount <= 0) return;
     markAsRead(activeChatId);
   }, [activeChatId, isOpen, view, unreadCount, markAsRead]);
 
   return (
     <>
-      {/* Ventana de chat flotante */}
       <AnimatePresence>
         {isOpen && (
-          <FloatingWindowWrapper
-            view={view}
-            setView={setView}
-            onClose={() => setIsOpen(false)}
-            activeChatInfo={displayChatInfo as Chat | undefined}
-          >
+          <FloatingWindowWrapper view={view} setView={setView} onClose={() => setIsOpen(false)} activeChatInfo={displayChatInfo as Chat | undefined}>
             {view === "list" ? (
-              <FloatingChatList
-                chats={chats}
-                onSelect={handleSelectChat}
-                hasNextPage={hasNextPage}
-                fetchNextPage={fetchNextPage}
-                isFetchingNextPage={isFetchingNextPage}
-              />
+              <FloatingChatList chats={chats} onSelect={handleSelectChat} hasNextPage={hasNextPage} fetchNextPage={fetchNextPage} isFetchingNextPage={isFetchingNextPage} />
             ) : (
-              <div className="flex flex-col h-full bg-[#F8F9FC] relative">
-                {/* Carrusel de transacciones (compras paralelas) */}
+              // Fondo sutilmente diferente al de las burbujas
+              <div className="flex flex-col h-full bg-muted/5 relative">
                 {transactions.length > 0 && (
                   <TransactionCarousel
                     transacciones={transactions}
@@ -198,51 +124,30 @@ export default function FloatingChat() {
                     onCancel={handleCancelTx}
                     onRate={(tx) => {
                       if (!activeChatId || !displayChatInfo) return;
-                      setPendingRatingData({
-                        sellerId: activeChatId,
-                        sellerName: displayChatInfo.nombre,
-                        transactionId: tx.id,
-                      });
+                      setPendingRatingData({ sellerId: activeChatId, sellerName: displayChatInfo.nombre, transactionId: tx.id });
                       setIsRateModalOpen(true);
                     }}
                   />
                 )}
 
-                {/* Mensajes */}
-                <FloatingMessagesArea
-                  mensajes={messages}
-                  currentUserId={user?.id || 0}
-                />
+                <FloatingMessagesArea mensajes={messages} currentUserId={user?.id || 0} />
 
-                {/* Aviso anti-spam */}
                 <AnimatePresence>
                   {isLimited && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute bottom-[70px] left-4 right-4 bg-red-500/90 text-white p-3 rounded-xl text-xs flex gap-2 items-center z-20 shadow-lg backdrop-blur"
-                    >
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-[70px] left-4 right-4 bg-destructive text-destructive-foreground p-3 rounded-xl text-xs flex gap-2 items-center z-20 shadow-lg backdrop-blur">
                       <LuClock />
-                      <span>
-                        Espera <b>{timeLeft}s</b> para enviar más.
-                      </span>
+                      <span>Espera <b>{timeLeft}s</b> para enviar más.</span>
                     </motion.div>
                   )}
                 </AnimatePresence>
 
-                {/* Input compacto */}
-                <FloatingChatInput
-                  onSend={handleSend}
-                  isLoading={isSending || isLimited}
-                />
+                <FloatingChatInput onSend={handleSend} isLoading={isSending || isLimited} />
               </div>
             )}
           </FloatingWindowWrapper>
         )}
       </AnimatePresence>
 
-      {/* Botón launcher flotante */}
       <AnimatePresence>
         {!isOpen && (
           <motion.button
@@ -250,11 +155,12 @@ export default function FloatingChat() {
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-20 right-6 z-[9990] bg-slate-900 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-110 transition-transform"
+            // Botón primario sólido (Indigo)
+            className="fixed bottom-20 right-6 z-[9990] bg-primary text-primary-foreground w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-110 transition-transform active:scale-95"
           >
             <LuMessageCircle size={28} />
             {totalUnread > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
+              <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-background">
                 {totalUnread}
               </span>
             )}
@@ -262,14 +168,8 @@ export default function FloatingChat() {
         )}
       </AnimatePresence>
 
-      {/* Modal de calificación */}
       {pendingRatingData && (
-        <RateUserModal
-          isOpen={isRateModalOpen}
-          onClose={() => setIsRateModalOpen(false)}
-          sellerId={pendingRatingData.sellerId}
-          sellerName={pendingRatingData.sellerName}
-        />
+        <RateUserModal isOpen={isRateModalOpen} onClose={() => setIsRateModalOpen(false)} sellerId={pendingRatingData.sellerId} sellerName={pendingRatingData.sellerName} />
       )}
     </>
   );

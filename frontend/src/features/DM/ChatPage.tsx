@@ -38,130 +38,68 @@ const ChatPage: React.FC = () => {
     transactionId: number;
   } | null>(null);
 
-  // --- LIMITADOR DE VELOCIDAD (Anti-Spam) ---
+  // --- LIMITADOR DE VELOCIDAD ---
   const { isLimited, timeLeft, checkRateLimit } = useRateLimiter({
     maxRequests: 5,
     windowMs: 5000,
     cooldownMs: 10000,
   });
 
-  // --- LISTA DE CHATS ---
-  const {
-    data: chatListData,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useChatList(true);
-
+  // --- DATOS ---
+  const { data: chatListData, fetchNextPage, hasNextPage, isFetchingNextPage } = useChatList(true);
   const chats = chatListData?.allChats ?? [];
 
-  // --- MENSAJES ---
   const { data: messagesData } = useChatMessages(activeChatId, true);
   const messages = messagesData?.allMessages ?? [];
 
-  // --- TRANSACCIONES ACTIVAS POR CHAT ---
   const { data: transactions = [] } = useChatTransactions(activeChatId, true);
   const [currentTxIndex, setCurrentTxIndex] = useState(0);
 
-  const safeTxIndex =
-    transactions.length === 0
-      ? 0
-      : Math.min(currentTxIndex, transactions.length - 1);
+  const safeTxIndex = transactions.length === 0 ? 0 : Math.min(currentTxIndex, transactions.length - 1);
+  const currentTx = transactions.length > 0 ? transactions[safeTxIndex] ?? null : null;
 
-  const currentTx =
-    transactions.length > 0 ? transactions[safeTxIndex] ?? null : null;
-
-  // Info del chat activo
   const activeChatInfo = chats.find((c) => c.id === activeChatId);
-  const displayChatInfo: Chat | null =
-    activeChatInfo ??
-    (activeChatId
-      ? ({
+  const displayChatInfo: Chat | null = activeChatInfo ?? (activeChatId ? {
           id: activeChatId,
           nombre: "Cargando usuario...",
           avatar: undefined,
           mensajes: [],
           noLeidos: 0,
-        } as unknown as Chat)
-      : null);
+        } as unknown as Chat : null);
 
   const unreadCount = displayChatInfo?.noLeidos ?? 0;
 
-  // --- SOCKET + ACCIONES ---
   useChatSocket(activeChatId);
 
-  const {
-    sendMessage,
-    markAsRead,
-    confirmTransaction,
-    cancelTransaction,
-    isSending,
-  } = useChatActions();
+  const { sendMessage, markAsRead, confirmTransaction, cancelTransaction, isSending } = useChatActions();
 
   // --- HANDLERS ---
-
   const handleSend = async (text: string, file?: File) => {
-    if (!checkRateLimit()) return;
-    if (!activeChatId) return;
-
-    try {
-      await sendMessage({ chatId: activeChatId, text, file });
-    } catch (error) {
-      console.error(error);
-    }
+    if (!checkRateLimit() || !activeChatId) return;
+    try { await sendMessage({ chatId: activeChatId, text, file }); } catch (error) { console.error(error); }
   };
 
   const handleConfirmDelivery = async (tx: any) => {
     if (!tx || !activeChatId) return;
-    try {
-      await confirmTransaction({
-        txId: tx.id,
-        type: "delivery",
-        chatUserId: activeChatId,
-      });
-    } catch (error) {
-      console.error("Error al confirmar entrega:", error);
-    }
+    try { await confirmTransaction({ txId: tx.id, type: "delivery", chatUserId: activeChatId }); } catch (error) { console.error(error); }
   };
 
   const handleConfirmReceipt = async (tx: any) => {
     if (!tx || !displayChatInfo || !activeChatId) return;
     try {
-      await confirmTransaction({
-        txId: tx.id,
-        type: "receipt",
-        chatUserId: activeChatId,
-      });
-
-      setPendingRatingData({
-        sellerId: activeChatId,
-        sellerName: displayChatInfo.nombre,
-        transactionId: tx.id,
-      });
+      await confirmTransaction({ txId: tx.id, type: "receipt", chatUserId: activeChatId });
+      setPendingRatingData({ sellerId: activeChatId, sellerName: displayChatInfo.nombre, transactionId: tx.id });
       setIsRateModalOpen(true);
-    } catch (error) {
-      console.error("Error al confirmar recibo:", error);
-    }
+    } catch (error) { console.error(error); }
   };
 
   const handleCancelTx = async (tx: any) => {
     if (!tx || !activeChatId) return;
-    try {
-      await cancelTransaction({
-        txId: tx.id,
-        chatUserId: activeChatId,
-      });
-    } catch (error) {
-      console.error("Error al cancelar transacción:", error);
-    }
+    try { await cancelTransaction({ txId: tx.id, chatUserId: activeChatId }); } catch (error) { console.error(error); }
   };
 
-  // Reset índice de transacción cuando cambia chat o cantidad
-  useEffect(() => {
-    setCurrentTxIndex(0);
-  }, [activeChatId, transactions.length]);
+  useEffect(() => { setCurrentTxIndex(0); }, [activeChatId, transactions.length]);
 
-  // Navegar desde el home con state { toUser }
   useEffect(() => {
     const state = location.state as { toUser?: { id: number } } | undefined;
     if (state?.toUser) {
@@ -170,45 +108,26 @@ const ChatPage: React.FC = () => {
     }
   }, [location]);
 
-  // Marcar como leído al abrir chat
   useEffect(() => {
-    if (!activeChatId) return;
-    if (unreadCount <= 0) return;
+    if (!activeChatId || unreadCount <= 0) return;
     markAsRead(activeChatId);
   }, [activeChatId, unreadCount, markAsRead]);
 
   return (
-<div
-  className="
-    flex 
-    h-full
-    bg-slate-50 
-    overflow-hidden 
-    border-t border-slate-200
-    md:border md:rounded-xl 
-    shadow-sm 
-    m-0 
-    md:m-4 
-    lg:m-6
-  "
->
-      {/* SIDEBAR LISTA DE CHATS */}
-      <div
-        className={`${
-          mobileView === "list" ? "flex" : "hidden md:flex"
-        } w-full md:w-80 lg:w-96 flex-col border-r border-slate-200 bg-white z-20`}
-      >
-        <div className="p-3 md:p-4 border-b border-slate-100 font-bold text-base md:text-lg text-slate-800 sticky top-0 bg-white z-10">
+    // Contenedor principal: Ocupa el 100% del área disponible del layout padre
+    // Sin márgenes externos para que se sienta como una app nativa
+    <div className="flex h-full w-full bg-background overflow-hidden">
+      
+      {/* SIDEBAR */}
+      <div className={`${mobileView === "list" ? "flex" : "hidden md:flex"} w-full md:w-80 lg:w-96 flex-col border-r border-border bg-card z-20`}>
+        <div className="p-3 md:p-4 border-b border-border font-bold text-base md:text-lg text-foreground sticky top-0 bg-card z-10">
           Mensajes
         </div>
         <div className="flex-1 overflow-hidden">
           <ChatListSidebar
             chats={chats}
             activeChatId={activeChatId}
-            onSelect={(id) => {
-              setActiveChatId(id);
-              setMobileView("chat");
-            }}
+            onSelect={(id) => { setActiveChatId(id); setMobileView("chat"); }}
             hasNextPage={hasNextPage}
             fetchNextPage={fetchNextPage}
             isFetchingNextPage={isFetchingNextPage}
@@ -217,29 +136,21 @@ const ChatPage: React.FC = () => {
       </div>
 
       {/* ÁREA DE CHAT */}
-      <div
-        className={`${
-          mobileView === "chat" ? "flex" : "hidden md:flex"
-        } flex-1 flex-col bg-slate-50/50 relative`}
-      >
+      <div className={`${mobileView === "chat" ? "flex" : "hidden md:flex"} flex-1 flex-col bg-muted/5 relative`}>
         {activeChatId && displayChatInfo ? (
           <>
-            {/* Header */}
-            <div className="h-14 md:h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shadow-sm z-10 shrink-0">
+            {/* Header Chat */}
+            <div className="h-14 md:h-16 bg-card border-b border-border flex items-center justify-between px-4 md:px-6 shadow-sm z-10 shrink-0">
               <div className="flex items-center gap-2 md:gap-3">
-                <button
-                  onClick={() => setMobileView("list")}
-                  className="md:hidden p-2 hover:bg-slate-100 rounded-full text-slate-600"
-                >
+                <button onClick={() => setMobileView("list")} className="md:hidden p-2 hover:bg-muted rounded-full text-muted-foreground">
                   <LuX />
                 </button>
                 <div>
-                  <h3 className="font-bold text-slate-800 text-sm md:text-base">
+                  <h3 className="font-bold text-foreground text-sm md:text-base">
                     {displayChatInfo.nombre}
                   </h3>
-                  <p className="text-[10px] md:text-xs text-green-600 font-medium flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />{" "}
-                    En línea
+                  <p className="text-[10px] md:text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> En línea
                   </p>
                 </div>
               </div>
@@ -247,21 +158,17 @@ const ChatPage: React.FC = () => {
               {currentTx?.estadoId === 2 && currentTx.esComprador && (
                 <button
                   onClick={() => {
-                    setPendingRatingData({
-                      sellerId: activeChatId!,
-                      sellerName: displayChatInfo.nombre,
-                      transactionId: currentTx.id,
-                    });
+                    setPendingRatingData({ sellerId: activeChatId!, sellerName: displayChatInfo.nombre, transactionId: currentTx.id });
                     setIsRateModalOpen(true);
                   }}
-                  className="hidden sm:inline-flex text-[11px] px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-semibold"
+                  className="hidden sm:inline-flex text-[11px] px-3 py-1.5 rounded-full bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20 font-semibold"
                 >
                   Calificar compra
                 </button>
               )}
             </div>
 
-            {/* Carrusel de transacciones */}
+            {/* Carrusel */}
             {transactions.length > 0 && (
               <TransactionCarousel
                 transacciones={transactions}
@@ -271,23 +178,16 @@ const ChatPage: React.FC = () => {
                 onConfirmReceipt={handleConfirmReceipt}
                 onCancel={handleCancelTx}
                 onRate={(tx) => {
-                  setPendingRatingData({
-                    sellerId: activeChatId!,
-                    sellerName: displayChatInfo!.nombre,
-                    transactionId: tx.id,
-                  });
+                  setPendingRatingData({ sellerId: activeChatId!, sellerName: displayChatInfo!.nombre, transactionId: tx.id });
                   setIsRateModalOpen(true);
                 }}
               />
             )}
 
-            {/* Mensajes (esta parte es la que scrollea) */}
-            <ChatMessagesArea
-              mensajes={messages}
-              currentUserId={user?.id || 0}
-            />
+            {/* Mensajes */}
+            <ChatMessagesArea mensajes={messages} currentUserId={user?.id || 0} />
 
-            {/* Input + aviso anti-spam pegado abajo */}
+            {/* Input + Rate Limit */}
             <div className="relative">
               <AnimatePresence>
                 {isLimited && (
@@ -295,36 +195,28 @@ const ChatPage: React.FC = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    className="absolute bottom-full left-0 right-0 mx-3 md:mx-4 mb-2 bg-red-50 border border-red-200 text-red-600 px-3 md:px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 z-20"
+                    className="absolute bottom-full left-0 right-0 mx-3 md:mx-4 mb-2 bg-destructive/10 border border-destructive/20 text-destructive px-3 md:px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 z-20"
                   >
-                    <div className="bg-red-100 p-1.5 rounded-full">
-                      <LuClock className="w-4 h-4 text-red-600 animate-pulse" />
+                    <div className="bg-destructive/20 p-1.5 rounded-full">
+                      <LuClock className="w-4 h-4 text-destructive animate-pulse" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-bold text-[11px] md:text-xs uppercase tracking-wide">
-                        Estás escribiendo muy rápido
-                      </p>
-                      <p className="text-xs md:text-sm">
-                        Por favor espera <b>{timeLeft}s</b> para enviar más
-                        mensajes.
-                      </p>
+                      <p className="font-bold text-[11px] md:text-xs uppercase tracking-wide">Estás escribiendo muy rápido</p>
+                      <p className="text-xs md:text-sm">Por favor espera <b>{timeLeft}s</b>.</p>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              <ChatInputArea
-                onSend={handleSend}
-                isLoading={isSending || isLimited}
-              />
+              <ChatInputArea onSend={handleSend} isLoading={isSending || isLimited} />
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 px-6">
-            <div className="w-20 h-20 md:w-24 md:h-24 bg-white rounded-full shadow-sm flex items-center justify-center mb-4">
-              <LuMessageCircle size={40} className="text-slate-200 md:size-48" />
+          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground bg-muted/5 px-6">
+            <div className="w-20 h-20 md:w-24 md:h-24 bg-card rounded-full shadow-sm flex items-center justify-center mb-4 border border-border">
+              <LuMessageCircle size={40} className="text-muted-foreground/30 md:size-48" />
             </div>
-            <p className="font-medium text-base md:text-lg text-slate-500 text-center">
+            <p className="font-medium text-base md:text-lg text-muted-foreground text-center">
               Selecciona un chat para comenzar
             </p>
           </div>

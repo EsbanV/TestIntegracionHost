@@ -2,16 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, X, Loader2 } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
-
-// UI Components (Estilo consistente con tu app) ?
-const Button = ({ children, className, onClick, disabled, variant = 'primary' }: any) => {
-  const base = "w-full py-3 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2";
-  const variants = {
-    primary: "bg-slate-900 text-white hover:bg-slate-800 shadow-lg",
-    secondary: "bg-slate-100 text-slate-600 hover:bg-slate-200"
-  };
-  return <button onClick={onClick} disabled={disabled} className={`${base} ${variants[variant]} ${className}`}>{children}</button>;
-};
+import { Button } from "@/components/ui/button"; 
 
 interface RateUserModalProps {
   isOpen: boolean;
@@ -35,25 +26,19 @@ export default function RateUserModal({ isOpen, onClose, sellerId, sellerName }:
     setError(null);
 
     try {
-      // Nota: Este endpoint requiere que exista una transacción previa en la BD
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/rate/${sellerId}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ puntuacion: rating, comentario: comment })
       });
-
       const data = await res.json();
 
       if (res.ok) {
         setSuccess(true);
         setTimeout(onClose, 2000);
       } else {
-        // Manejo específico del error de transacción requerida
         if (data.message?.includes('comprar algo primero')) {
-          setError("No puedes calificar: Aún no tienes una compra registrada con este usuario.");
+          setError("Aún no tienes una compra registrada con este usuario.");
         } else {
           setError(data.message || "Error al enviar calificación");
         }
@@ -68,31 +53,30 @@ export default function RateUserModal({ isOpen, onClose, sellerId, sellerName }:
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95, y: 20 }} 
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden"
           >
             {/* Header */}
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <h3 className="font-bold text-slate-800">Calificar a {sellerName}</h3>
-              <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full text-slate-400"><X size={20} /></button>
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted/30">
+              <h3 className="font-bold text-foreground">Calificar a {sellerName}</h3>
+              <button onClick={onClose} className="p-1 hover:bg-muted rounded-full text-muted-foreground hover:text-foreground transition-colors"><X size={20} /></button>
             </div>
 
             <div className="p-6 space-y-6">
               {success ? (
                 <div className="text-center py-8">
-                   <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                   <div className="w-16 h-16 bg-green-500/10 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-4">
                      <Star className="fill-current" size={32} />
                    </div>
-                   <h4 className="text-xl font-bold text-slate-900">¡Gracias!</h4>
-                   <p className="text-slate-500">Tu opinión ha sido registrada.</p>
+                   <h4 className="text-xl font-bold text-foreground">¡Gracias!</h4>
+                   <p className="text-muted-foreground">Tu opinión ha sido registrada.</p>
                 </div>
               ) : (
                 <>
-                  {/* Selector de Estrellas */}
                   <div className="flex flex-col items-center gap-2">
                     <div className="flex gap-2">
                       {[1, 2, 3, 4, 5].map((star) => (
@@ -106,38 +90,35 @@ export default function RateUserModal({ isOpen, onClose, sellerId, sellerName }:
                         >
                           <Star 
                             size={36} 
-                            className={`${star <= (hover || rating) ? "fill-amber-400 text-amber-400" : "text-slate-200"} transition-colors`} 
+                            className={`${star <= (hover || rating) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"} transition-colors`} 
                           />
                         </button>
                       ))}
                     </div>
-                    <p className="text-sm text-slate-400 font-medium">
+                    <p className="text-sm text-muted-foreground font-medium">
                       {rating === 0 ? "Toca para calificar" : rating === 5 ? "¡Excelente!" : rating >= 3 ? "Bueno" : "Malo"}
                     </p>
                   </div>
 
-                  {/* Comentario */}
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase">Tu experiencia (Opcional)</label>
+                    <label className="text-xs font-bold text-muted-foreground uppercase">Tu experiencia (Opcional)</label>
                     <textarea 
-                      className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none h-24"
+                      className="w-full p-3 rounded-xl border border-input bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none resize-none h-24 text-foreground placeholder:text-muted-foreground"
                       placeholder="¿Qué tal fue la compra? ¿Recomiendas a este vendedor?"
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
                     />
                   </div>
 
-                  {/* Error Message */}
                   {error && (
-                    <div className="p-3 rounded-lg bg-red-50 text-red-600 text-xs font-medium flex gap-2">
+                    <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs font-medium flex gap-2 border border-destructive/20">
                       <span className="font-bold">Error:</span> {error}
                     </div>
                   )}
 
-                  {/* Footer Buttons */}
                   <div className="pt-2 flex gap-3">
-                    <Button variant="secondary" onClick={onClose}>Cancelar</Button>
-                    <Button onClick={handleSubmit} disabled={rating === 0 || isLoading}>
+                    <Button variant="secondary" onClick={onClose} className="w-full">Cancelar</Button>
+                    <Button onClick={handleSubmit} disabled={rating === 0 || isLoading} className="w-full">
                       {isLoading ? <Loader2 className="animate-spin" /> : "Enviar Calificación"}
                     </Button>
                   </div>
