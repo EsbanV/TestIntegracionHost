@@ -3,15 +3,13 @@ import {
   useQuery, 
   useInfiniteQuery, 
   useMutation, 
-  useQueryClient,
-  InfiniteData 
+  useQueryClient
 } from "@tanstack/react-query";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "@/app/context/AuthContext";
 import type { 
   Chat, 
   Mensaje, 
-  TransaccionActiva, 
   ChatListResponse, 
   MessagesResponse,
   ActiveByChatResponse,
@@ -29,7 +27,7 @@ const getFullImgUrl = (url?: string) => {
   return `${URL_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
-// Centralizamos las claves de caché para evitar errores de tipeo y facilitar invalidaciones
+// Centralizamos las claves para evitar errores y facilitar la invalidación global
 export const chatKeys = {
   all: ['chat'] as const,
   lists: () => [...chatKeys.all, 'list'] as const,
@@ -37,10 +35,9 @@ export const chatKeys = {
   transaction: (chatId: number) => [...chatKeys.all, 'transaction', chatId] as const,
 };
 
-// Fetcher genérico con Auth
+// Fetcher genérico
 async function fetchWithAuth<T>(url: string, token: string | null, options: RequestInit = {}): Promise<T> {
   if (!token) throw new Error("No autenticado");
-  
   const res = await fetch(`${URL_BASE}${url}`, {
     ...options,
     headers: {
@@ -49,27 +46,22 @@ async function fetchWithAuth<T>(url: string, token: string | null, options: Requ
       ...options.headers,
     },
   });
-
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || "Error en la petición");
   return data;
 }
 
 // ============================================================================
-// 1. HOOK DE SOCKET (Conexión y Eventos)
+// 1. HOOK DE SOCKET (Conexión Estable)
 // ============================================================================
-// En chat.hooks.ts
-
 export const useChatSocket = (activeChatId: number | null) => {
   const { token } = useAuth();
   const queryClient = useQueryClient();
   const socketRef = useRef<Socket | null>(null);
   
-  // 1. Usamos useRef para mantener el ID actualizado sin reiniciar el efecto del socket
+  // Referencia mutable para que el socket lea el chat actual sin desconectarse
   const activeChatIdRef = useRef(activeChatId);
 
-  // Actualizamos la referencia cada vez que cambia el componente, 
-  // pero esto NO dispara el useEffect de abajo.
   useEffect(() => {
     activeChatIdRef.current = activeChatId;
   }, [activeChatId]);
@@ -77,64 +69,50 @@ export const useChatSocket = (activeChatId: number | null) => {
   useEffect(() => {
     if (!token) return;
 
-    // A. Inicialización ÚNICA (Solo depende del token)
-    console.log("🔌 Inicializando Socket...");
+    // Evitar múltiples conexiones si ya existe
+    if (socketRef.current?.connected) return;
+
+    console.log("🔌 Conectando Socket...");
     socketRef.current = io(URL_BASE, {
       auth: { token },
       transports: ["websocket", "polling"],
-      // Opcional: reconexión automática
       reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
     });
 
     const socket = socketRef.current;
 
-    // B. Debugging de conexión
-    socket.on("connect", () => console.log("🟢 Socket Conectado ID:", socket.id));
-    socket.on("connect_error", (err) => console.error("🔴 Error Socket:", err.message));
-    socket.on("disconnect", (reason) => console.warn("🟡 Socket Desconectado:", reason));
+    socket.on("connect", () => console.log("🟢 Socket Online:", socket.id));
+    socket.on("disconnect", (reason) => console.warn("🟡 Socket Offline:", reason));
 
-    // C. Manejo de mensajes
+    // EVENTO: Nuevo Mensaje
     socket.on("new_message", (msg: any) => {
-      console.log("📩 Mensaje recibido por socket:", msg);
-
-      // 1. Siempre refrescar la lista lateral (para mostrar "nuevo mensaje" y contadores)
+      // 1. Siempre refrescar la lista (para notificaciones/contadores)
       queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
 
-      // 2. Verificar si el mensaje pertenece al chat que el usuario está viendo AHORA MISMO.
-      // Usamos .current para leer el valor en tiempo real sin reiniciar el socket.
-      const currentChatId = activeChatIdRef.current;
-      
-      const esRemitente = msg.remitente?.id === currentChatId;
-      const esDestinatario = msg.destinatario?.id === currentChatId; // Caso raro pero posible si me auto-envío
+      // 2. Si el mensaje es del chat que estoy viendo, refrescar esa conversación
+      const currentId = activeChatIdRef.current;
+      const esRelevante = (msg.remitente?.id === currentId) || (msg.destinatario?.id === currentId);
 
-      if (currentChatId && (esRemitente || esDestinatario)) {
-         console.log("🔄 Refrescando chat activo:", currentChatId);
-         queryClient.invalidateQueries({ queryKey: chatKeys.conversation(currentChatId) });
+      if (currentId && esRelevante) {
+         queryClient.invalidateQueries({ queryKey: chatKeys.conversation(currentId) });
       }
     });
 
-    // D. Eventos de transacción
-    socket.on("transaction_event", (data: any) => {
-      console.log("💰 Evento transacción:", data);
-      const currentChatId = activeChatIdRef.current;
-      
-      // Refrescar siempre listas
+    // EVENTO: Transacciones (cambios de estado)
+    socket.on("transaction_event", () => {
       queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
-
-      // Si estamos en el chat relevante, refrescar transacciones y mensajes
-      if (currentChatId) {
-        queryClient.invalidateQueries({ queryKey: chatKeys.transaction(currentChatId) });
-        queryClient.invalidateQueries({ queryKey: chatKeys.conversation(currentChatId) });
+      const currentId = activeChatIdRef.current;
+      if (currentId) {
+        queryClient.invalidateQueries({ queryKey: chatKeys.transaction(currentId) });
+        queryClient.invalidateQueries({ queryKey: chatKeys.conversation(currentId) });
       }
     });
 
-    // Limpieza al desmontar (solo si cambia el token o se desmonta la app)
     return () => {
-      console.log("🔌 Desconectando socket...");
-      socket.disconnect();
+      // Solo desconectar si se desmonta el componente raíz o cambia el token
+      if (socket) socket.disconnect();
     };
-  }, [token, queryClient]); // <--- NOTA: activeChatId YA NO está aquí
+  }, [token, queryClient]); 
 
   return socketRef;
 };
@@ -154,11 +132,10 @@ export const useChatList = (isOpen: boolean) => {
     initialPageParam: 1,
     getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
     enabled: !!token && isOpen,
-    staleTime: 1000 * 60 * 2, // 2 minutos
+    staleTime: 1000 * 60, // 1 min caché
     select: (data) => ({
       pages: data.pages,
       pageParams: data.pageParams,
-      // Aplanamos los datos para uso fácil en UI
       allChats: data.pages.flatMap(page => page.conversaciones.map((c: any) => ({
         id: c.usuario.id,
         nombre: c.usuario.nombre || c.usuario.usuario,
@@ -166,14 +143,13 @@ export const useChatList = (isOpen: boolean) => {
         avatar: getFullImgUrl(c.usuario.fotoPerfilUrl),
         noLeidos: c.unreadCount || 0,
         mensajes: [],
-        online: false, // Se podría implementar con socket presence
-        transaccion: null
+        online: false
       } as Chat)))
     })
   });
 };
 
-// B. MENSAJES DE CONVERSACIÓN (Infinito hacia arriba)
+// B. MENSAJES DE CONVERSACIÓN
 export const useChatMessages = (activeChatId: number | null, isOpen: boolean) => {
   const { token, user } = useAuth();
 
@@ -184,17 +160,15 @@ export const useChatMessages = (activeChatId: number | null, isOpen: boolean) =>
       return fetchWithAuth(`/api/chat/conversacion/${activeChatId}${cursor}`, token);
     },
     initialPageParam: null as number | null,
-    // El cursor es el ID del mensaje más antiguo recibido
     getNextPageParam: (lastPage) => {
-      if (!lastPage.ok || !lastPage.mensajes || lastPage.mensajes.length === 0) return undefined;
-      return lastPage.mensajes[0].id; 
+      if (!lastPage.ok || !lastPage.mensajes?.length) return undefined;
+      return lastPage.mensajes[0].id; // Cursor es el mensaje más viejo
     },
     enabled: !!token && !!activeChatId && isOpen,
-    staleTime: 0, // Mensajes siempre frescos al cambiar de chat
+    staleTime: 0, // Siempre fresco
     select: (data) => ({
       pages: data.pages,
       pageParams: data.pageParams,
-      // Mapeo de mensajes
       allMessages: data.pages.flatMap(page => page.mensajes).map((m: any) => {
         let metadata = null;
         try { if(m.tipo === 'sistema') metadata = JSON.parse(m.contenido); } catch {}
@@ -214,32 +188,17 @@ export const useChatMessages = (activeChatId: number | null, isOpen: boolean) =>
   });
 };
 
-// C. TRANSACCIÓN ACTIVA
-// Después (más robusto)
-// ============================================================================
-// 3. HOOK: TRANSACCIONES ACTIVAS PARA UN CHAT (lista)
-// ============================================================================
-export const useChatTransactions = (
-  activeChatId: number | null,
-  isOpen: boolean
-) => {
+// C. TRANSACCIONES ACTIVAS
+export const useChatTransactions = (activeChatId: number | null, isOpen: boolean) => {
   const { token, user } = useAuth();
 
   return useQuery<ActiveTransaction[]>({
-    queryKey: activeChatId
-      ? chatKeys.transaction(activeChatId)
-      : ['chat', 'transaction', 'none'],
+    queryKey: chatKeys.transaction(activeChatId || 0),
     queryFn: async () => {
       if (!activeChatId) return [];
-
-      const data = await fetchWithAuth<ActiveByChatResponse>(
-        `/api/transactions/active-by-chat/${activeChatId}`,
-        token
-      );
-
-      if (!data.ok || !Array.isArray(data.transactions)) {
-        return [];
-      }
+      const data = await fetchWithAuth<ActiveByChatResponse>(`/api/transactions/active-by-chat/${activeChatId}`, token);
+      
+      if (!data.ok || !Array.isArray(data.transactions)) return [];
 
       return data.transactions.map((t) => ({
         ...t,
@@ -249,220 +208,124 @@ export const useChatTransactions = (
     },
     enabled: !!token && !!activeChatId && isOpen,
     staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: 'always',
-    retry: false,
   });
 };
 
 // ============================================================================
-// 4. HOOK DE ACCIONES (mutaciones del chat + transacciones)
+// 3. HOOK DE ACCIONES (Mutaciones)
 // ============================================================================
-type ConfirmTxVars = {
-  txId: number;
-  type: 'delivery' | 'receipt';
-  chatUserId: number; // mismo id que activeChatId
-};
-
-type CancelTxVars = {
-  txId: number;
-  chatUserId: number;
-};
 
 export const useChatActions = () => {
   const { token } = useAuth();
   const queryClient = useQueryClient();
 
-  // A. Enviar mensaje (texto o imagen)
+  // A. Enviar Mensaje
   const sendMessageMutation = useMutation({
-    mutationFn: async ({
-      chatId,
-      text,
-      file,
-    }: {
-      chatId: number;
-      text: string;
-      file?: File;
-    }) => {
+    mutationFn: async ({ chatId, text, file }: { chatId: number; text: string; file?: File }) => {
       let contenido = text;
       let tipo = 'texto';
 
+      // Subir imagen primero si existe
       if (file) {
         const formData = new FormData();
         formData.append('image', file);
-
         const res = await fetch(`${URL_BASE}/api/upload/upload-image`, {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
           body: formData,
         });
-
         const raw = await res.json();
-        if (!res.ok || !raw?.ok) {
-          throw new Error(raw?.message || 'Error subiendo imagen');
-        }
-
+        if (!res.ok || !raw?.ok) throw new Error(raw?.message || 'Error subiendo imagen');
         contenido = raw.imageUrl;
         tipo = 'imagen';
       }
 
-      return fetchWithAuth<{ ok: boolean }>(
-        '/api/chat/send',
-        token,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            destinatarioId: chatId,
-            contenido,
-            tipo,
-          }),
-        }
-      );
+      return fetchWithAuth<{ ok: boolean }>('/api/chat/send', token, {
+        method: 'POST',
+        body: JSON.stringify({ destinatarioId: chatId, contenido, tipo }),
+      });
     },
     onSuccess: (_, variables) => {
-      // Refrescar conversación y lista de chats
-      queryClient.invalidateQueries({
-        queryKey: chatKeys.conversation(variables.chatId),
-      });
+      queryClient.invalidateQueries({ queryKey: chatKeys.conversation(variables.chatId) });
       queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
     },
   });
 
-  // B. Marcar como leído
+  // B. Marcar Leído
   const markAsReadMutation = useMutation({
-    mutationFn: (chatId: number) =>
-      fetchWithAuth<{ ok: boolean }>(
-        `/api/chat/conversacion/${chatId}/mark-read`,
-        token,
-        { method: 'POST' }
-      ),
+    mutationFn: (chatId: number) => fetchWithAuth(`/api/chat/conversacion/${chatId}/mark-read`, token, { method: 'POST' }),
     onSuccess: (_, chatId) => {
-      queryClient.invalidateQueries({
-        queryKey: chatKeys.conversation(chatId),
-      });
-      queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: chatKeys.lists() }); // Actualizar contadores
+      queryClient.invalidateQueries({ queryKey: chatKeys.conversation(chatId) });
     },
   });
 
-  // C. Confirmar transacción (entrega / recibo)
+  // C. Confirmar Transacción
   const confirmTransactionMutation = useMutation({
-    mutationFn: async ({ txId, type }: ConfirmTxVars) => {
-      const endpoint =
-        type === 'delivery' ? 'confirm-delivery' : 'confirm-receipt';
-
-      return fetchWithAuth<{ ok: boolean }>(
-        `/api/transactions/${txId}/${endpoint}`,
-        token,
-        { method: 'PATCH' }
-      );
+    mutationFn: async ({ txId, type }: { txId: number, type: 'delivery' | 'receipt', chatUserId: number }) => {
+      const endpoint = type === 'delivery' ? 'confirm-delivery' : 'confirm-receipt';
+      return fetchWithAuth(`/api/transactions/${txId}/${endpoint}`, token, { method: 'PATCH' });
     },
     onSuccess: (_, variables) => {
-      // Refrescar solo lo relacionado al chat de esa persona
-      queryClient.invalidateQueries({
-        queryKey: chatKeys.transaction(variables.chatUserId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: chatKeys.conversation(variables.chatUserId),
-      });
-      queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: chatKeys.transaction(variables.chatUserId) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.conversation(variables.chatUserId) });
     },
   });
 
-  // D. Cancelar transacción (con devolución de stock)
+  // D. Cancelar Transacción
   const cancelTransactionMutation = useMutation({
-    mutationFn: async ({ txId }: CancelTxVars) => {
-      return fetchWithAuth<{ ok: boolean }>(
-        `/api/transactions/${txId}/cancel`,
-        token,
-        { method: 'PATCH' }
-      );
+    mutationFn: async ({ txId }: { txId: number, chatUserId: number }) => {
+      return fetchWithAuth(`/api/transactions/${txId}/cancel`, token, { method: 'PATCH' });
     },
     onSuccess: (_, variables) => {
-      // Al cancelar, sacamos esa transacción del carrusel
-      queryClient.invalidateQueries({
-        queryKey: chatKeys.transaction(variables.chatUserId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: chatKeys.conversation(variables.chatUserId),
-      });
-      queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: chatKeys.transaction(variables.chatUserId) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.conversation(variables.chatUserId) });
     },
   });
 
-  // ✅ API pública del hook
   return {
-    sendMessage: (args: { chatId: number; text: string; file?: File }) =>
-      sendMessageMutation.mutateAsync(args),
-
-    markAsRead: (chatId: number) =>
-      markAsReadMutation.mutateAsync(chatId),
-
-    confirmTransaction: (vars: ConfirmTxVars) =>
-      confirmTransactionMutation.mutateAsync(vars),
-
-    cancelTransaction: (vars: CancelTxVars) =>
-      cancelTransactionMutation.mutateAsync(vars),
-
+    sendMessage: sendMessageMutation.mutateAsync,
+    markAsRead: markAsReadMutation.mutateAsync,
+    confirmTransaction: confirmTransactionMutation.mutateAsync,
+    cancelTransaction: cancelTransactionMutation.mutateAsync,
     isSending: sendMessageMutation.isPending,
-    isConfirming: confirmTransactionMutation.isPending,
-    isCancelling: cancelTransactionMutation.isPending,
   };
 };
 
-
 // ============================================================================
-// 4. RATE LIMITER (Mutaciones)
+// 4. RATE LIMITER (Anti-Spam Local)
 // ============================================================================
-
-interface RateLimiterOptions {
-  maxRequests: number; // Ej: 5 mensajes
-  windowMs: number;    // Ej: en 5000ms (5 segundos)
-  cooldownMs: number;  // Ej: Bloquear por 10000ms (10 segundos) si se excede
-}
-
-export function useRateLimiter({ maxRequests, windowMs, cooldownMs }: RateLimiterOptions) {
+export function useRateLimiter({ maxRequests, windowMs, cooldownMs }: { maxRequests: number; windowMs: number; cooldownMs: number }) {
   const [isLimited, setIsLimited] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
-  
-  // Usamos useRef para no provocar re-renders innecesarios con el historial de tiempos
   const timestamps = useRef<number[]>([]);
 
   const checkRateLimit = useCallback(() => {
     const now = Date.now();
-    
-    // 1. Filtrar timestamps antiguos (fuera de la ventana de tiempo)
-    timestamps.current = timestamps.current.filter(t => now - t < windowMs);
+    timestamps.current = timestamps.current.filter(t => now - t < windowMs); // Limpiar viejos
 
-    // 2. Verificar si estamos bloqueados
     if (isLimited) return false;
 
-    // 3. Verificar si excedimos el límite
     if (timestamps.current.length >= maxRequests) {
-      // ACTIVAR BLOQUEO
       setIsLimited(true);
       setTimeLeft(cooldownMs / 1000);
-
-      // Iniciar cuenta regresiva para desbloquear
+      
       const interval = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             clearInterval(interval);
             setIsLimited(false);
-            timestamps.current = []; // Resetear historial al desbloquear
+            timestamps.current = [];
             return 0;
           }
           return prev - 1;
         });
       }, 1000);
-
-      return false; // Bloquear acción actual
+      return false;
     }
 
-    // 4. Si todo ok, registrar este intento
     timestamps.current.push(now);
-    return true; // Permitir acción
+    return true;
   }, [isLimited, maxRequests, windowMs, cooldownMs]);
 
   return { isLimited, timeLeft, checkRateLimit };

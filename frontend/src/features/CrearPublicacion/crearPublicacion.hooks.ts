@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/app/context/AuthContext';
 import { CreateProductFormData, CATEGORY_MAP } from './crearPublicacion.types';
+import { forumKeys } from '@/features/Forum/forum.keys'; // Asegúrate de que la ruta sea correcta
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -18,12 +20,9 @@ const convertFileToBase64 = (file: File): Promise<string> => {
 export const useCreatePublication = () => {
   const navigate = useNavigate();
   const { token } = useAuth();
+  const queryClient = useQueryClient(); // Cliente para invalidar caché
   
-  // Estados
-  const [isLoading, setIsLoading] = useState(false);
-  const [success, setSuccess] = useState<{ message: string, isPromotion: boolean } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  
+  // Estados de UI (Formulario)
   const [formData, setFormData] = useState<CreateProductFormData>({
     titulo: '',
     precio: '',
@@ -34,15 +33,17 @@ export const useCreatePublication = () => {
   });
 
   const [images, setImages] = useState<File[]>([]);
+  const [success, setSuccess] = useState<{ message: string, isPromotion: boolean } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Handlers de Formulario
+  // --- HANDLERS UI ---
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (error) setError(null);
   };
 
-  // Handlers de Imagen
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newImages = Array.from(e.target.files);
@@ -59,27 +60,11 @@ export const useCreatePublication = () => {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Envío del Formulario
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    setSuccess(null);
+  // --- MUTACIÓN (Lógica de Servidor) ---
 
-    // Validaciones básicas
-    if (!formData.titulo || !formData.precio || !formData.categoria) {
-      setError("Completa los campos obligatorios (Título, Precio, Categoría)");
-      setIsLoading(false);
-      return;
-    }
-    if (images.length === 0) {
-      setError("Sube al menos una imagen");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      // Convertir imágenes a Base64
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      // 1. Preparar Payload
       const base64Images = await Promise.all(images.map(file => convertFileToBase64(file)));
 
       const payload = {
@@ -87,15 +72,15 @@ export const useCreatePublication = () => {
         descripcion: formData.descripcion,
         precioActual: parseFloat(formData.precio),
         precioAnterior: null,
-        categoriaId: CATEGORY_MAP[formData.categoria] || 5, // Default a 'Otros'
+        categoriaId: CATEGORY_MAP[formData.categoria] || 5,
         cantidad: parseInt(formData.stock) || 1,
-        // Valores por defecto requeridos por BD
         estadoProducto: 'usado', 
         informacionTecnica: formData.campus ? `Ubicación: ${formData.campus}` : '', 
         tiempoUso: '',
         imagenes: base64Images
       };
 
+      // 2. Petición
       const response = await fetch(`${API_URL}/api/products`, {
         method: 'POST',
         headers: {
@@ -111,21 +96,46 @@ export const useCreatePublication = () => {
         throw new Error(data.message || data.errors?.[0]?.msg || "Error al publicar");
       }
 
+      return data;
+    },
+    onSuccess: (data) => {
       setSuccess({
         message: "¡Producto publicado con éxito!",
         isPromotion: data.roleChanged
       });
 
-      setTimeout(() => {
-        navigate('/home'); // O /mis-publicaciones
-      }, 1500);
+      // 🚀 INVALIDACIÓN DE CACHÉ (MAGIA)
+      // Esto le dice a React Query: "Los datos de 'mis publicaciones' y 'home' son viejos, recárgalos".
+      queryClient.invalidateQueries({ queryKey: forumKeys.myPublications() });
+      queryClient.invalidateQueries({ queryKey: forumKeys.publications() });
 
-    } catch (err: any) {
+      // Navegar
+      setTimeout(() => {
+        navigate('/mis-publicaciones'); 
+      }, 1500);
+    },
+    onError: (err: any) => {
       console.error(err);
       setError(err.message || "Ocurrió un error inesperado");
-    } finally {
-      setIsLoading(false);
     }
+  });
+
+  // --- SUBMIT WRAPPER ---
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validaciones síncronas antes de la mutación
+    if (!formData.titulo || !formData.precio || !formData.categoria) {
+      setError("Completa los campos obligatorios (Título, Precio, Categoría)");
+      return;
+    }
+    if (images.length === 0) {
+      setError("Sube al menos una imagen");
+      return;
+    }
+
+    createMutation.mutate();
   };
 
   const handleCancel = () => navigate(-1);
@@ -133,7 +143,7 @@ export const useCreatePublication = () => {
   return {
     formData,
     images,
-    isLoading,
+    isLoading: createMutation.isPending, // Usamos el estado de la mutación
     error,
     success,
     handleChange,
