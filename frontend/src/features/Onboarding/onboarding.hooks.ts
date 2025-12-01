@@ -1,11 +1,13 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/app/context/AuthContext';
 import { getImageUrl } from '@/app/imageHelper';
 import { CAMPUS_OPTIONS, OnboardingFormData } from './onboarding.types';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+// --- UTILS ---
 export const formatWelcomeName = (fullName?: string) => {
   if (!fullName) return "Usuario";
   const parts = fullName.trim().split(/\s+/);
@@ -17,21 +19,21 @@ export const useOnboarding = () => {
   const { user, token, login } = useAuth();
   const navigate = useNavigate();
   
+  // Estados de UI
   const [step, setStep] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // Estado del formulario
   const [formData, setFormData] = useState<OnboardingFormData>({
     usuario: user?.usuario || '',
     telefono: '',
     direccion: '',
     campus: CAMPUS_OPTIONS[0],
-    acceptedTerms: false // <--- Inicializado en false
+    acceptedTerms: false 
   });
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(getImageUrl(user?.fotoPerfilUrl));
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // --- HANDLERS UI ---
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -44,21 +46,15 @@ export const useOnboarding = () => {
   const handleNext = () => setStep(prev => prev + 1);
   const handleBack = () => setStep(prev => prev - 1);
 
-  const handleFinalSubmit = async () => {
-    if (!token) return;
-    
-    // Validación extra de seguridad
-    if (!formData.acceptedTerms) {
-        alert("Debes aceptar los términos y condiciones.");
-        return;
-    }
+  // --- MUTACIÓN (Lógica de Negocio) ---
 
-    setIsLoading(true);
-    
-    try {
+  const submitMutation = useMutation({
+    mutationFn: async () => {
+      if (!token) throw new Error("No hay sesión activa");
+
       let finalPhotoUrl = user?.fotoPerfilUrl;
 
-      // 1. Subir Foto
+      // 1. Subir Foto (Si se seleccionó una nueva)
       if (selectedImage) {
         const imageFormData = new FormData();
         imageFormData.append('photo', selectedImage);
@@ -70,10 +66,12 @@ export const useOnboarding = () => {
         });
         
         const dataImg = await resImg.json();
-        if (dataImg.ok) finalPhotoUrl = dataImg.photoUrl;
+        if (!resImg.ok) throw new Error(dataImg.message || "Error al subir imagen");
+        
+        finalPhotoUrl = dataImg.photoUrl;
       }
 
-      // 2. Actualizar Perfil (Excluimos acceptedTerms del envío)
+      // 2. Actualizar Perfil de Usuario
       const resProfile = await fetch(`${API_URL}/api/users/profile`, {
         method: 'PUT',
         headers: {
@@ -84,38 +82,51 @@ export const useOnboarding = () => {
           usuario: formData.usuario,
           telefono: formData.telefono,
           direccion: formData.direccion,
-          campus: formData.campus
+          campus: formData.campus,
+          // Enviamos la URL de la foto explícitamente para asegurar consistencia
+          fotoPerfilUrl: finalPhotoUrl 
         })
       });
 
       const dataProfile = await resProfile.json();
+      if (!resProfile.ok) throw new Error(dataProfile.message || "Error al actualizar perfil");
 
-      if (dataProfile.ok) {
+      return { ...formData, fotoPerfilUrl: finalPhotoUrl };
+    },
+    onSuccess: (updatedData) => {
+      // 3. Actualizar Contexto de Auth (Local)
+      if (user) {
         const updatedUser = { 
-          ...user!, 
-          ...formData, // Esto guarda acceptedTerms en local, pero no afecta al backend
-          fotoPerfilUrl: finalPhotoUrl
+          ...user, 
+          ...updatedData, 
+          // Aseguramos que acceptedTerms se guarde si el backend lo requiere, 
+          // aunque usualmente es solo check de UI
         };
-
         const currentRefreshToken = localStorage.getItem('refresh_token') || '';
-        login(token, currentRefreshToken, updatedUser);
-        navigate('/home', { replace: true });
-      } else {
-        alert("Error al guardar: " + (dataProfile.message || "Intente nuevamente"));
+        login(token!, currentRefreshToken, updatedUser);
       }
 
-    } catch (error) {
-      console.error("Error crítico en onboarding:", error);
-      alert("Ocurrió un error de conexión.");
-    } finally {
-      setIsLoading(false);
+      // 4. Navegar al Home
+      navigate('/home', { replace: true });
+    },
+    onError: (error: Error) => {
+      console.error("Error en onboarding:", error);
+      alert(error.message || "Ocurrió un error inesperado.");
     }
+  });
+
+  const handleFinalSubmit = () => {
+    if (!formData.acceptedTerms) {
+      alert("Debes aceptar los términos y condiciones para continuar.");
+      return;
+    }
+    submitMutation.mutate();
   };
 
   return {
     user,
     step,
-    isLoading,
+    isLoading: submitMutation.isPending, // Estado automático de React Query
     formData,
     setFormData,
     imagePreview,

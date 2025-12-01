@@ -1,14 +1,15 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/app/context/AuthContext";
-import type { Post, StartTransactionApiResponse } from "./home.types";
+import { forumKeys } from "@/features/Forum/forum.keys"; // Reutilizamos claves
+import type { Post } from "./home.types";
 
-// URL Base del backend
-const API_URL = import.meta.env.VITE_API_URL;
 const URL_BASE = import.meta.env.VITE_API_URL;
 
+// ============================================================================
+// 0. UTILS
+// ============================================================================
 
-// --- UTILS ---
 export const formatCLP = (amount: number) => {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(amount);
 };
@@ -27,15 +28,8 @@ export const getInitials = (name?: string) => {
   return name.substring(0, 2).toUpperCase();
 };
 
-export async function fetchWithAuth<T>(
-  url: string,
-  token: string | null,
-  options: RequestInit = {}
-): Promise<T> {
-  if (!token) {
-    throw new Error("No autenticado");
-  }
-
+async function fetchWithAuth<T>(url: string, token: string | null, options: RequestInit = {}): Promise<T> {
+  if (!token) throw new Error("No autenticado");
   const res = await fetch(`${URL_BASE}${url}`, {
     ...options,
     headers: {
@@ -44,28 +38,21 @@ export async function fetchWithAuth<T>(
       ...(options.headers || {}),
     },
   });
-
-  const rawData: any = await res.json();
-
-  if (!res.ok) {
-    // si el backend manda { message: string }, lo aprovechamos
-    throw new Error(rawData?.message || "Error en la petición");
-  }
-
-  // aquí ya es “éxito”, casteamos a T
-  return rawData as T;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Error en la petición");
+  return data as T;
 }
 
+// ============================================================================
+// 1. HOOKS DE DATOS (Marketplace Feed)
+// ============================================================================
 
-
-// --- HOOKS DE DATOS ---
-
-// 1. Obtener Posts (Paginado + Filtros)
 export const usePosts = (searchTerm: string, categoryId: string) => {
   const { token } = useAuth();
 
   return useInfiniteQuery({
-    queryKey: ['marketplace-posts', searchTerm, categoryId],
+    // Clave compuesta para que el feed se resetee al cambiar filtros
+    queryKey: [...forumKeys.publications(), searchTerm, categoryId],
     queryFn: async ({ pageParam = 1 }) => {
       const params = new URLSearchParams({
         page: pageParam.toString(),
@@ -74,23 +61,21 @@ export const usePosts = (searchTerm: string, categoryId: string) => {
         ...(categoryId && { category: categoryId })
       });
 
-      const res = await fetch(`${API_URL}/api/products?${params.toString()}`, {
-         // Headers opcionales si tu API pública requiere token, sino quitar
-         headers: token ? { 'Authorization': `Bearer ${token}` } : {} 
-      });
+      // Fetch público o privado según token (para ver si ya le di like, etc.)
+      const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const res = await fetch(`${URL_BASE}/api/products?${params.toString()}`, { headers });
       
       if (!res.ok) throw new Error('Error fetching posts');
       return res.json();
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
-       // Asumiendo que tu API devuelve { pagination: { totalPages, page } }
        if (lastPage.pagination.page < lastPage.pagination.totalPages) {
           return lastPage.pagination.page + 1;
        }
        return undefined;
     },
-    // Aplanar datos para fácil consumo
+    // Transformación de datos para la UI
     select: (data) => ({
        posts: data.pages.flatMap((page: any) => 
           page.products.map((p: any) => ({
@@ -102,19 +87,17 @@ export const usePosts = (searchTerm: string, categoryId: string) => {
              categoria: p.categoria,
              estado: p.estado,
              fechaAgregado: p.fechaAgregado,
-             // Mapear vendedor y sus datos
              vendedor: {
                 id: p.vendedor.id,
                 nombre: p.vendedor.nombre,
-                usuario: p.vendedor.usuario, // Este es el dato clave
-                fotoPerfilUrl: p.vendedor.fotoPerfilUrl, // Ahora sí vendrá lleno
+                usuario: p.vendedor.usuario,
+                fotoPerfilUrl: p.vendedor.fotoPerfilUrl,
                 campus: p.vendedor.campus,
                 reputacion: p.vendedor.reputacion
              },
-             // Mapear imágenes (normalizar URL)
              imagenes: p.imagenes?.map((img: any) => ({
                 id: img.id,
-                url: img.urlImagen || img.url // Ajustar según tu API
+                url: img.urlImagen || img.url
              })) || []
           }))
        ) as Post[]
@@ -122,34 +105,38 @@ export const usePosts = (searchTerm: string, categoryId: string) => {
   });
 };
 
-// 2. Gestión de Favoritos
+// ============================================================================
+// 2. GESTIÓN DE FAVORITOS
+// ============================================================================
+
 export const useFavorites = () => {
   const { token } = useAuth();
   const queryClient = useQueryClient();
   
-  // Cargar favoritos iniciales
-  const { data: favorites = new Set<number>() } = useQuery({
-    queryKey: ['favorites'],
+  // Cache de IDs de favoritos
+  const { data: favoriteIds = new Set<number>() } = useQuery({
+    queryKey: ['favorites', 'ids'],
     queryFn: async () => {
        if (!token) return new Set<number>();
-       const res = await fetch(`${API_URL}/api/favorites?limit=100`, { 
+       const res = await fetch(`${URL_BASE}/api/favorites?limit=100`, { 
           headers: { 'Authorization': `Bearer ${token}` } 
        });
        const data = await res.json();
        if (data.ok) return new Set<number>(data.favorites.map((fav: any) => fav.productoId));
        return new Set<number>();
     },
-    enabled: !!token
+    enabled: !!token,
+    staleTime: 1000 * 60 * 5 // 5 min
   });
 
-  // Mutación para togglear
+  // Toggle Favorito
   const toggleMutation = useMutation({
     mutationFn: async (productId: number) => {
       if (!token) throw new Error("No autenticado");
       
-      const isFav = favorites.has(productId);
+      const isFav = favoriteIds.has(productId);
       const method = isFav ? 'DELETE' : 'POST';
-      const url = isFav ? `${API_URL}/api/favorites/${productId}` : `${API_URL}/api/favorites`;
+      const url = isFav ? `${URL_BASE}/api/favorites/${productId}` : `${URL_BASE}/api/favorites`;
       
       const res = await fetch(url, { 
          method, 
@@ -163,216 +150,64 @@ export const useFavorites = () => {
       if (!res.ok) throw new Error("Error al actualizar favorito");
       return { productId, added: !isFav };
     },
-    // Actualización optimista o invalidación
+    // Optimistic Update o Invalidation
     onSuccess: () => {
        queryClient.invalidateQueries({ queryKey: ['favorites'] });
     }
   });
 
   return { 
-     favoriteIds: favorites, 
+     favoriteIds, 
      toggleFavorite: toggleMutation.mutate 
   };
 };
 
-// 3. Hook de Contacto (Iniciar Transacción)
-// home.hooks.ts (fragmento)
-
-type StartTransactionResult = {
-  ok: boolean;
-  created: boolean;
-  transactionId: number;
-  message?: string;
-};
+// ============================================================================
+// 3. CONTACTO (Iniciar Transacción)
+// ============================================================================
 
 export function useContactSeller() {
   const { token } = useAuth();
 
-  // Crear / retomar transacción SIEMPRE a nivel de PRODUCTO
   const startTransaction = useCallback(
-    async (productId: number, _sellerId: number): Promise<StartTransactionResult> => {
-      if (!token) {
-        return {
-          ok: false,
-          created: false,
-          transactionId: 0,
-          message: "No autenticado",
-        };
-      }
+    async (productId: number, _sellerId: number) => {
+      if (!token) return { ok: false, created: false, transactionId: 0, message: "No autenticado" };
 
       try {
-        // Llamamos directamente al POST de transacciones
         const data = await fetchWithAuth<{
-          ok: boolean;
-          created: boolean;
-          id?: number;
-          transactionId?: number;
-          message?: string;
+          ok: boolean; created: boolean; id?: number; transactionId?: number; message?: string;
         }>("/api/transactions", token, {
           method: "POST",
-          body: JSON.stringify({
-            productId,
-            quantity: 1,
-          }),
+          body: JSON.stringify({ productId, quantity: 1 }),
         });
 
         const txId = data.transactionId ?? data.id ?? 0;
-
-        return {
-          ok: data.ok,
-          created: data.created,
-          transactionId: txId,
-          message: data.message,
-        };
+        return { ok: data.ok, created: data.created, transactionId: txId, message: data.message };
       } catch (err: any) {
-        console.error("Error al iniciar transacción:", err);
-        return {
-          ok: false,
-          created: false,
-          transactionId: 0,
-          message: err?.message || "Error al iniciar la compra",
-        };
+        console.error(err);
+        return { ok: false, created: false, transactionId: 0, message: err?.message || "Error al iniciar compra" };
       }
     },
     [token]
   );
 
-  // Enviar mensaje inicial al vendedor (se usa en el modal)
   const sendMessage = useCallback(
     async (toUserId: number, content: string): Promise<boolean> => {
-      if (!token) return false;
-      if (!content.trim()) return false;
-
+      if (!token || !content.trim()) return false;
       try {
-        const data = await fetchWithAuth<{ ok: boolean }>(
-          "/api/chat/send",
-          token,
-          {
+        const data = await fetchWithAuth<{ ok: boolean }>("/api/chat/send", token, {
             method: "POST",
-            body: JSON.stringify({
-              destinatarioId: toUserId,
-              contenido: content,
-              tipo: "texto",
-            }),
+            body: JSON.stringify({ destinatarioId: toUserId, contenido: content, tipo: "texto" }),
           }
         );
-
         return !!data.ok;
       } catch (err) {
-        console.error("Error al enviar mensaje:", err);
+        console.error(err);
         return false;
       }
     },
     [token]
   );
 
-  return {
-    startTransaction,
-    sendMessage,
-  };
-}
-
-interface UsePostsOptions {
-  searchTerm: string;
-  categoryId: string;
-}
-
-export function usePostsWithFilters({ searchTerm, categoryId }: UsePostsOptions) {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isError, setIsError] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  
-  // Estado de paginación
-  const [page, setPage] = useState(1);
-  const [hasNextPage, setHasNextPage] = useState(true);
-  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
-
-  // Reiniciar lista cuando cambian los filtros
-  useEffect(() => {
-    setPosts([]);
-    setPage(1);
-    setHasNextPage(true);
-    fetchData(1, true); // true = es una nueva búsqueda
-  }, [searchTerm, categoryId]);
-
-  const fetchData = async (pageNum: number, isNewSearch: boolean = false) => {
-    try {
-      if (isNewSearch) setIsLoading(true);
-      else setIsFetchingNextPage(true);
-      setIsError(false);
-
-      // Construir Query Params
-      const params = new URLSearchParams();
-      params.append('page', pageNum.toString());
-      params.append('limit', '12'); // Traer 12 productos por carga
-      if (searchTerm) params.append('search', searchTerm);
-      if (categoryId) params.append('category', categoryId);
-
-      const response = await fetch(`${API_URL}/api/products?${params.toString()}`);
-      
-      if (!response.ok) throw new Error('Error al cargar productos');
-
-      const data = await response.json();
-
-      if (data.ok) {
-        // Mapear datos del backend al formato de tu Frontend
-        const newPosts: Post[] = data.products.map((p: any) => ({
-          id: p.id,
-          nombre: p.nombre,
-          descripcion: p.descripcion,
-          precioActual: p.precioActual,
-          cantidad: p.cantidad,
-          categoria: p.categoria,
-          estado: p.estado, // 'Disponible', etc.
-          fechaAgregado: p.fechaAgregado,
-          vendedor: {
-            id: p.vendedor.id,
-            usuario: p.vendedor.usuario,
-            nombre: p.vendedor.nombre,
-            fotoPerfilUrl: p.vendedor.fotoPerfilUrl, // Asegúrate que el backend mande esto si existe
-            reputacion: p.vendedor.reputacion,
-            campus: p.vendedor.campus
-          },
-          // Mapeo crítico: Backend envía 'urlImagen', UI espera 'url'
-          imagenes: p.imagenes.map((img: any) => ({
-            id: img.id,
-            url: img.urlImagen // <--- AQUÍ HACEMOS LA CONEXIÓN
-          }))
-        }));
-
-        setPosts(prev => isNewSearch ? newPosts : [...prev, ...newPosts]);
-        
-        // Verificar si quedan más páginas
-        const totalPages = data.pagination.totalPages;
-        setHasNextPage(pageNum < totalPages);
-      }
-
-    } catch (err) {
-      console.error(err);
-      setIsError(true);
-      setError(err as Error);
-    } finally {
-      setIsLoading(false);
-      setIsFetchingNextPage(false);
-    }
-  };
-
-  const fetchNextPage = useCallback(() => {
-    if (!isLoading && !isFetchingNextPage && hasNextPage) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchData(nextPage);
-    }
-  }, [page, isLoading, isFetchingNextPage, hasNextPage]);
-
-  return {
-    posts,
-    hasNextPage,
-    fetchNextPage,
-    isLoading, // Carga inicial
-    isFetchingNextPage, // Carga de scroll infinito
-    isError,
-    error
-  };
+  return { startTransaction, sendMessage };
 }
