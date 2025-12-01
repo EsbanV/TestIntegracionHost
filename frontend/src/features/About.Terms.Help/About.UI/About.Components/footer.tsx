@@ -29,20 +29,6 @@ export default function LoginFooter() {
 
         {/* Separador vertical */}
         <span className="h-3 w-px bg-slate-300 rounded-full" aria-hidden="true" />
-
-        {/* Enlace de Ayuda */}
-        <Link
-          to="/ayuda"
-          className="
-            flex items-center gap-1.5 
-            text-[10px] sm:text-xs font-semibold 
-            text-blue-600 hover:text-blue-700 
-            transition-colors
-          "
-        >
-          <span>¿Necesitas ayuda?</span>
-          <HelpCircle className="w-3 h-3" />
-        </Link>
       </div>
     </footer>
   );
