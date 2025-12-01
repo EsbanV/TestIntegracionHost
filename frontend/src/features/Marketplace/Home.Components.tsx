@@ -4,7 +4,7 @@ import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-
 import { 
   Search, X, ChevronLeft, ChevronRight, 
   ShoppingBag, Star, Filter, Heart, Loader2,
-  Send, Check
+  Send, Check, MapPin, Tag
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -13,12 +13,13 @@ import { useAuth } from '@/app/context/AuthContext';
 import { useContactSeller, formatCLP, formatDate, getInitials } from './home.hooks';
 import type { Post } from './home.types';
 
+// Utilidad para combinar clases Tailwind
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 // ============================================================================
-// 1. ÁTOMOS (Con Paleta Semántica)
+// 1. ÁTOMOS (Botones, Badges, Loaders)
 // ============================================================================
 
 export const Badge = ({
@@ -29,26 +30,37 @@ export const Badge = ({
 }: {
   children: React.ReactNode
   className?: string
-  variant?: 'default'|'secondary'|'outline'|'price'|'category'|'suggestion'
+  variant?: 'default'|'secondary'|'outline'|'price'|'category'|'suggestion'|'status'
   onClick?: () => void
 }) => {
   const variants = {
-    // Usa colores de la marca
-    default: "bg-primary text-primary-foreground hover:bg-primary/90",
-    secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-    outline: "text-foreground border-border border",
-    // Precio: Destacado pero elegante
-    price: "bg-primary text-primary-foreground font-bold shadow-sm",
-    // Categoría: Sutil, tipo vidrio
-    category: "bg-background/80 backdrop-blur text-foreground font-medium shadow-sm border border-border",
-    // Sugerencia: Interactivo
-    suggestion: "bg-secondary/50 text-secondary-foreground border border-secondary hover:bg-secondary cursor-pointer active:scale-95"
+    // Default: Gradiente índigo sutil
+    default: "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-md shadow-indigo-500/20 border-0",
+    
+    // Secondary: Zinc suave
+    secondary: "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border-0",
+    
+    // Outline: Borde sutil
+    outline: "text-zinc-600 border-zinc-200 border bg-transparent",
+    
+    // Precio: Gradiente Esmeralda Vibrante (Pop)
+    price: "bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold shadow-lg shadow-emerald-500/25 tracking-wide",
+    
+    // Categoría: Efecto Vidrio (Glassmorphism)
+    category: "bg-white/90 backdrop-blur-md text-zinc-700 font-semibold shadow-sm border border-white/50 hover:bg-white transition-all hover:scale-105 cursor-pointer",
+    
+    // Sugerencia (Chat): Pill interactivo
+    suggestion: "bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100 cursor-pointer active:scale-95 transition-transform",
+    
+    // Status: Para etiquetas de estado
+    status: "bg-zinc-900 text-white text-[10px] font-bold uppercase tracking-wider",
   };
+
   return (
     <div
       onClick={onClick}
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] sm:text-xs transition-colors",
+        "inline-flex items-center justify-center rounded-full px-3 py-1 text-[10px] sm:text-xs transition-all duration-300",
         variants[variant],
         className
       )}
@@ -61,8 +73,8 @@ export const Badge = ({
 export const Button = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement> & {
-    variant?: 'default' | 'outline' | 'ghost' | 'secondary'
-    size?: 'default' | 'sm' | 'icon'
+    variant?: 'default' | 'outline' | 'ghost' | 'secondary' | 'gradient'
+    size?: 'default' | 'sm' | 'icon' | 'lg'
     loading?: boolean
   }
 >(
@@ -71,29 +83,41 @@ export const Button = React.forwardRef<
     ref
   ) => {
     const variants = {
-      default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
-      outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-sm",
-      secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-      ghost: "hover:bg-accent hover:text-accent-foreground",
+      // Primary: Gradiente Indigo-Violeta con sombra de color
+      default: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-lg shadow-indigo-500/25 border-0 hover:-translate-y-0.5",
+      
+      // Secondary: Fondo zinc suave
+      secondary: "bg-zinc-100 text-zinc-900 hover:bg-zinc-200 border-0",
+      
+      // Outline: Borde fino
+      outline: "border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 shadow-sm",
+      
+      // Ghost: Solo texto/icono
+      ghost: "hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900",
+      
+      // Gradient Danger/Action
+      gradient: "bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-500/25 hover:from-rose-600 hover:to-pink-700",
     };
+    
     const sizes = {
-      default: "h-9 px-4 py-2 text-sm",
-      sm: "h-8 rounded-md px-3 text-xs",
-      icon: "h-9 w-9",
+      default: "h-10 px-5 py-2 text-sm",
+      sm: "h-8 rounded-full px-3 text-xs",
+      lg: "h-12 rounded-xl px-8 text-base",
+      icon: "h-10 w-10 rounded-full p-0",
     };
+
     return (
       <button
         ref={ref}
         className={cn(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+          "inline-flex items-center justify-center whitespace-nowrap rounded-xl font-medium ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:pointer-events-none disabled:opacity-50 active:scale-95",
           variants[variant],
           sizes[size],
           className
         )}
         {...props}
       >
-        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {children}
+        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : children}
       </button>
     );
   }
@@ -101,8 +125,12 @@ export const Button = React.forwardRef<
 Button.displayName = "Button";
 
 export const LoadingSpinner = () => (
-  <div className="flex justify-center items-center p-8">
-    <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+  <div className="flex justify-center items-center py-12">
+    <div className="relative">
+      {/* Doble anillo animado */}
+      <div className="h-12 w-12 rounded-full border-4 border-zinc-100"></div>
+      <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
+    </div>
   </div>
 );
 
@@ -121,25 +149,25 @@ export const FavoriteButton = ({
       onClick();
     }}
     className={cn(
-      "group relative flex h-9 w-9 items-center justify-center rounded-full transition-all active:scale-90",
+      "group relative flex h-9 w-9 items-center justify-center rounded-full transition-all duration-300 active:scale-75 z-20",
       isFavorite
-        ? "bg-red-50 text-red-500 shadow-sm ring-1 ring-red-100 dark:bg-red-950 dark:text-red-400 dark:ring-red-900" // Corazón rojo se mantiene por convención universal
-        : "bg-background/80 text-muted-foreground backdrop-blur-sm hover:bg-background hover:text-red-400 hover:shadow-md",
+        ? "bg-rose-500 text-white shadow-md shadow-rose-500/30"
+        : "bg-white/90 backdrop-blur-sm text-zinc-400 hover:bg-white hover:text-rose-500 hover:shadow-lg",
       className
     )}
   >
     <Heart
       className={cn(
-        "h-5 w-5 transition-all",
-        isFavorite ? "fill-current scale-110" : "text-current"
+        "h-5 w-5 transition-all duration-300",
+        isFavorite ? "fill-white stroke-white scale-100" : "fill-transparent scale-95"
       )}
-      strokeWidth={2}
+      strokeWidth={2.5}
     />
   </button>
 );
 
 // ============================================================================
-// 2. IMAGE CAROUSEL
+// 2. IMAGE CAROUSEL (Mejorado con controles Glass)
 // ============================================================================
 
 export function ImageCarousel({
@@ -160,19 +188,6 @@ export function ImageCarousel({
     return [{ id: 0, url: "/assets/img/placeholder.png" }];
   }, [images]);
 
-  const thumbRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setIndex(0);
-  }, [images]);
-
-  useEffect(() => {
-    if (thumbRef.current) {
-      const el = thumbRef.current.children[index] as HTMLElement;
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
-  }, [index]);
-
   const nextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIndex((prev) => (prev + 1) % validImages.length);
@@ -183,8 +198,8 @@ export function ImageCarousel({
   };
 
   return (
-    <div className="flex flex-col gap-3 relative group">
-      <div className="relative w-full overflow-hidden rounded-xl bg-muted border border-border shadow-sm aspect-[16/9] sm:aspect-[4/3]">
+    <div className="flex flex-col gap-3 relative group select-none">
+      <div className="relative w-full overflow-hidden rounded-2xl bg-zinc-100 border border-zinc-200 aspect-[4/3]">
         <AnimatePresence mode="wait">
           <motion.img
             key={validImages[index].id}
@@ -192,12 +207,13 @@ export function ImageCarousel({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            alt={`${altPrefix || 'Producto'} - Imagen ${index + 1}`}
-            className="h-full w-full object-contain bg-background"
+            transition={{ duration: 0.3 }}
+            alt={`${altPrefix} - ${index + 1}`}
+            className="h-full w-full object-cover bg-white"
           />
         </AnimatePresence>
 
+        {/* Favorite Button (Top Right) */}
         {onToggleFavorite && (
           <div className="absolute top-3 right-3 z-20">
             <FavoriteButton
@@ -207,12 +223,13 @@ export function ImageCarousel({
           </div>
         )}
 
+        {/* Navigation Arrows (Visible on Group Hover) */}
         {validImages.length > 1 && (
           <>
             <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
               <button
                 onClick={prevImage}
-                className="pointer-events-auto rounded-full bg-background/80 p-2 text-foreground shadow-md backdrop-blur-sm transition-all hover:bg-background hover:scale-110 opacity-0 group-hover:opacity-100"
+                className="pointer-events-auto rounded-full bg-white/80 p-2 text-zinc-800 shadow-lg backdrop-blur-md transition-all hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100 translate-x-[-10px] group-hover:translate-x-0 duration-300"
               >
                 <ChevronLeft size={20} />
               </button>
@@ -220,19 +237,20 @@ export function ImageCarousel({
             <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
               <button
                 onClick={nextImage}
-                className="pointer-events-auto rounded-full bg-background/80 p-2 text-foreground shadow-md backdrop-blur-sm transition-all hover:bg-background hover:scale-110 opacity-0 group-hover:opacity-100"
+                className="pointer-events-auto rounded-full bg-white/80 p-2 text-zinc-800 shadow-lg backdrop-blur-md transition-all hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100 translate-x-[10px] group-hover:translate-x-0 duration-300"
               >
                 <ChevronRight size={20} />
               </button>
             </div>
 
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 px-3 py-1.5 bg-black/40 backdrop-blur-sm rounded-full">
+            {/* Dots Indicator */}
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 px-3 py-1.5 bg-black/20 backdrop-blur-md rounded-full border border-white/10">
               {validImages.map((_, i) => (
                 <div
                   key={i}
                   className={cn(
-                    "h-1.5 rounded-full transition-all shadow-sm",
-                    i === index ? "w-4 bg-white" : "w-1.5 bg-white/50" // Indicadores blancos sobre foto oscura
+                    "h-1.5 rounded-full transition-all duration-300 shadow-sm",
+                    i === index ? "w-5 bg-white" : "w-1.5 bg-white/50"
                   )}
                 />
               ))}
@@ -240,11 +258,10 @@ export function ImageCarousel({
           </>
         )}
       </div>
+
+      {/* Thumbnails (Solo si hay más de 1 imagen) */}
       {validImages.length > 1 && (
-        <div
-          ref={thumbRef}
-          className="flex w-full gap-2 overflow-x-auto pb-2 scrollbar-hide scroll-smooth"
-        >
+        <div className="flex w-full gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {validImages.map((img, i) => (
             <button
               key={img.id}
@@ -253,10 +270,10 @@ export function ImageCarousel({
                 setIndex(i);
               }}
               className={cn(
-                "relative flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all h-14 w-14 sm:h-16 sm:w-16",
+                "relative flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 h-14 w-14",
                 i === index
-                  ? "border-primary ring-2 ring-primary/20 opacity-100 scale-105"
-                  : "border-transparent opacity-60 hover:opacity-100"
+                  ? "border-indigo-600 opacity-100 ring-2 ring-indigo-100"
+                  : "border-transparent opacity-60 hover:opacity-100 hover:border-zinc-300"
               )}
             >
               <img src={img.url} alt="" className="h-full w-full object-cover" />
@@ -267,6 +284,10 @@ export function ImageCarousel({
     </div>
   );
 }
+
+// ============================================================================
+// 3. ITEM CARD (Hover Lift, Glass Badges, Premium Feel)
+// ============================================================================
 
 export const ItemCard = ({
   post,
@@ -280,81 +301,89 @@ export const ItemCard = ({
   onToggleFavorite: (id: number) => void
 }) => {
   const image = post.imagenes?.[0]?.url;
+
   return (
     <div
       onClick={() => onClick(post)}
-      className="group relative flex flex-col overflow-hidden rounded-2xl bg-card text-card-foreground shadow-sm border border-border transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer h-full"
+      className="group relative flex flex-col h-full bg-white rounded-2xl border border-zinc-200 overflow-hidden cursor-pointer transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-1.5"
     >
-      <div className="relative overflow-hidden bg-muted aspect-[16/9] sm:aspect-[4/3]">
+      {/* 1. Imagen y Badges */}
+      <div className="relative aspect-[4/3] overflow-hidden bg-zinc-100">
+        {/* Overlay gradiente en hover */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10" />
+
         {image ? (
           <img
             src={image}
             alt={post.nombre}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-muted-foreground bg-muted">
+          <div className="flex h-full items-center justify-center text-zinc-300">
             <ShoppingBag size={48} strokeWidth={1} />
           </div>
         )}
-        <div className="absolute top-3 left-3">
+
+        {/* Badge Categoría (Top Left) */}
+        <div className="absolute top-3 left-3 z-20">
           <Badge variant="category">{post.categoria || "Varios"}</Badge>
         </div>
-        <div className="absolute top-3 right-3 z-10">
-          <FavoriteButton
-            isFavorite={isFavorite}
-            onClick={() => onToggleFavorite(post.id)}
-          />
+
+        {/* Favorite (Top Right) */}
+        <div className="absolute top-3 right-3 z-20">
+          <FavoriteButton isFavorite={isFavorite} onClick={() => onToggleFavorite(post.id)} />
         </div>
-        <div className="absolute bottom-3 right-3">
+
+        {/* Precio (Bottom Right - Con efecto Pop) */}
+        <div className="absolute bottom-3 right-3 z-20 transform transition-transform duration-300 group-hover:scale-105">
           <Badge variant="price">{formatCLP(post.precioActual || 0)}</Badge>
         </div>
       </div>
-      <div className="flex flex-1 flex-col p-4 sm:p-5">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0 overflow-hidden border border-border">
-            {post.vendedor?.fotoPerfilUrl ? (
-              <img
-                src={post.vendedor.fotoPerfilUrl}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              getInitials(post.vendedor?.usuario)
-            )}
+
+      {/* 2. Contenido */}
+      <div className="flex flex-col flex-1 p-4">
+        {/* Vendedor Info */}
+        <div className="flex items-center gap-2 mb-3">
+          <div className="h-8 w-8 rounded-full p-[1.5px] bg-gradient-to-tr from-indigo-500 to-violet-500 shadow-sm">
+            <div className="h-full w-full rounded-full bg-white overflow-hidden flex items-center justify-center">
+              {post.vendedor?.fotoPerfilUrl ? (
+                <img src={post.vendedor.fotoPerfilUrl} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-[10px] font-bold text-indigo-600">{getInitials(post.vendedor?.usuario)}</span>
+              )}
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="text-[11px] sm:text-xs font-semibold text-foreground line-clamp-1">
+          <div className="flex flex-col leading-tight">
+            <span className="text-xs font-semibold text-zinc-800 group-hover:text-indigo-600 transition-colors">
               {post.vendedor?.usuario}
             </span>
-            <span className="text-[10px] text-muted-foreground leading-none">
+            <span className="text-[10px] text-zinc-400">
               {formatDate(post.fechaAgregado)}
             </span>
           </div>
         </div>
-        <h3 className="font-bold text-card-foreground line-clamp-1 mb-1 text-sm sm:text-base">
+
+        {/* Título */}
+        <h3 className="text-sm font-bold text-zinc-900 line-clamp-1 mb-1.5 group-hover:text-indigo-700 transition-colors">
           {post.nombre}
         </h3>
-        <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-4 flex-1 min-h-[2.3em]">
-          {post.descripcion || "Sin descripción."}
+
+        {/* Descripción Corta */}
+        <p className="text-xs text-zinc-500 line-clamp-2 mb-4 flex-1">
+          {post.descripcion || "Sin descripción detallada."}
         </p>
-        <div className="mt-auto flex items-center justify-between border-t border-border pt-3">
-          <div className="flex items-center gap-1 text-muted-foreground">
-            <Star size={14} className="fill-yellow-400 text-yellow-400" /> 
-            {/* Estrella amarilla es convención visual fuerte, se puede dejar o usar primary */}
-            <span className="text-[11px] font-medium">
-              {post.vendedor?.reputacion
-                ? Number(post.vendedor.reputacion).toFixed(1)
-                : "0.0"}
-            </span>
+
+        {/* Footer Card */}
+        <div className="mt-auto pt-3 border-t border-zinc-100 flex items-center justify-between">
+          <div className="flex items-center gap-1.5 bg-zinc-50 px-2 py-1 rounded-md text-[11px] font-medium text-zinc-600">
+            <Star size={12} className="fill-amber-400 text-amber-400" />
+            {post.vendedor?.reputacion ? Number(post.vendedor.reputacion).toFixed(1) : "N/A"}
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="h-8 text-[11px] font-semibold"
-          >
-            Ver detalle
-          </Button>
+          
+          <div className="flex items-center text-xs font-bold text-indigo-600 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+            Ver detalle <ChevronRight size={14} className="ml-1" />
+          </div>
         </div>
       </div>
     </div>
@@ -362,7 +391,7 @@ export const ItemCard = ({
 };
 
 // ============================================================================
-// 3. SEARCH FILTERS BAR
+// 4. SEARCH FILTERS BAR (Floating Glass Panel)
 // ============================================================================
 
 export const SearchFiltersBar = ({
@@ -377,9 +406,10 @@ export const SearchFiltersBar = ({
   const { scrollY } = useScroll();
   const [hidden, setHidden] = useState(false);
 
+  // Ocultar al hacer scroll hacia abajo, mostrar al subir o estar arriba
   useMotionValueEvent(scrollY, "change", (latest) => {
     const previous = scrollY.getPrevious() ?? 0;
-    if (latest > previous && latest > 100) {
+    if (latest > previous && latest > 150) {
       setHidden(true);
     } else {
       setHidden(false);
@@ -389,33 +419,36 @@ export const SearchFiltersBar = ({
   return (
     <motion.div
       variants={{
-        visible: { y: 0, opacity: 1, display: "block" },
-        hidden: {
-          y: -100,
-          opacity: 0,
-          transitionEnd: { display: "none" },
-        },
+        visible: { y: 0, opacity: 1, pointerEvents: "auto" },
+        hidden: { y: -20, opacity: 0, pointerEvents: "none" },
       }}
       animate={hidden ? "hidden" : "visible"}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="sticky top-0 z-20 py-1 px-2 sm:px-4 md:px-0 pointer-events-none"
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="sticky top-4 z-30 px-2 sm:px-0"
     >
-      <div className="pointer-events-auto bg-background/95 backdrop-blur-md rounded-xl shadow-sm border border-border p-2 sm:p-3">
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="max-w-4xl mx-auto bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl shadow-zinc-900/5 border border-white/50 p-2 sm:p-3 ring-1 ring-zinc-900/5 transition-all">
+        <div className="flex flex-col md:flex-row gap-2">
+          
+          {/* Input Búsqueda */}
+          <div className="relative flex-1 group">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
+            </div>
             <input
               type="text"
-              placeholder="Buscar productos, apuntes..."
-              className="h-9 sm:h-10 w-full rounded-md bg-muted/50 px-9 text-xs sm:text-sm outline-none placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-ring transition-all border border-transparent focus:border-input"
+              placeholder="Buscar productos, libros, servicios..."
+              className="h-10 w-full rounded-xl bg-zinc-50/80 pl-10 pr-4 text-sm outline-none placeholder:text-zinc-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all border border-transparent focus:border-indigo-100"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="hidden md:block w-px bg-border mx-1 my-1" />
-          <div className="relative md:w-64">
+
+          <div className="hidden md:block w-px bg-zinc-200 mx-1 my-2" />
+
+          {/* Select Categoría */}
+          <div className="relative md:w-64 group">
             <select
-              className="h-9 sm:h-10 w-full appearance-none rounded-md bg-muted/50 px-3 text-xs sm:text-sm font-medium text-foreground outline-none cursor-pointer hover:bg-muted focus:bg-background transition-all border border-transparent focus:border-input"
+              className="h-10 w-full appearance-none rounded-xl bg-zinc-50/80 pl-3 pr-10 text-sm font-medium text-zinc-600 outline-none cursor-pointer hover:bg-zinc-100 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all border border-transparent focus:border-indigo-100"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
             >
@@ -426,13 +459,16 @@ export const SearchFiltersBar = ({
                 </option>
               ))}
             </select>
-            <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-hover:text-indigo-500 pointer-events-none transition-colors" />
           </div>
         </div>
 
-        {!isLoading && (
-          <div className="mt-2 px-1 flex items-center justify-between text-[11px] sm:text-xs text-muted-foreground font-medium border-t border-border pt-2">
-            <span>Resultados: {totalPosts}</span>
+        {/* Contador de Resultados (Sutil) */}
+        {!isLoading && totalPosts > 0 && (
+          <div className="hidden md:flex justify-end mt-2 px-2">
+            <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">
+              {totalPosts} Resultados encontrados
+            </span>
           </div>
         )}
       </div>
@@ -441,7 +477,7 @@ export const SearchFiltersBar = ({
 };
 
 // ============================================================================
-// 4. MODAL
+// 5. PRODUCT DETAIL MODAL (Clean & Focused)
 // ============================================================================
 
 export function ProductDetailModal({
@@ -466,8 +502,9 @@ export function ProductDetailModal({
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
+  
+  // Evitar flicker al cerrar
   const [cachedPost, setCachedPost] = useState<Post | null>(post);
-
   useEffect(() => {
     if (open && post) {
       setCachedPost(post);
@@ -478,20 +515,17 @@ export function ProductDetailModal({
   }, [open, post]);
 
   if (!open && !cachedPost) return null;
-
   const activePost = post || cachedPost;
   if (!activePost) return null;
 
+  const isOwnProduct = user?.id === activePost.vendedor?.id;
+
   const details = [
     { label: "Precio", value: formatCLP(activePost.precioActual || 0), highlight: true },
-    { label: "Stock", value: activePost.cantidad || 1 },
-    { label: "Campus", value: activePost.vendedor?.campus || "No especificado" },
     { label: "Categoría", value: activePost.categoria },
-    { label: "Condición", value: activePost.estado || "Usado" },
-    { label: "Publicado", value: formatDate(activePost.fechaAgregado) },
+    { label: "Estado", value: activePost.estado || "Usado" },
+    { label: "Campus", value: activePost.vendedor?.campus || "N/A" },
   ];
-
-  const isOwnProduct = user?.id === activePost.vendedor?.id;
 
   const handleSendInsideModal = async () => {
     if (!message.trim()) return;
@@ -508,204 +542,158 @@ export function ProductDetailModal({
     setIsSending(false);
   };
 
-  const goToChat = () => {
-    navigate('/chats', { state: { toUser: activePost.vendedor } });
-    onClose();
-  };
-
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            className="absolute inset-0 bg-zinc-900/60 backdrop-blur-sm"
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative flex w-full max-w-md sm:max-w-2xl lg:max-w-5xl flex-col overflow-hidden rounded-xl sm:rounded-2xl bg-card text-card-foreground shadow-2xl md:flex-row max-h-[90vh] z-10 border border-border"
+            className="relative flex w-full max-w-5xl flex-col md:flex-row bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] z-10"
           >
-            {/* Contenido Izquierdo (Fotos y Descripción) */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-card">
-              <div className="hidden md:flex items-start justify-between mb-6">
-                <h1 className="text-2xl font-extrabold text-foreground leading-tight">
-                  {activePost.nombre}
-                </h1>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full"
-                  onClick={onClose}
-                >
-                  <X size={18} />
+            {/* Close Button Mobile */}
+            <button 
+              onClick={onClose}
+              className="absolute top-4 right-4 z-50 p-2 bg-white/50 backdrop-blur-md rounded-full md:hidden"
+            >
+              <X size={20} />
+            </button>
+
+            {/* SECCIÓN IZQUIERDA: IMAGENES */}
+            <div className="w-full md:w-[60%] bg-zinc-50 p-6 flex flex-col overflow-y-auto">
+              <div className="hidden md:flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-zinc-900 tracking-tight">{activePost.nombre}</h2>
+                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-zinc-200">
+                  <X size={20} />
                 </Button>
               </div>
 
-              <ImageCarousel
-                images={activePost.imagenes}
-                altPrefix={activePost.nombre}
+              <ImageCarousel 
+                images={activePost.imagenes} 
+                altPrefix={activePost.nombre} 
                 isFavorite={isFavorite}
                 onToggleFavorite={() => onToggleFavorite(activePost.id)}
               />
 
-              <div className="mt-5 sm:mt-6 space-y-4">
+              {/* Descripción */}
+              <div className="mt-8 space-y-4">
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary">{activePost.categoria}</Badge>
-                  <Badge
-                    variant="outline"
-                    className="text-primary border-primary/20 bg-primary/5"
-                  >
-                    {activePost.estado}
-                  </Badge>
-                  {activePost.vendedor?.campus && (
-                    <Badge variant="secondary" className="text-muted-foreground font-normal">
-                      {activePost.vendedor.campus}
-                    </Badge>
-                  )}
+                   {details.map((d, i) => (
+                     <div key={i} className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${d.highlight ? 'bg-indigo-50 border-indigo-100 text-indigo-700' : 'bg-white border-zinc-200 text-zinc-600'}`}>
+                        <span className="opacity-70 mr-1">{d.label}:</span> 
+                        <span className="font-bold">{d.value}</span>
+                     </div>
+                   ))}
                 </div>
-                <div>
-                  <h3 className="font-semibold text-foreground mb-2 text-sm sm:text-base">
-                    Descripción
+                
+                <div className="bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm">
+                  <h3 className="font-semibold text-zinc-900 mb-2 flex items-center gap-2">
+                    <Tag size={16} className="text-indigo-500" /> Descripción
                   </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                    {activePost.descripcion ||
-                      "El vendedor no proporcionó una descripción detallada."}
+                  <p className="text-sm text-zinc-600 leading-relaxed whitespace-pre-wrap">
+                    {activePost.descripcion || "El vendedor no ha añadido una descripción."}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Barra Lateral (Info Vendedor y Contacto) */}
-            <div className="w-full md:w-[360px] bg-muted/30 border-t md:border-t-0 md:border-l border-border p-4 sm:p-6 flex flex-col overflow-y-auto shrink-0">
-              <div className="bg-card p-3 sm:p-4 rounded-xl border border-border shadow-sm mb-5 sm:mb-6 flex items-center gap-3">
-                <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-base sm:text-lg shrink-0 overflow-hidden">
-                  {activePost.vendedor?.fotoPerfilUrl ? (
-                    <img
-                      src={activePost.vendedor.fotoPerfilUrl}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    getInitials(activePost.vendedor?.usuario)
-                  )}
-                </div>
-                <div>
-                  <div className="font-semibold text-foreground text-sm sm:text-base">
-                    {activePost.vendedor?.usuario || "Usuario"}
+            {/* SECCIÓN DERECHA: SIDEBAR DE ACCIÓN */}
+            <div className="w-full md:w-[40%] bg-white border-l border-zinc-100 flex flex-col h-full">
+              {/* Header Vendedor */}
+              <div className="p-6 border-b border-zinc-100">
+                <div className="flex items-center gap-4">
+                  <div className="h-14 w-14 rounded-full p-[2px] bg-gradient-to-tr from-indigo-500 to-purple-500">
+                    <div className="h-full w-full rounded-full bg-white overflow-hidden p-[2px]">
+                       <img 
+                          src={activePost.vendedor.fotoPerfilUrl || `https://ui-avatars.com/api/?name=${activePost.vendedor.usuario}`} 
+                          className="w-full h-full object-cover rounded-full" 
+                       />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground">
-                    <Star
-                      size={12}
-                      className="fill-yellow-400 text-yellow-400"
-                    />{" "}
-                    {activePost.vendedor?.reputacion
-                      ? Number(activePost.vendedor.reputacion).toFixed(1)
-                      : "0.0"}
+                  <div>
+                    <h3 className="font-bold text-lg text-zinc-900">{activePost.vendedor.usuario}</h3>
+                    <div className="flex items-center gap-1 text-xs text-zinc-500">
+                      <Star size={12} className="fill-amber-400 text-amber-400" />
+                      <span className="font-medium text-zinc-700">{Number(activePost.vendedor.reputacion).toFixed(1)}</span>
+                      <span>• {activePost.vendedor.campus || "UCT"}</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-3 mb-5 sm:mb-6 bg-card p-3 sm:p-4 rounded-xl border border-border shadow-sm">
-                {details.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex justify-between items-baseline border-b border-border pb-2 last:border-0 last:pb-0"
-                  >
-                    <span className="text-[11px] sm:text-sm text-muted-foreground">
-                      {item.label}
-                    </span>
-                    <span
-                      className={cn(
-                        "text-xs sm:text-sm font-medium text-foreground",
-                        item.highlight &&
-                          "text-primary font-bold text-sm sm:text-base"
-                      )}
-                    >
-                      {item.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-auto pt-4 border-t border-border">
+              {/* Chat / Contacto */}
+              <div className="flex-1 p-6 flex flex-col overflow-y-auto bg-zinc-50/30">
                 {isOwnProduct ? (
-                  <div className="text-center p-4 bg-yellow-500/10 text-yellow-600 rounded-xl text-xs sm:text-sm font-medium border border-yellow-200/50">
-                    Este es tu producto
+                  <div className="flex flex-col items-center justify-center h-full text-zinc-400 p-8 border-2 border-dashed border-zinc-200 rounded-xl">
+                    <ShoppingBag size={40} className="mb-2 opacity-50" />
+                    <p className="text-sm font-medium">Estás viendo tu propia publicación</p>
+                    <Button variant="outline" className="mt-4" onClick={onClose}>Volver</Button>
                   </div>
                 ) : sentSuccess ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-green-500/10 border border-green-500/20 rounded-xl p-5 sm:p-6 text-center"
-                  >
-                    <div className="mx-auto w-11 h-11 sm:w-12 sm:h-12 bg-green-500/20 text-green-600 rounded-full flex items-center justify-center mb-3">
-                      <Check size={24} />
+                  <div className="h-full flex flex-col items-center justify-center text-center p-6 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+                    <div className="h-16 w-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4 shadow-sm">
+                      <Check size={32} />
                     </div>
-                    <h3 className="font-bold text-green-700 mb-1 text-sm sm:text-base">
-                      ¡Mensaje Enviado!
-                    </h3>
-                    <Button
-                      onClick={goToChat}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white mt-2"
+                    <h3 className="text-xl font-bold text-zinc-900 mb-1">¡Mensaje Enviado!</h3>
+                    <p className="text-sm text-zinc-500 mb-6">El vendedor recibirá tu mensaje al instante.</p>
+                    <Button 
+                      onClick={() => { navigate('/chats', { state: { toUser: activePost.vendedor } }); onClose(); }}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20"
                     >
-                      Ir al chat
+                      Ir a mis Chats
                     </Button>
-                  </motion.div>
+                  </div>
                 ) : (
-                  <div className="space-y-3">
-                    <label className="text-[11px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                      Enviar mensaje al vendedor
-                    </label>
-                    <div className="relative">
-                      <textarea
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        placeholder="Escribe tu mensaje aquí..."
-                        className="w-full p-2 sm:p-3 text-xs sm:text-sm border border-input rounded-xl focus:ring-2 focus:ring-ring outline-none resize-none h-20 sm:h-24 bg-background text-foreground"
-                      />
-                      <div className="absolute bottom-2 right-2">
-                        <Button
-                          size="icon"
-                          className={cn(
-                            "h-8 w-8 rounded-lg transition-all",
-                            message
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-muted-foreground"
-                          )}
-                          disabled={!message || isSending}
+                  <div className="flex flex-col h-full">
+                    <div className="mb-4">
+                      <label className="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-2 block">
+                        Enviar mensaje rápido
+                      </label>
+                      <div className="relative group">
+                        <textarea
+                          value={message}
+                          onChange={(e) => setMessage(e.target.value)}
+                          placeholder={`Hola ${activePost.vendedor.usuario}, me interesa este producto...`}
+                          className="w-full p-4 text-sm bg-white border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none resize-none h-32 transition-all shadow-sm group-hover:shadow-md"
+                        />
+                        <button 
                           onClick={handleSendInsideModal}
+                          disabled={!message || isSending}
+                          className="absolute bottom-3 right-3 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md"
                         >
-                          {isSending ? (
-                            <Loader2 className="animate-spin h-4 w-4" />
-                          ) : (
-                            <Send size={14} />
-                          )}
-                        </Button>
+                          {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                        </button>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {["¡Hola! ¿Disponible?", "¿Precio conversable?", "¿Dónde entregas?"].map(
-                        (reply, i) => (
-                          <Badge
-                            key={i}
-                            variant="suggestion"
-                            onClick={() => setMessage(reply)}
-                          >
-                            {reply}
-                          </Badge>
-                        )
-                      )}
+
+                    <div className="flex flex-wrap gap-2 mb-auto">
+                      {["¿Sigue disponible?", "¿Precio conversable?", "¿Dónde entregas?"].map((txt) => (
+                        <Badge key={txt} variant="suggestion" onClick={() => setMessage(txt)}>
+                          {txt}
+                        </Badge>
+                      ))}
                     </div>
-                    <Button
-                      className="w-full mt-2 font-bold"
-                      onClick={() => onContact(activePost)}
-                    >
-                      Ir al Chat Directo
-                    </Button>
+
+                    <div className="mt-6 pt-6 border-t border-zinc-200">
+                      <Button 
+                        onClick={() => onContact(activePost)} 
+                        className="w-full h-12 text-base shadow-xl shadow-indigo-500/30" 
+                        variant="default"
+                      >
+                        Comprar / Chat Directo
+                      </Button>
+                      <p className="text-[10px] text-center text-zinc-400 mt-3">
+                        Protegemos tus datos. No compartas información financiera fuera del chat.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
