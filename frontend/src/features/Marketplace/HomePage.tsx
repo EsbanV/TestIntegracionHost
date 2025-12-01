@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ghost, AlertCircle, Search } from 'lucide-react'; // Iconos para estados vacíos
+import { Ghost, AlertCircle, Search } from 'lucide-react'; 
 
 // Hooks (Lógica)
 import {
@@ -94,8 +94,8 @@ export default function HomePage() {
   };
 
   return (
-    // Quitamos bg-background para dejar ver el patrón de puntos del body (index.css)
-    <div className="w-full min-h-screen">
+    // Mantenemos el fondo transparente para que se vea el patrón de puntos del body
+    <div className="w-full min-h-screen text-foreground">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8 pb-24">
         
         {/* Header Flotante con Buscador */}
@@ -111,14 +111,14 @@ export default function HomePage() {
 
         {/* --- CONTENIDO PRINCIPAL --- */}
         
-        {/* 1. Estado de Error */}
+        {/* 1. Estado de Error (Semántico: Destructive) */}
         {isError && !isLoading && (
           <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in duration-500">
-            <div className="bg-rose-50 p-4 rounded-full mb-4 border border-rose-100">
-              <AlertCircle className="h-8 w-8 text-rose-500" />
+            <div className="bg-destructive/10 p-4 rounded-full mb-4 border border-destructive/20">
+              <AlertCircle className="h-8 w-8 text-destructive" />
             </div>
-            <h3 className="text-lg font-bold text-zinc-900">Algo salió mal</h3>
-            <p className="text-zinc-500 max-w-sm mx-auto mt-2 mb-6">
+            <h3 className="text-lg font-bold text-foreground">Algo salió mal</h3>
+            <p className="text-muted-foreground max-w-sm mx-auto mt-2 mb-6">
               No pudimos cargar las publicaciones. Por favor, verifica tu conexión.
             </p>
             <Button onClick={() => refetch()} variant="outline">
@@ -127,26 +127,26 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* 2. Estado Vacío (Sin resultados) */}
+        {/* 2. Estado Vacío (Semántico: Muted/Foreground) */}
         {!isLoading && !isError && posts.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="bg-zinc-100 p-6 rounded-full mb-4 shadow-inner">
+            <div className="bg-muted p-6 rounded-full mb-4 shadow-inner">
               {searchTerm ? (
-                <Search className="h-10 w-10 text-zinc-400" />
+                <Search className="h-10 w-10 text-muted-foreground" />
               ) : (
-                <Ghost className="h-10 w-10 text-zinc-400" />
+                <Ghost className="h-10 w-10 text-muted-foreground" />
               )}
             </div>
-            <h3 className="text-xl font-bold text-zinc-900">
+            <h3 className="text-xl font-bold text-foreground">
               {searchTerm ? "Sin resultados" : "No hay publicaciones"}
             </h3>
-            <p className="text-zinc-500 max-w-md mx-auto mt-2">
+            <p className="text-muted-foreground max-w-md mx-auto mt-2">
               {searchTerm 
                 ? `No encontramos nada relacionado con "${searchTerm}". Intenta con otra palabra clave.`
                 : "Parece que aún no hay productos en esta categoría. ¡Sé el primero en publicar!"}
             </p>
             {searchTerm && (
-               <Button variant="ghost" className="mt-4 text-indigo-600" onClick={() => setSearchTerm('')}>
+               <Button variant="ghost" className="mt-4 text-primary hover:text-primary/80" onClick={() => setSearchTerm('')}>
                  Limpiar búsqueda
                </Button>
             )}
@@ -159,7 +159,7 @@ export default function HomePage() {
             <div
               key={post.id}
               ref={i === posts.length - 1 ? lastPostRef : null}
-              className="h-full" // Asegura altura completa para hover effects
+              className="h-full" 
             >
               <ItemCard
                 post={post}
@@ -171,7 +171,7 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* 4. Spinner Inferior (Cargando más) */}
+        {/* 4. Spinner Inferior */}
         {isLoading && (
           <div className="py-8 w-full">
             <LoadingSpinner />

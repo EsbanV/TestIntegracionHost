@@ -34,26 +34,26 @@ export const Badge = ({
   onClick?: () => void
 }) => {
   const variants = {
-    // Default: Gradiente índigo sutil
-    default: "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-md shadow-indigo-500/20 border-0",
+    // Default: Primario (Indigo en el tema)
+    default: "bg-primary text-primary-foreground shadow-md shadow-primary/20 border-0",
     
-    // Secondary: Zinc suave
-    secondary: "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border-0",
+    // Secondary: Muted
+    secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 border-0",
     
     // Outline: Borde sutil
-    outline: "text-zinc-600 border-zinc-200 border bg-transparent",
+    outline: "text-muted-foreground border-border border bg-transparent",
     
-    // Precio: Gradiente Esmeralda Vibrante (Pop)
-    price: "bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold shadow-lg shadow-emerald-500/25 tracking-wide",
+    // Precio: Destacado (Usamos Chart-2 que suele ser verde/teal en temas modernos, o Primary si prefieres)
+    price: "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-bold shadow-lg shadow-primary/25 tracking-wide",
     
-    // Categoría: Efecto Vidrio (Glassmorphism)
-    category: "bg-white/90 backdrop-blur-md text-zinc-700 font-semibold shadow-sm border border-white/50 hover:bg-white transition-all hover:scale-105 cursor-pointer",
+    // Categoría: Efecto Vidrio (Glassmorphism sobre fondo card)
+    category: "bg-card/90 backdrop-blur-md text-card-foreground font-semibold shadow-sm border border-border hover:bg-card transition-all hover:scale-105 cursor-pointer",
     
     // Sugerencia (Chat): Pill interactivo
-    suggestion: "bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100 cursor-pointer active:scale-95 transition-transform",
+    suggestion: "bg-accent/50 text-accent-foreground border border-accent hover:bg-accent cursor-pointer active:scale-95 transition-transform",
     
     // Status: Para etiquetas de estado
-    status: "bg-zinc-900 text-white text-[10px] font-bold uppercase tracking-wider",
+    status: "bg-foreground text-background text-[10px] font-bold uppercase tracking-wider",
   };
 
   return (
@@ -83,20 +83,20 @@ export const Button = React.forwardRef<
     ref
   ) => {
     const variants = {
-      // Primary: Gradiente Indigo-Violeta con sombra de color
-      default: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-lg shadow-indigo-500/25 border-0 hover:-translate-y-0.5",
+      // Primary: Gradiente basado en variable Primary
+      default: "bg-primary text-primary-foreground shadow-lg shadow-primary/25 border-0 hover:bg-primary/90 hover:-translate-y-0.5",
       
-      // Secondary: Fondo zinc suave
-      secondary: "bg-zinc-100 text-zinc-900 hover:bg-zinc-200 border-0",
+      // Secondary
+      secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 border-0",
       
-      // Outline: Borde fino
-      outline: "border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 shadow-sm",
+      // Outline
+      outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-sm",
       
-      // Ghost: Solo texto/icono
-      ghost: "hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900",
+      // Ghost
+      ghost: "hover:bg-accent hover:text-accent-foreground",
       
-      // Gradient Danger/Action
-      gradient: "bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-500/25 hover:from-rose-600 hover:to-pink-700",
+      // Gradient Danger/Action (Usando Destructive)
+      gradient: "bg-destructive text-destructive-foreground shadow-lg shadow-destructive/25 hover:bg-destructive/90",
     };
     
     const sizes = {
@@ -110,7 +110,7 @@ export const Button = React.forwardRef<
       <button
         ref={ref}
         className={cn(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-xl font-medium ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:pointer-events-none disabled:opacity-50 active:scale-95",
+          "inline-flex items-center justify-center whitespace-nowrap rounded-xl font-medium ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 active:scale-95",
           variants[variant],
           sizes[size],
           className
@@ -128,8 +128,8 @@ export const LoadingSpinner = () => (
   <div className="flex justify-center items-center py-12">
     <div className="relative">
       {/* Doble anillo animado */}
-      <div className="h-12 w-12 rounded-full border-4 border-zinc-100"></div>
-      <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
+      <div className="h-12 w-12 rounded-full border-4 border-muted"></div>
+      <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
     </div>
   </div>
 );
@@ -151,15 +151,15 @@ export const FavoriteButton = ({
     className={cn(
       "group relative flex h-9 w-9 items-center justify-center rounded-full transition-all duration-300 active:scale-75 z-20",
       isFavorite
-        ? "bg-rose-500 text-white shadow-md shadow-rose-500/30"
-        : "bg-white/90 backdrop-blur-sm text-zinc-400 hover:bg-white hover:text-rose-500 hover:shadow-lg",
+        ? "bg-destructive text-destructive-foreground shadow-md shadow-destructive/30"
+        : "bg-card/90 backdrop-blur-sm text-muted-foreground hover:bg-card hover:text-destructive hover:shadow-lg",
       className
     )}
   >
     <Heart
       className={cn(
         "h-5 w-5 transition-all duration-300",
-        isFavorite ? "fill-white stroke-white scale-100" : "fill-transparent scale-95"
+        isFavorite ? "fill-current stroke-current scale-100" : "fill-transparent scale-95"
       )}
       strokeWidth={2.5}
     />
@@ -167,7 +167,7 @@ export const FavoriteButton = ({
 );
 
 // ============================================================================
-// 2. IMAGE CAROUSEL (Mejorado con controles Glass)
+// 2. IMAGE CAROUSEL
 // ============================================================================
 
 export function ImageCarousel({
@@ -199,7 +199,7 @@ export function ImageCarousel({
 
   return (
     <div className="flex flex-col gap-3 relative group select-none">
-      <div className="relative w-full overflow-hidden rounded-2xl bg-zinc-100 border border-zinc-200 aspect-[4/3]">
+      <div className="relative w-full overflow-hidden rounded-2xl bg-muted border border-border aspect-[4/3]">
         <AnimatePresence mode="wait">
           <motion.img
             key={validImages[index].id}
@@ -209,7 +209,7 @@ export function ImageCarousel({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
             alt={`${altPrefix} - ${index + 1}`}
-            className="h-full w-full object-cover bg-white"
+            className="h-full w-full object-cover bg-card"
           />
         </AnimatePresence>
 
@@ -229,7 +229,7 @@ export function ImageCarousel({
             <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
               <button
                 onClick={prevImage}
-                className="pointer-events-auto rounded-full bg-white/80 p-2 text-zinc-800 shadow-lg backdrop-blur-md transition-all hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100 translate-x-[-10px] group-hover:translate-x-0 duration-300"
+                className="pointer-events-auto rounded-full bg-card/80 p-2 text-card-foreground shadow-lg backdrop-blur-md transition-all hover:bg-card hover:scale-110 opacity-0 group-hover:opacity-100 translate-x-[-10px] group-hover:translate-x-0 duration-300 hover:text-primary"
               >
                 <ChevronLeft size={20} />
               </button>
@@ -237,20 +237,20 @@ export function ImageCarousel({
             <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
               <button
                 onClick={nextImage}
-                className="pointer-events-auto rounded-full bg-white/80 p-2 text-zinc-800 shadow-lg backdrop-blur-md transition-all hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100 translate-x-[10px] group-hover:translate-x-0 duration-300"
+                className="pointer-events-auto rounded-full bg-card/80 p-2 text-card-foreground shadow-lg backdrop-blur-md transition-all hover:bg-card hover:scale-110 opacity-0 group-hover:opacity-100 translate-x-[10px] group-hover:translate-x-0 duration-300 hover:text-primary"
               >
                 <ChevronRight size={20} />
               </button>
             </div>
 
             {/* Dots Indicator */}
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 px-3 py-1.5 bg-black/20 backdrop-blur-md rounded-full border border-white/10">
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 px-3 py-1.5 bg-foreground/20 backdrop-blur-md rounded-full border border-background/10">
               {validImages.map((_, i) => (
                 <div
                   key={i}
                   className={cn(
                     "h-1.5 rounded-full transition-all duration-300 shadow-sm",
-                    i === index ? "w-5 bg-white" : "w-1.5 bg-white/50"
+                    i === index ? "w-5 bg-background" : "w-1.5 bg-background/50"
                   )}
                 />
               ))}
@@ -272,8 +272,8 @@ export function ImageCarousel({
               className={cn(
                 "relative flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 h-14 w-14",
                 i === index
-                  ? "border-indigo-600 opacity-100 ring-2 ring-indigo-100"
-                  : "border-transparent opacity-60 hover:opacity-100 hover:border-zinc-300"
+                  ? "border-primary opacity-100 ring-2 ring-primary/20"
+                  : "border-transparent opacity-60 hover:opacity-100 hover:border-muted-foreground"
               )}
             >
               <img src={img.url} alt="" className="h-full w-full object-cover" />
@@ -286,7 +286,7 @@ export function ImageCarousel({
 }
 
 // ============================================================================
-// 3. ITEM CARD (Hover Lift, Glass Badges, Premium Feel)
+// 3. ITEM CARD (Semántica)
 // ============================================================================
 
 export const ItemCard = ({
@@ -305,12 +305,12 @@ export const ItemCard = ({
   return (
     <div
       onClick={() => onClick(post)}
-      className="group relative flex flex-col h-full bg-white rounded-2xl border border-zinc-200 overflow-hidden cursor-pointer transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-1.5"
+      className="group relative flex flex-col h-full bg-card rounded-2xl border border-border overflow-hidden cursor-pointer transition-all duration-500 hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-1.5"
     >
       {/* 1. Imagen y Badges */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-zinc-100">
+      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
         {/* Overlay gradiente en hover */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-foreground/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10" />
 
         {image ? (
           <img
@@ -320,7 +320,7 @@ export const ItemCard = ({
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-zinc-300">
+          <div className="flex h-full items-center justify-center text-muted-foreground">
             <ShoppingBag size={48} strokeWidth={1} />
           </div>
         )}
@@ -345,43 +345,43 @@ export const ItemCard = ({
       <div className="flex flex-col flex-1 p-4">
         {/* Vendedor Info */}
         <div className="flex items-center gap-2 mb-3">
-          <div className="h-8 w-8 rounded-full p-[1.5px] bg-gradient-to-tr from-indigo-500 to-violet-500 shadow-sm">
-            <div className="h-full w-full rounded-full bg-white overflow-hidden flex items-center justify-center">
+          <div className="h-8 w-8 rounded-full p-[1.5px] bg-gradient-to-tr from-primary/50 to-primary shadow-sm">
+            <div className="h-full w-full rounded-full bg-card overflow-hidden flex items-center justify-center">
               {post.vendedor?.fotoPerfilUrl ? (
                 <img src={post.vendedor.fotoPerfilUrl} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-[10px] font-bold text-indigo-600">{getInitials(post.vendedor?.usuario)}</span>
+                <span className="text-[10px] font-bold text-primary">{getInitials(post.vendedor?.usuario)}</span>
               )}
             </div>
           </div>
           <div className="flex flex-col leading-tight">
-            <span className="text-xs font-semibold text-zinc-800 group-hover:text-indigo-600 transition-colors">
+            <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
               {post.vendedor?.usuario}
             </span>
-            <span className="text-[10px] text-zinc-400">
+            <span className="text-[10px] text-muted-foreground">
               {formatDate(post.fechaAgregado)}
             </span>
           </div>
         </div>
 
         {/* Título */}
-        <h3 className="text-sm font-bold text-zinc-900 line-clamp-1 mb-1.5 group-hover:text-indigo-700 transition-colors">
+        <h3 className="text-sm font-bold text-card-foreground line-clamp-1 mb-1.5 group-hover:text-primary transition-colors">
           {post.nombre}
         </h3>
 
         {/* Descripción Corta */}
-        <p className="text-xs text-zinc-500 line-clamp-2 mb-4 flex-1">
+        <p className="text-xs text-muted-foreground line-clamp-2 mb-4 flex-1">
           {post.descripcion || "Sin descripción detallada."}
         </p>
 
         {/* Footer Card */}
-        <div className="mt-auto pt-3 border-t border-zinc-100 flex items-center justify-between">
-          <div className="flex items-center gap-1.5 bg-zinc-50 px-2 py-1 rounded-md text-[11px] font-medium text-zinc-600">
-            <Star size={12} className="fill-amber-400 text-amber-400" />
+        <div className="mt-auto pt-3 border-t border-border flex items-center justify-between">
+          <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded-md text-[11px] font-medium text-muted-foreground">
+            <Star size={12} className="fill-yellow-400 text-yellow-400" />
             {post.vendedor?.reputacion ? Number(post.vendedor.reputacion).toFixed(1) : "N/A"}
           </div>
           
-          <div className="flex items-center text-xs font-bold text-indigo-600 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+          <div className="flex items-center text-xs font-bold text-primary opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
             Ver detalle <ChevronRight size={14} className="ml-1" />
           </div>
         </div>
@@ -426,29 +426,29 @@ export const SearchFiltersBar = ({
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       className="sticky top-4 z-30 px-2 sm:px-0"
     >
-      <div className="max-w-4xl mx-auto bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl shadow-zinc-900/5 border border-white/50 p-2 sm:p-3 ring-1 ring-zinc-900/5 transition-all">
+      <div className="max-w-4xl mx-auto bg-card/80 backdrop-blur-xl rounded-2xl shadow-xl shadow-foreground/5 border border-border p-2 sm:p-3 ring-1 ring-foreground/5 transition-all">
         <div className="flex flex-col md:flex-row gap-2">
           
           {/* Input Búsqueda */}
           <div className="relative flex-1 group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
+              <Search className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
             </div>
             <input
               type="text"
               placeholder="Buscar productos, libros, servicios..."
-              className="h-10 w-full rounded-xl bg-zinc-50/80 pl-10 pr-4 text-sm outline-none placeholder:text-zinc-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all border border-transparent focus:border-indigo-100"
+              className="h-10 w-full rounded-xl bg-muted/50 pl-10 pr-4 text-sm outline-none placeholder:text-muted-foreground focus:bg-card focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all border border-transparent focus:border-primary/50 text-foreground"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          <div className="hidden md:block w-px bg-zinc-200 mx-1 my-2" />
+          <div className="hidden md:block w-px bg-border mx-1 my-2" />
 
           {/* Select Categoría */}
           <div className="relative md:w-64 group">
             <select
-              className="h-10 w-full appearance-none rounded-xl bg-zinc-50/80 pl-3 pr-10 text-sm font-medium text-zinc-600 outline-none cursor-pointer hover:bg-zinc-100 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all border border-transparent focus:border-indigo-100"
+              className="h-10 w-full appearance-none rounded-xl bg-muted/50 pl-3 pr-10 text-sm font-medium text-foreground outline-none cursor-pointer hover:bg-muted focus:bg-card focus:ring-2 focus:ring-primary/20 transition-all border border-transparent focus:border-primary/50"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
             >
@@ -459,14 +459,14 @@ export const SearchFiltersBar = ({
                 </option>
               ))}
             </select>
-            <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-hover:text-indigo-500 pointer-events-none transition-colors" />
+            <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-hover:text-primary pointer-events-none transition-colors" />
           </div>
         </div>
 
         {/* Contador de Resultados (Sutil) */}
         {!isLoading && totalPosts > 0 && (
           <div className="hidden md:flex justify-end mt-2 px-2">
-            <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
               {totalPosts} Resultados encontrados
             </span>
           </div>
@@ -503,7 +503,6 @@ export function ProductDetailModal({
   const [isSending, setIsSending] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
   
-  // Evitar flicker al cerrar
   const [cachedPost, setCachedPost] = useState<Post | null>(post);
   useEffect(() => {
     if (open && post) {
@@ -551,27 +550,27 @@ export function ProductDetailModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-zinc-900/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-background/60 backdrop-blur-sm"
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative flex w-full max-w-5xl flex-col md:flex-row bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] z-10"
+            className="relative flex w-full max-w-5xl flex-col md:flex-row bg-card rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] z-10 border border-border"
           >
             {/* Close Button Mobile */}
             <button 
               onClick={onClose}
-              className="absolute top-4 right-4 z-50 p-2 bg-white/50 backdrop-blur-md rounded-full md:hidden"
+              className="absolute top-4 right-4 z-50 p-2 bg-card/50 backdrop-blur-md rounded-full md:hidden text-foreground"
             >
               <X size={20} />
             </button>
 
             {/* SECCIÓN IZQUIERDA: IMAGENES */}
-            <div className="w-full md:w-[60%] bg-zinc-50 p-6 flex flex-col overflow-y-auto">
+            <div className="w-full md:w-[60%] bg-muted/20 p-6 flex flex-col overflow-y-auto">
               <div className="hidden md:flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-zinc-900 tracking-tight">{activePost.nombre}</h2>
-                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-zinc-200">
+                <h2 className="text-2xl font-bold text-foreground tracking-tight">{activePost.nombre}</h2>
+                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-muted">
                   <X size={20} />
                 </Button>
               </div>
@@ -587,18 +586,18 @@ export function ProductDetailModal({
               <div className="mt-8 space-y-4">
                 <div className="flex flex-wrap gap-2">
                    {details.map((d, i) => (
-                     <div key={i} className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${d.highlight ? 'bg-indigo-50 border-indigo-100 text-indigo-700' : 'bg-white border-zinc-200 text-zinc-600'}`}>
+                     <div key={i} className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${d.highlight ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-card border-border text-muted-foreground'}`}>
                         <span className="opacity-70 mr-1">{d.label}:</span> 
                         <span className="font-bold">{d.value}</span>
                      </div>
                    ))}
                 </div>
                 
-                <div className="bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm">
-                  <h3 className="font-semibold text-zinc-900 mb-2 flex items-center gap-2">
-                    <Tag size={16} className="text-indigo-500" /> Descripción
+                <div className="bg-card p-4 rounded-2xl border border-border shadow-sm">
+                  <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Tag size={16} className="text-primary" /> Descripción
                   </h3>
-                  <p className="text-sm text-zinc-600 leading-relaxed whitespace-pre-wrap">
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
                     {activePost.descripcion || "El vendedor no ha añadido una descripción."}
                   </p>
                 </div>
@@ -606,12 +605,12 @@ export function ProductDetailModal({
             </div>
 
             {/* SECCIÓN DERECHA: SIDEBAR DE ACCIÓN */}
-            <div className="w-full md:w-[40%] bg-white border-l border-zinc-100 flex flex-col h-full">
+            <div className="w-full md:w-[40%] bg-card border-l border-border flex flex-col h-full">
               {/* Header Vendedor */}
-              <div className="p-6 border-b border-zinc-100">
+              <div className="p-6 border-b border-border">
                 <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-full p-[2px] bg-gradient-to-tr from-indigo-500 to-purple-500">
-                    <div className="h-full w-full rounded-full bg-white overflow-hidden p-[2px]">
+                  <div className="h-14 w-14 rounded-full p-[2px] bg-gradient-to-tr from-primary/50 to-primary">
+                    <div className="h-full w-full rounded-full bg-card overflow-hidden p-[2px]">
                        <img 
                           src={activePost.vendedor.fotoPerfilUrl || `https://ui-avatars.com/api/?name=${activePost.vendedor.usuario}`} 
                           className="w-full h-full object-cover rounded-full" 
@@ -619,10 +618,10 @@ export function ProductDetailModal({
                     </div>
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg text-zinc-900">{activePost.vendedor.usuario}</h3>
-                    <div className="flex items-center gap-1 text-xs text-zinc-500">
-                      <Star size={12} className="fill-amber-400 text-amber-400" />
-                      <span className="font-medium text-zinc-700">{Number(activePost.vendedor.reputacion).toFixed(1)}</span>
+                    <h3 className="font-bold text-lg text-foreground">{activePost.vendedor.usuario}</h3>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Star size={12} className="fill-yellow-400 text-yellow-400" />
+                      <span className="font-medium text-foreground">{Number(activePost.vendedor.reputacion).toFixed(1)}</span>
                       <span>• {activePost.vendedor.campus || "UCT"}</span>
                     </div>
                   </div>
@@ -630,23 +629,23 @@ export function ProductDetailModal({
               </div>
 
               {/* Chat / Contacto */}
-              <div className="flex-1 p-6 flex flex-col overflow-y-auto bg-zinc-50/30">
+              <div className="flex-1 p-6 flex flex-col overflow-y-auto bg-muted/10">
                 {isOwnProduct ? (
-                  <div className="flex flex-col items-center justify-center h-full text-zinc-400 p-8 border-2 border-dashed border-zinc-200 rounded-xl">
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8 border-2 border-dashed border-border rounded-xl">
                     <ShoppingBag size={40} className="mb-2 opacity-50" />
                     <p className="text-sm font-medium">Estás viendo tu propia publicación</p>
                     <Button variant="outline" className="mt-4" onClick={onClose}>Volver</Button>
                   </div>
                 ) : sentSuccess ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center p-6 bg-emerald-50/50 rounded-2xl border border-emerald-100">
-                    <div className="h-16 w-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4 shadow-sm">
+                  <div className="h-full flex flex-col items-center justify-center text-center p-6 bg-green-500/10 rounded-2xl border border-green-500/20">
+                    <div className="h-16 w-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4 shadow-sm">
                       <Check size={32} />
                     </div>
-                    <h3 className="text-xl font-bold text-zinc-900 mb-1">¡Mensaje Enviado!</h3>
-                    <p className="text-sm text-zinc-500 mb-6">El vendedor recibirá tu mensaje al instante.</p>
+                    <h3 className="text-xl font-bold text-foreground mb-1">¡Mensaje Enviado!</h3>
+                    <p className="text-sm text-muted-foreground mb-6">El vendedor recibirá tu mensaje al instante.</p>
                     <Button 
                       onClick={() => { navigate('/chats', { state: { toUser: activePost.vendedor } }); onClose(); }}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20"
+                      className="w-full bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/20"
                     >
                       Ir a mis Chats
                     </Button>
@@ -654,7 +653,7 @@ export function ProductDetailModal({
                 ) : (
                   <div className="flex flex-col h-full">
                     <div className="mb-4">
-                      <label className="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-2 block">
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2 block">
                         Enviar mensaje rápido
                       </label>
                       <div className="relative group">
@@ -662,12 +661,12 @@ export function ProductDetailModal({
                           value={message}
                           onChange={(e) => setMessage(e.target.value)}
                           placeholder={`Hola ${activePost.vendedor.usuario}, me interesa este producto...`}
-                          className="w-full p-4 text-sm bg-white border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none resize-none h-32 transition-all shadow-sm group-hover:shadow-md"
+                          className="w-full p-4 text-sm bg-card border border-input rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none h-32 transition-all shadow-sm group-hover:shadow-md text-foreground placeholder:text-muted-foreground"
                         />
                         <button 
                           onClick={handleSendInsideModal}
                           disabled={!message || isSending}
-                          className="absolute bottom-3 right-3 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md"
+                          className="absolute bottom-3 right-3 p-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md"
                         >
                           {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                         </button>
@@ -682,15 +681,15 @@ export function ProductDetailModal({
                       ))}
                     </div>
 
-                    <div className="mt-6 pt-6 border-t border-zinc-200">
+                    <div className="mt-6 pt-6 border-t border-border">
                       <Button 
                         onClick={() => onContact(activePost)} 
-                        className="w-full h-12 text-base shadow-xl shadow-indigo-500/30" 
+                        className="w-full h-12 text-base shadow-xl shadow-primary/20" 
                         variant="default"
                       >
                         Comprar / Chat Directo
                       </Button>
-                      <p className="text-[10px] text-center text-zinc-400 mt-3">
+                      <p className="text-[10px] text-center text-muted-foreground mt-3">
                         Protegemos tus datos. No compartas información financiera fuera del chat.
                       </p>
                     </div>
