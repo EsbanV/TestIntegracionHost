@@ -25,8 +25,7 @@ import {
   ChevronRight,
   Store,
   HelpCircle,
-  PlusCircle,
-  LayoutGrid
+  PlusCircle
 } from "lucide-react"
 
 // Assets
@@ -72,7 +71,8 @@ export function Sidebar({ className }: SidebarProps) {
   }
 
   // ==========================
-  //   VERSIÓN MÓVIL: BOTTOM BAR (Semántico + Glass)
+  //   VERSIÓN MÓVIL: BOTTOM BAR
+  //   Nota: Usamos bg-card/90 para que sea gris oscuro (no negro) con blur
   // ==========================
   if (isMobile) {
     return (
@@ -80,9 +80,9 @@ export function Sidebar({ className }: SidebarProps) {
         <nav
           className="
             fixed bottom-0 left-0 right-0 z-50
-            h-16 bg-background/80 backdrop-blur-xl
+            h-16 bg-card/90 backdrop-blur-xl
             border-t border-border
-            shadow-[0_-4px_20px_rgba(0,0,0,0.05)]
+            shadow-[0_-4px_20px_rgba(0,0,0,0.2)]
             pb-safe
           "
         >
@@ -132,7 +132,8 @@ export function Sidebar({ className }: SidebarProps) {
   }
 
   // ==========================
-  //   VERSIÓN DESKTOP: LATERAL (Semántico)
+  //   VERSIÓN DESKTOP: LATERAL
+  //   Nota: Usamos bg-card para el tono gris y border-border para la separación
   // ==========================
   return (
     <TooltipProvider delayDuration={0}>
@@ -142,7 +143,7 @@ export function Sidebar({ className }: SidebarProps) {
         variants={sidebarVariants}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className={`
-          flex flex-col bg-card border-r border-border shadow-sm z-50
+          flex flex-col bg-card border-r border-border shadow-xl shadow-black/5 z-50
           sticky top-0 h-screen
           ${className}
         `}
@@ -157,15 +158,15 @@ export function Sidebar({ className }: SidebarProps) {
                 exit={{ opacity: 0, x: -10 }}
                 className="flex items-center gap-2 overflow-hidden whitespace-nowrap"
               >
-                {/* Logo con color primario */}
-                <div className="h-8 w-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center shadow-md shadow-primary/20">
+                {/* Logo */}
+                <div className="h-8 w-8 bg-gradient-to-br from-primary to-primary/80 text-primary-foreground rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
                   <img
                     src={LogoMUCT}
                     alt="Logo"
                     className="h-5 w-auto brightness-0 invert"
                   />
                 </div>
-                <span className="font-bold text-lg tracking-tight text-foreground">
+                <span className="font-bold text-lg tracking-tight text-card-foreground">
                   Market<span className="text-primary">UCT</span>
                 </span>
               </motion.div>
@@ -178,7 +179,7 @@ export function Sidebar({ className }: SidebarProps) {
             size="icon"
             onClick={() => setIsCollapsed(!isCollapsed)}
             className={`
-              text-muted-foreground hover:text-foreground hover:bg-accent rounded-full h-8 w-8 transition-all
+              text-muted-foreground hover:text-foreground hover:bg-muted rounded-full h-8 w-8 transition-all
               ${isCollapsed ? "mx-auto" : ""}
             `}
           >
@@ -240,7 +241,8 @@ export function Sidebar({ className }: SidebarProps) {
         </nav>
 
         {/* --- FOOTER USER --- */}
-        <div className="p-3 border-t border-border bg-muted/30 shrink-0">
+        {/* Fondo sutilmente diferente al gris de la card para separar visualmente */}
+        <div className="p-3 border-t border-border bg-muted/20 shrink-0">
           <div
             className={`flex items-center ${
               isCollapsed ? "justify-center" : "justify-between"
@@ -254,14 +256,14 @@ export function Sidebar({ className }: SidebarProps) {
                   exit={{ opacity: 0, width: 0 }}
                   className="flex items-center gap-3 overflow-hidden flex-1"
                 >
-                  <Avatar className="h-9 w-9 border border-background shadow-sm shrink-0">
+                  <Avatar className="h-9 w-9 border border-border shadow-sm shrink-0">
                     <AvatarImage src={getImageUrl(user.fotoPerfilUrl)} />
-                    <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                    <AvatarFallback className="bg-primary/20 text-primary font-bold">
                       {user?.usuario?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col truncate">
-                    <span className="text-sm font-semibold text-foreground truncate">
+                    <span className="text-sm font-semibold text-card-foreground truncate">
                       {user?.usuario}
                     </span>
                     <span className="text-[10px] text-muted-foreground font-medium truncate uppercase tracking-wider">
@@ -316,8 +318,8 @@ function SidebarItem({ icon, label, to, isCollapsed, isActive }: SidebarItemProp
             relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group
             ${
               isActive
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/25 font-medium"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 font-medium"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }
             ${isCollapsed ? "justify-center" : ""}
           `}
@@ -340,9 +342,9 @@ function SidebarItem({ icon, label, to, isCollapsed, isActive }: SidebarItemProp
             )}
           </AnimatePresence>
           
-          {/* Indicador sutil de activo (brillo interno) */}
+          {/* Brillo sutil en activo */}
           {isActive && (
-            <div className="absolute inset-0 bg-white/10 rounded-xl pointer-events-none" />
+            <div className="absolute inset-0 bg-white/10 rounded-xl pointer-events-none mix-blend-overlay" />
           )}
         </NavLink>
       </TooltipTrigger>
@@ -386,7 +388,6 @@ function MobileNavItem({ icon, label, to, isActive }: MobileNavItemProps) {
       </div>
       <span>{label}</span>
       
-      {/* Indicador de punto activo móvil */}
       {isActive && (
         <motion.div 
           layoutId="mobileActive"
