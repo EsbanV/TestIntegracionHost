@@ -72,7 +72,7 @@ export function Sidebar({ className }: SidebarProps) {
   }
 
   // ==========================
-  //   VERSIÓN MÓVIL: BOTTOM BAR (Glassmorphism)
+  //   VERSIÓN MÓVIL: BOTTOM BAR (Semántico + Glass)
   // ==========================
   if (isMobile) {
     return (
@@ -80,8 +80,8 @@ export function Sidebar({ className }: SidebarProps) {
         <nav
           className="
             fixed bottom-0 left-0 right-0 z-50
-            h-16 bg-white/90 backdrop-blur-xl
-            border-t border-zinc-200
+            h-16 bg-background/80 backdrop-blur-xl
+            border-t border-border
             shadow-[0_-4px_20px_rgba(0,0,0,0.05)]
             pb-safe
           "
@@ -118,7 +118,7 @@ export function Sidebar({ className }: SidebarProps) {
               className="
                 flex flex-col items-center justify-center gap-1
                 text-[10px] font-medium
-                text-zinc-400 hover:text-rose-500
+                text-muted-foreground hover:text-destructive
                 transition-colors px-2
               "
             >
@@ -132,7 +132,7 @@ export function Sidebar({ className }: SidebarProps) {
   }
 
   // ==========================
-  //   VERSIÓN DESKTOP: LATERAL (Clean UI)
+  //   VERSIÓN DESKTOP: LATERAL (Semántico)
   // ==========================
   return (
     <TooltipProvider delayDuration={0}>
@@ -142,13 +142,13 @@ export function Sidebar({ className }: SidebarProps) {
         variants={sidebarVariants}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className={`
-          flex flex-col bg-white border-r border-zinc-200 shadow-sm z-50
+          flex flex-col bg-card border-r border-border shadow-sm z-50
           sticky top-0 h-screen
           ${className}
         `}
       >
         {/* --- HEADER --- */}
-        <div className="flex items-center justify-between px-4 h-16 border-b border-zinc-100 shrink-0">
+        <div className="flex items-center justify-between px-4 h-16 border-b border-border shrink-0">
           <AnimatePresence mode="wait">
             {!isCollapsed && (
               <motion.div
@@ -157,28 +157,28 @@ export function Sidebar({ className }: SidebarProps) {
                 exit={{ opacity: 0, x: -10 }}
                 className="flex items-center gap-2 overflow-hidden whitespace-nowrap"
               >
-                {/* Logo con fondo gradiente sutil */}
-                <div className="h-8 w-8 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-lg flex items-center justify-center shadow-md shadow-indigo-200">
+                {/* Logo con color primario */}
+                <div className="h-8 w-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center shadow-md shadow-primary/20">
                   <img
                     src={LogoMUCT}
                     alt="Logo"
                     className="h-5 w-auto brightness-0 invert"
                   />
                 </div>
-                <span className="font-bold text-lg tracking-tight text-zinc-900">
-                  Market<span className="text-indigo-600">UCT</span>
+                <span className="font-bold text-lg tracking-tight text-foreground">
+                  Market<span className="text-primary">UCT</span>
                 </span>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Botón Toggle Minimalista */}
+          {/* Botón Toggle */}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsCollapsed(!isCollapsed)}
             className={`
-              text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-full h-8 w-8 transition-all
+              text-muted-foreground hover:text-foreground hover:bg-accent rounded-full h-8 w-8 transition-all
               ${isCollapsed ? "mx-auto" : ""}
             `}
           >
@@ -219,7 +219,7 @@ export function Sidebar({ className }: SidebarProps) {
             />
           </div>
 
-          <Separator className="bg-zinc-100 my-2" />
+          <Separator className="bg-border my-2" />
 
           <div className="space-y-1">
             <SidebarItem
@@ -240,7 +240,7 @@ export function Sidebar({ className }: SidebarProps) {
         </nav>
 
         {/* --- FOOTER USER --- */}
-        <div className="p-3 border-t border-zinc-100 bg-zinc-50/50 shrink-0">
+        <div className="p-3 border-t border-border bg-muted/30 shrink-0">
           <div
             className={`flex items-center ${
               isCollapsed ? "justify-center" : "justify-between"
@@ -254,17 +254,17 @@ export function Sidebar({ className }: SidebarProps) {
                   exit={{ opacity: 0, width: 0 }}
                   className="flex items-center gap-3 overflow-hidden flex-1"
                 >
-                  <Avatar className="h-9 w-9 border border-white shadow-sm shrink-0">
+                  <Avatar className="h-9 w-9 border border-background shadow-sm shrink-0">
                     <AvatarImage src={getImageUrl(user.fotoPerfilUrl)} />
-                    <AvatarFallback className="bg-indigo-100 text-indigo-600 font-bold">
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold">
                       {user?.usuario?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col truncate">
-                    <span className="text-sm font-semibold text-zinc-800 truncate">
+                    <span className="text-sm font-semibold text-foreground truncate">
                       {user?.usuario}
                     </span>
-                    <span className="text-[10px] text-zinc-500 font-medium truncate uppercase tracking-wider">
+                    <span className="text-[10px] text-muted-foreground font-medium truncate uppercase tracking-wider">
                       {user?.role}
                     </span>
                   </div>
@@ -279,14 +279,14 @@ export function Sidebar({ className }: SidebarProps) {
                   variant="ghost"
                   size={isCollapsed ? "icon" : "sm"}
                   className={`
-                    text-zinc-400 hover:text-rose-600 hover:bg-rose-50
+                    text-muted-foreground hover:text-destructive hover:bg-destructive/10
                     ${isCollapsed ? "" : "ml-auto"}
                   `}
                 >
                   <LogOut size={18} />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right" className="bg-zinc-800 text-white">
+              <TooltipContent side="right" className="bg-popover text-popover-foreground border-border">
                 <p>Cerrar Sesión</p>
               </TooltipContent>
             </Tooltip>
@@ -316,8 +316,8 @@ function SidebarItem({ icon, label, to, isCollapsed, isActive }: SidebarItemProp
             relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group
             ${
               isActive
-                ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 font-medium"
-                : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/25 font-medium"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             }
             ${isCollapsed ? "justify-center" : ""}
           `}
@@ -340,9 +340,9 @@ function SidebarItem({ icon, label, to, isCollapsed, isActive }: SidebarItemProp
             )}
           </AnimatePresence>
           
-          {/* Indicador sutil de activo (glow) */}
+          {/* Indicador sutil de activo (brillo interno) */}
           {isActive && (
-            <div className="absolute inset-0 bg-white/10 rounded-xl" />
+            <div className="absolute inset-0 bg-white/10 rounded-xl pointer-events-none" />
           )}
         </NavLink>
       </TooltipTrigger>
@@ -350,7 +350,7 @@ function SidebarItem({ icon, label, to, isCollapsed, isActive }: SidebarItemProp
       {isCollapsed && (
         <TooltipContent
           side="right"
-          className="bg-zinc-800 text-white border-zinc-700 ml-2 font-medium z-[60]"
+          className="bg-popover text-popover-foreground border-border ml-2 font-medium z-[60]"
         >
           {label}
         </TooltipContent>
@@ -376,8 +376,8 @@ function MobileNavItem({ icon, label, to, isActive }: MobileNavItemProps) {
         text-[10px] font-medium p-2 rounded-xl transition-all
         ${
           isActive
-            ? "text-indigo-600 bg-indigo-50"
-            : "text-zinc-400 hover:text-zinc-600"
+            ? "text-primary bg-primary/10"
+            : "text-muted-foreground hover:text-foreground"
         }
       `}
     >
@@ -390,7 +390,7 @@ function MobileNavItem({ icon, label, to, isActive }: MobileNavItemProps) {
       {isActive && (
         <motion.div 
           layoutId="mobileActive"
-          className="absolute -bottom-1 w-1 h-1 bg-indigo-600 rounded-full"
+          className="absolute -bottom-1 w-1 h-1 bg-primary rounded-full"
         />
       )}
     </NavLink>
