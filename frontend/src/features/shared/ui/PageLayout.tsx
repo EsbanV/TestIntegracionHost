@@ -4,11 +4,8 @@ import Header from './Header'
 import { Sidebar } from './Sidebar'
 
 interface PageLayoutProps {
-  /** Muestra u oculta la barra lateral. Default: true */
   showSidebar?: boolean
-  /** Muestra u oculta la barra superior. Default: true */
   showHeader?: boolean
-  /** Habilita el widget de chat flotante. Default: true */
   showFloatingChat?: boolean
 }
 
@@ -18,23 +15,20 @@ export default function PageLayout({
   showFloatingChat = true,
 }: PageLayoutProps) {
   const { pathname } = useLocation()
-
-  // Detectar si estamos en la vista de chat completa
   const isDM = pathname.startsWith('/chats')
   const shouldRenderFloatingChat = showFloatingChat && !isDM
 
   return (
-    <div className="flex h-screen w-full bg-slate-50/50 overflow-hidden">
-      {/* 1. Sidebar / Bottom bar (se encarga sola de la responsividad) */}
-      {showSidebar && <Sidebar />}
+    // ELIMINADO: bg-slate-50/50. 
+    // AGREGADO: bg-background text-foreground (para asegurar herencia del tema)
+    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
+      
+      {/* Sidebar a la izquierda */}
+      {showSidebar && <Sidebar className="hidden md:flex" />}
 
-      {/* 2. Contenedor Principal */}
-      <div
-        className="
-          flex flex-1 flex-col min-w-0 min-h-0
-          transition-all duration-300
-        "
-      >
+      {/* Contenedor Principal */}
+      <div className="flex flex-1 flex-col min-w-0 min-h-0 transition-all duration-300 relative">
+        
         {/* Header superior */}
         {showHeader && <Header />}
 
@@ -42,23 +36,21 @@ export default function PageLayout({
         <main
           className={`
             flex-1 min-h-0 w-full relative flex flex-col
-            ${
-              isDM
-                ? 'overflow-hidden'
-                : 'overflow-y-auto p-4 md:p-6 scroll-smooth'
-            }
-            ${
-              showSidebar
-                ? 'pb-20 lg:pb-0' // deja espacio para la bottom bar en móvil
-                : ''
-            }
+            ${isDM ? 'overflow-hidden' : 'overflow-y-auto scroll-smooth'}
+            /* Ajuste de padding para separar contenido de los bordes */
+            ${!isDM ? 'p-4 md:p-6 lg:p-8' : ''}
+            /* Espacio inferior para bottom-bar móvil */
+            ${showSidebar ? 'pb-20 md:pb-6 lg:pb-8' : ''}
           `}
         >
           <Outlet />
         </main>
       </div>
 
-      {/* 3. Chat Flotante */}
+      {/* Sidebar Móvil (Bottom Bar) se renderiza dentro de Sidebar component pero fixed */}
+      {showSidebar && <div className="md:hidden"><Sidebar /></div>}
+
+      {/* Chat Flotante */}
       {shouldRenderFloatingChat && <FloatingChat />}
     </div>
   )
