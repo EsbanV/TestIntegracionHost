@@ -90,7 +90,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="w-full h-full px-3 pt-2 pb-4 sm:px-4 sm:pt-4 md:p-8 overflow-y-auto scroll-smooth">
+    <div className="w-full h-full px-3 pt-2 pb-4 sm:px-4 sm:pt-4 md:p-8 overflow-y-auto scroll-smooth bg-background">
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 pb-16 md:pb-20">
         {/* Header con Buscador */}
         <SearchFiltersBar
@@ -107,12 +107,12 @@ export default function HomePage() {
         {isLoading && posts.length === 0 ? (
           <LoadingSpinner />
         ) : isError ? (
-          <div className="text-center py-10 text-red-500">
+          <div className="text-center py-10 text-destructive font-medium">
             Error al cargar datos. Intenta recargar.
           </div>
         ) : posts.length === 0 ? (
-          <div className="text-center py-16 sm:py-20 text-slate-400 text-sm">
-            No se encontraron publicaciones.
+          <div className="text-center py-16 sm:py-20 text-muted-foreground text-sm flex flex-col items-center gap-2">
+            <span>No se encontraron publicaciones.</span>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">

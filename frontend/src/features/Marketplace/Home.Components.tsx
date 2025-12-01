@@ -18,7 +18,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 // ============================================================================
-// 1. ÁTOMOS (Optimizados)
+// 1. ÁTOMOS (Con Paleta Semántica)
 // ============================================================================
 
 export const Badge = ({
@@ -33,12 +33,16 @@ export const Badge = ({
   onClick?: () => void
 }) => {
   const variants = {
-    default: "bg-slate-900 text-white hover:bg-slate-800",
-    secondary: "bg-slate-100 text-slate-900 hover:bg-slate-200",
-    outline: "text-slate-950 border-slate-200 border",
-    price: "bg-emerald-600 text-white font-bold shadow-sm",
-    category: "bg-white/90 backdrop-blur text-slate-900 font-medium shadow-sm border",
-    suggestion: "bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 cursor-pointer active:scale-95"
+    // Usa colores de la marca
+    default: "bg-primary text-primary-foreground hover:bg-primary/90",
+    secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+    outline: "text-foreground border-border border",
+    // Precio: Destacado pero elegante
+    price: "bg-primary text-primary-foreground font-bold shadow-sm",
+    // Categoría: Sutil, tipo vidrio
+    category: "bg-background/80 backdrop-blur text-foreground font-medium shadow-sm border border-border",
+    // Sugerencia: Interactivo
+    suggestion: "bg-secondary/50 text-secondary-foreground border border-secondary hover:bg-secondary cursor-pointer active:scale-95"
   };
   return (
     <div
@@ -67,10 +71,10 @@ export const Button = React.forwardRef<
     ref
   ) => {
     const variants = {
-      default: "bg-slate-900 text-slate-50 hover:bg-slate-900/90 shadow-sm",
-      outline: "border border-slate-200 bg-white hover:bg-slate-100 hover:text-slate-900 shadow-sm",
-      secondary: "bg-slate-100 text-slate-900 hover:bg-slate-200/80",
-      ghost: "hover:bg-slate-100 hover:text-slate-900",
+      default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
+      outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-sm",
+      secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+      ghost: "hover:bg-accent hover:text-accent-foreground",
     };
     const sizes = {
       default: "h-9 px-4 py-2 text-sm",
@@ -81,7 +85,7 @@ export const Button = React.forwardRef<
       <button
         ref={ref}
         className={cn(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium ring-offset-white transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
+          "inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
           variants[variant],
           sizes[size],
           className
@@ -98,7 +102,7 @@ Button.displayName = "Button";
 
 export const LoadingSpinner = () => (
   <div className="flex justify-center items-center p-8">
-    <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
+    <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
   </div>
 );
 
@@ -119,15 +123,15 @@ export const FavoriteButton = ({
     className={cn(
       "group relative flex h-9 w-9 items-center justify-center rounded-full transition-all active:scale-90",
       isFavorite
-        ? "bg-red-50 text-red-500 shadow-sm ring-1 ring-red-100"
-        : "bg-white/90 text-slate-400 backdrop-blur-sm hover:bg-white hover:text-red-400 hover:shadow-md",
+        ? "bg-red-50 text-red-500 shadow-sm ring-1 ring-red-100 dark:bg-red-950 dark:text-red-400 dark:ring-red-900" // Corazón rojo se mantiene por convención universal
+        : "bg-background/80 text-muted-foreground backdrop-blur-sm hover:bg-background hover:text-red-400 hover:shadow-md",
       className
     )}
   >
     <Heart
       className={cn(
-        "h-5 w-5 transition-all text-red-500",
-        isFavorite && "fill-red-500 scale-110"
+        "h-5 w-5 transition-all",
+        isFavorite ? "fill-current scale-110" : "text-current"
       )}
       strokeWidth={2}
     />
@@ -135,7 +139,7 @@ export const FavoriteButton = ({
 );
 
 // ============================================================================
-// 2. IMAGE CAROUSEL (Optimizado + responsivo)
+// 2. IMAGE CAROUSEL
 // ============================================================================
 
 export function ImageCarousel({
@@ -180,7 +184,7 @@ export function ImageCarousel({
 
   return (
     <div className="flex flex-col gap-3 relative group">
-      <div className="relative w-full overflow-hidden rounded-xl bg-gray-100 border border-slate-200 shadow-sm aspect-[16/9] sm:aspect-[4/3]">
+      <div className="relative w-full overflow-hidden rounded-xl bg-muted border border-border shadow-sm aspect-[16/9] sm:aspect-[4/3]">
         <AnimatePresence mode="wait">
           <motion.img
             key={validImages[index].id}
@@ -190,7 +194,7 @@ export function ImageCarousel({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             alt={`${altPrefix || 'Producto'} - Imagen ${index + 1}`}
-            className="h-full w-full object-contain bg-white"
+            className="h-full w-full object-contain bg-background"
           />
         </AnimatePresence>
 
@@ -208,7 +212,7 @@ export function ImageCarousel({
             <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
               <button
                 onClick={prevImage}
-                className="pointer-events-auto rounded-full bg-white/90 p-2 text-slate-800 shadow-md backdrop-blur-sm transition-all hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100"
+                className="pointer-events-auto rounded-full bg-background/80 p-2 text-foreground shadow-md backdrop-blur-sm transition-all hover:bg-background hover:scale-110 opacity-0 group-hover:opacity-100"
               >
                 <ChevronLeft size={20} />
               </button>
@@ -216,19 +220,19 @@ export function ImageCarousel({
             <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
               <button
                 onClick={nextImage}
-                className="pointer-events-auto rounded-full bg-white/90 p-2 text-slate-800 shadow-md backdrop-blur-sm transition-all hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100"
+                className="pointer-events-auto rounded-full bg-background/80 p-2 text-foreground shadow-md backdrop-blur-sm transition-all hover:bg-background hover:scale-110 opacity-0 group-hover:opacity-100"
               >
                 <ChevronRight size={20} />
               </button>
             </div>
 
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 px-3 py-1.5 bg-black/20 backdrop-blur-sm rounded-full">
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 px-3 py-1.5 bg-black/40 backdrop-blur-sm rounded-full">
               {validImages.map((_, i) => (
                 <div
                   key={i}
                   className={cn(
                     "h-1.5 rounded-full transition-all shadow-sm",
-                    i === index ? "w-4 bg-white" : "w-1.5 bg-white/60"
+                    i === index ? "w-4 bg-white" : "w-1.5 bg-white/50" // Indicadores blancos sobre foto oscura
                   )}
                 />
               ))}
@@ -251,7 +255,7 @@ export function ImageCarousel({
               className={cn(
                 "relative flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all h-14 w-14 sm:h-16 sm:w-16",
                 i === index
-                  ? "border-slate-900 ring-2 ring-slate-900/10 opacity-100 scale-105"
+                  ? "border-primary ring-2 ring-primary/20 opacity-100 scale-105"
                   : "border-transparent opacity-60 hover:opacity-100"
               )}
             >
@@ -279,9 +283,9 @@ export const ItemCard = ({
   return (
     <div
       onClick={() => onClick(post)}
-      className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm border border-slate-200 transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer h-full"
+      className="group relative flex flex-col overflow-hidden rounded-2xl bg-card text-card-foreground shadow-sm border border-border transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer h-full"
     >
-      <div className="relative overflow-hidden bg-slate-100 aspect-[16/9] sm:aspect-[4/3]">
+      <div className="relative overflow-hidden bg-muted aspect-[16/9] sm:aspect-[4/3]">
         {image ? (
           <img
             src={image}
@@ -290,7 +294,7 @@ export const ItemCard = ({
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-slate-300 bg-slate-50">
+          <div className="flex h-full items-center justify-center text-muted-foreground bg-muted">
             <ShoppingBag size={48} strokeWidth={1} />
           </div>
         )}
@@ -309,7 +313,7 @@ export const ItemCard = ({
       </div>
       <div className="flex flex-1 flex-col p-4 sm:p-5">
         <div className="flex items-center gap-2 mb-2">
-          <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0 overflow-hidden border border-slate-200">
+          <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0 overflow-hidden border border-border">
             {post.vendedor?.fotoPerfilUrl ? (
               <img
                 src={post.vendedor.fotoPerfilUrl}
@@ -320,23 +324,24 @@ export const ItemCard = ({
             )}
           </div>
           <div className="flex flex-col">
-            <span className="text-[11px] sm:text-xs font-semibold text-slate-700 line-clamp-1">
+            <span className="text-[11px] sm:text-xs font-semibold text-foreground line-clamp-1">
               {post.vendedor?.usuario}
             </span>
-            <span className="text-[10px] text-slate-400 leading-none">
+            <span className="text-[10px] text-muted-foreground leading-none">
               {formatDate(post.fechaAgregado)}
             </span>
           </div>
         </div>
-        <h3 className="font-bold text-slate-900 line-clamp-1 mb-1 text-sm sm:text-base">
+        <h3 className="font-bold text-card-foreground line-clamp-1 mb-1 text-sm sm:text-base">
           {post.nombre}
         </h3>
-        <p className="text-xs sm:text-sm text-slate-500 line-clamp-2 mb-4 flex-1 min-h-[2.3em]">
+        <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-4 flex-1 min-h-[2.3em]">
           {post.descripcion || "Sin descripción."}
         </p>
-        <div className="mt-auto flex items-center justify-between border-t border-slate-50 pt-3">
-          <div className="flex items-center gap-1 text-slate-400">
-            <Star size={14} className="fill-slate-200 text-slate-200" />
+        <div className="mt-auto flex items-center justify-between border-t border-border pt-3">
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <Star size={14} className="fill-yellow-400 text-yellow-400" /> 
+            {/* Estrella amarilla es convención visual fuerte, se puede dejar o usar primary */}
             <span className="text-[11px] font-medium">
               {post.vendedor?.reputacion
                 ? Number(post.vendedor.reputacion).toFixed(1)
@@ -357,7 +362,7 @@ export const ItemCard = ({
 };
 
 // ============================================================================
-// 3. SEARCH FILTERS BAR (corregido + responsivo)
+// 3. SEARCH FILTERS BAR
 // ============================================================================
 
 export const SearchFiltersBar = ({
@@ -395,22 +400,22 @@ export const SearchFiltersBar = ({
       transition={{ duration: 0.3, ease: "easeInOut" }}
       className="sticky top-0 z-20 py-1 px-2 sm:px-4 md:px-0 pointer-events-none"
     >
-      <div className="pointer-events-auto bg-white/95 backdrop-blur-md rounded-xl shadow-sm border border-slate-200 p-2 sm:p-3">
+      <div className="pointer-events-auto bg-background/95 backdrop-blur-md rounded-xl shadow-sm border border-border p-2 sm:p-3">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Buscar productos, apuntes..."
-              className="h-9 sm:h-10 w-full rounded-md bg-slate-50 px-9 text-xs sm:text-sm outline-none placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all"
+              className="h-9 sm:h-10 w-full rounded-md bg-muted/50 px-9 text-xs sm:text-sm outline-none placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-ring transition-all border border-transparent focus:border-input"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="hidden md:block w-px bg-slate-200 mx-1 my-1" />
+          <div className="hidden md:block w-px bg-border mx-1 my-1" />
           <div className="relative md:w-64">
             <select
-              className="h-9 sm:h-10 w-full appearance-none rounded-md bg-slate-50 px-3 text-xs sm:text-sm font-medium text-slate-600 outline-none cursor-pointer hover:bg-slate-100 focus:bg-white transition-all"
+              className="h-9 sm:h-10 w-full appearance-none rounded-md bg-muted/50 px-3 text-xs sm:text-sm font-medium text-foreground outline-none cursor-pointer hover:bg-muted focus:bg-background transition-all border border-transparent focus:border-input"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
             >
@@ -421,12 +426,12 @@ export const SearchFiltersBar = ({
                 </option>
               ))}
             </select>
-            <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           </div>
         </div>
 
         {!isLoading && (
-          <div className="mt-2 px-1 flex items-center justify-between text-[11px] sm:text-xs text-slate-500 font-medium border-t border-slate-100 pt-2">
+          <div className="mt-2 px-1 flex items-center justify-between text-[11px] sm:text-xs text-muted-foreground font-medium border-t border-border pt-2">
             <span>Resultados: {totalPosts}</span>
           </div>
         )}
@@ -436,7 +441,7 @@ export const SearchFiltersBar = ({
 };
 
 // ============================================================================
-// 4. MODAL (corregido + responsivo)
+// 4. MODAL
 // ============================================================================
 
 export function ProductDetailModal({
@@ -517,22 +522,22 @@ export function ProductDetailModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative flex w-full max-w-md sm:max-w-2xl lg:max-w-5xl flex-col overflow-hidden rounded-xl sm:rounded-2xl bg-white shadow-2xl md:flex-row max-h-[90vh] z-10"
+            className="relative flex w-full max-w-md sm:max-w-2xl lg:max-w-5xl flex-col overflow-hidden rounded-xl sm:rounded-2xl bg-card text-card-foreground shadow-2xl md:flex-row max-h-[90vh] z-10 border border-border"
           >
             {/* Contenido Izquierdo (Fotos y Descripción) */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-white">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-card">
               <div className="hidden md:flex items-start justify-between mb-6">
-                <h1 className="text-2xl font-extrabold text-slate-900 leading-tight">
+                <h1 className="text-2xl font-extrabold text-foreground leading-tight">
                   {activePost.nombre}
                 </h1>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
                   className="rounded-full"
                   onClick={onClose}
@@ -553,24 +558,21 @@ export function ProductDetailModal({
                   <Badge variant="secondary">{activePost.categoria}</Badge>
                   <Badge
                     variant="outline"
-                    className="text-blue-600 border-blue-200 bg-blue-50"
+                    className="text-primary border-primary/20 bg-primary/5"
                   >
                     {activePost.estado}
                   </Badge>
                   {activePost.vendedor?.campus && (
-                    <Badge
-                      variant="secondary"
-                      className="text-slate-500 font-normal"
-                    >
+                    <Badge variant="secondary" className="text-muted-foreground font-normal">
                       {activePost.vendedor.campus}
                     </Badge>
                   )}
                 </div>
                 <div>
-                  <h3 className="font-semibold text-slate-900 mb-2 text-sm sm:text-base">
+                  <h3 className="font-semibold text-foreground mb-2 text-sm sm:text-base">
                     Descripción
                   </h3>
-                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                     {activePost.descripcion ||
                       "El vendedor no proporcionó una descripción detallada."}
                   </p>
@@ -579,9 +581,9 @@ export function ProductDetailModal({
             </div>
 
             {/* Barra Lateral (Info Vendedor y Contacto) */}
-            <div className="w-full md:w-[360px] bg-slate-50 border-t md:border-t-0 md:border-l border-slate-100 p-4 sm:p-6 flex flex-col overflow-y-auto shrink-0">
-              <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-sm mb-5 sm:mb-6 flex items-center gap-3">
-                <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-base sm:text-lg shrink-0 overflow-hidden">
+            <div className="w-full md:w-[360px] bg-muted/30 border-t md:border-t-0 md:border-l border-border p-4 sm:p-6 flex flex-col overflow-y-auto shrink-0">
+              <div className="bg-card p-3 sm:p-4 rounded-xl border border-border shadow-sm mb-5 sm:mb-6 flex items-center gap-3">
+                <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-base sm:text-lg shrink-0 overflow-hidden">
                   {activePost.vendedor?.fotoPerfilUrl ? (
                     <img
                       src={activePost.vendedor.fotoPerfilUrl}
@@ -592,10 +594,10 @@ export function ProductDetailModal({
                   )}
                 </div>
                 <div>
-                  <div className="font-semibold text-slate-900 text-sm sm:text-base">
+                  <div className="font-semibold text-foreground text-sm sm:text-base">
                     {activePost.vendedor?.usuario || "Usuario"}
                   </div>
-                  <div className="flex items-center gap-1 text-[11px] sm:text-xs text-slate-500">
+                  <div className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground">
                     <Star
                       size={12}
                       className="fill-yellow-400 text-yellow-400"
@@ -607,20 +609,20 @@ export function ProductDetailModal({
                 </div>
               </div>
 
-              <div className="space-y-3 mb-5 sm:mb-6 bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-sm">
+              <div className="space-y-3 mb-5 sm:mb-6 bg-card p-3 sm:p-4 rounded-xl border border-border shadow-sm">
                 {details.map((item, idx) => (
                   <div
                     key={idx}
-                    className="flex justify-between items-baseline border-b border-slate-50 pb-2 last:border-0 last:pb-0"
+                    className="flex justify-between items-baseline border-b border-border pb-2 last:border-0 last:pb-0"
                   >
-                    <span className="text-[11px] sm:text-sm text-slate-500">
+                    <span className="text-[11px] sm:text-sm text-muted-foreground">
                       {item.label}
                     </span>
                     <span
                       className={cn(
-                        "text-xs sm:text-sm font-medium text-slate-900",
+                        "text-xs sm:text-sm font-medium text-foreground",
                         item.highlight &&
-                          "text-emerald-600 font-bold text-sm sm:text-base"
+                          "text-primary font-bold text-sm sm:text-base"
                       )}
                     >
                       {item.value}
@@ -629,21 +631,21 @@ export function ProductDetailModal({
                 ))}
               </div>
 
-              <div className="mt-auto pt-4 border-t border-slate-200">
+              <div className="mt-auto pt-4 border-t border-border">
                 {isOwnProduct ? (
-                  <div className="text-center p-4 bg-yellow-50 text-yellow-700 rounded-xl text-xs sm:text-sm font-medium">
+                  <div className="text-center p-4 bg-yellow-500/10 text-yellow-600 rounded-xl text-xs sm:text-sm font-medium border border-yellow-200/50">
                     Este es tu producto
                   </div>
                 ) : sentSuccess ? (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-green-50 border border-green-100 rounded-xl p-5 sm:p-6 text-center"
+                    className="bg-green-500/10 border border-green-500/20 rounded-xl p-5 sm:p-6 text-center"
                   >
-                    <div className="mx-auto w-11 h-11 sm:w-12 sm:h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3">
+                    <div className="mx-auto w-11 h-11 sm:w-12 sm:h-12 bg-green-500/20 text-green-600 rounded-full flex items-center justify-center mb-3">
                       <Check size={24} />
                     </div>
-                    <h3 className="font-bold text-green-800 mb-1 text-sm sm:text-base">
+                    <h3 className="font-bold text-green-700 mb-1 text-sm sm:text-base">
                       ¡Mensaje Enviado!
                     </h3>
                     <Button
@@ -655,7 +657,7 @@ export function ProductDetailModal({
                   </motion.div>
                 ) : (
                   <div className="space-y-3">
-                    <label className="text-[11px] sm:text-xs font-bold text-slate-700 uppercase tracking-wide">
+                    <label className="text-[11px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wide">
                       Enviar mensaje al vendedor
                     </label>
                     <div className="relative">
@@ -663,7 +665,7 @@ export function ProductDetailModal({
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                         placeholder="Escribe tu mensaje aquí..."
-                        className="w-full p-2 sm:p-3 text-xs sm:text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none h-20 sm:h-24 bg-white"
+                        className="w-full p-2 sm:p-3 text-xs sm:text-sm border border-input rounded-xl focus:ring-2 focus:ring-ring outline-none resize-none h-20 sm:h-24 bg-background text-foreground"
                       />
                       <div className="absolute bottom-2 right-2">
                         <Button
@@ -671,14 +673,14 @@ export function ProductDetailModal({
                           className={cn(
                             "h-8 w-8 rounded-lg transition-all",
                             message
-                              ? "bg-blue-600 hover:bg-blue-700"
-                              : "bg-slate-200 text-slate-400"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground"
                           )}
                           disabled={!message || isSending}
                           onClick={handleSendInsideModal}
                         >
                           {isSending ? (
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <Loader2 className="animate-spin h-4 w-4" />
                           ) : (
                             <Send size={14} />
                           )}
@@ -699,7 +701,7 @@ export function ProductDetailModal({
                       )}
                     </div>
                     <Button
-                      className="w-full mt-2 font-bold bg-slate-900 text-white"
+                      className="w-full mt-2 font-bold"
                       onClick={() => onContact(activePost)}
                     >
                       Ir al Chat Directo
