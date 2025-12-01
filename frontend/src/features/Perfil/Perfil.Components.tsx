@@ -65,16 +65,16 @@ export const ProfileField = ({ label, value, icon, canEdit = false, editComponen
 
 export const ProfileSkeleton = () => (
   <div className="space-y-6 max-w-5xl mx-auto px-4 mt-4">
-    <Skeleton className="h-48 w-full rounded-t-2xl bg-muted" />
+    <Skeleton className="h-48 w-full rounded-t-3xl bg-muted" />
     <div className="px-6 -mt-16 flex flex-col md:flex-row gap-6">
-      <Skeleton className="h-32 w-32 rounded-full border-4 border-background bg-muted-foreground/20" />
+      <Skeleton className="h-32 w-32 rounded-full border-4 border-background bg-muted" />
       <div className="pt-4 md:pt-16 space-y-3 w-full max-w-md">
          <Skeleton className="h-8 w-3/4 bg-muted" />
          <Skeleton className="h-4 w-1/2 bg-muted" />
       </div>
     </div>
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-        <Skeleton className="h-64 bg-muted rounded-xl" />
+        <Skeleton className="h-64 bg-muted rounded-2xl" />
         <div className="col-span-2 space-y-4">
             <Skeleton className="h-12 w-full bg-muted rounded-xl" />
             <Skeleton className="h-48 w-full bg-muted rounded-xl" />
@@ -113,11 +113,11 @@ export const ProfileHero = ({
   };
 
   return (
-    <div className="relative group">
-      {/* Banner con gradiente semántico (Primary -> Primary/80) */}
-      <div className="h-48 w-full bg-gradient-to-r from-primary to-primary/80 rounded-t-2xl shadow-sm"></div>
+    <div className="relative group mb-8">
+      {/* Banner con gradiente semántico */}
+      <div className="h-48 w-full bg-gradient-to-r from-primary to-primary/80 rounded-t-3xl shadow-sm"></div>
       
-      <Card className="relative -mt-16 mx-4 md:mx-0 border-none shadow-lg overflow-visible bg-card">
+      <Card className="relative -mt-16 mx-4 md:mx-0 border-none shadow-xl overflow-visible bg-card rounded-3xl">
         <CardContent className="pt-0 pb-6 px-6">
           <div className="flex flex-col md:flex-row gap-6 items-start">
             
@@ -126,14 +126,14 @@ export const ProfileHero = ({
               <div className="p-1.5 bg-card rounded-full shadow-sm relative">
                 <Avatar className="h-32 w-32 border-4 border-card shadow-inner bg-muted">
                   <AvatarImage src={getImageUrl(user.fotoPerfilUrl)} alt={user.usuario} className="object-cover" />
-                  <AvatarFallback className="text-4xl bg-muted text-muted-foreground">
+                  <AvatarFallback className="text-4xl bg-primary/10 text-primary font-bold">
                     {user.usuario.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
 
                 {!readOnly && (
                   <div 
-                    className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover/avatar:opacity-100 transition-opacity cursor-pointer backdrop-blur-sm"
+                    className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover/avatar:opacity-100 transition-opacity cursor-pointer backdrop-blur-sm"
                     onClick={() => fileInputRef.current?.click()}
                   >
                     {isUploadingPhoto ? (
@@ -158,7 +158,7 @@ export const ProfileHero = ({
                            <Input 
                               value={editUsername}
                               onChange={onEditUsernameChange}
-                              className="text-xl font-bold pl-9 h-10 bg-muted/50 focus:bg-background transition-colors"
+                              className="text-xl font-bold pl-9 h-10 bg-muted/50 focus:bg-background border-border"
                               placeholder="Nombre de usuario"
                               autoFocus
                            />
@@ -170,7 +170,7 @@ export const ProfileHero = ({
                     )}
                     
                     {!isEditing && (
-                        <Badge variant="secondary" className="shrink-0">
+                        <Badge variant="secondary" className="shrink-0 bg-muted text-muted-foreground hover:bg-muted/80">
                           {user.role}
                         </Badge>
                     )}
@@ -194,7 +194,7 @@ export const ProfileHero = ({
                       <Button 
                         onClick={() => setIsEditing(true)} 
                         variant="outline" 
-                        className="gap-2 w-full md:w-auto"
+                        className="gap-2 w-full md:w-auto border-border text-foreground hover:bg-muted"
                       >
                         <Pencil className="w-4 h-4" /> Editar Perfil
                       </Button>
@@ -204,13 +204,14 @@ export const ProfileHero = ({
                           variant="ghost" 
                           onClick={() => setIsEditing(false)} 
                           disabled={isSaving}
+                          className="hover:bg-destructive/10 hover:text-destructive"
                         >
                           Cancelar
                         </Button>
                         <Button 
                           onClick={onSave} 
                           disabled={isSaving} 
-                          className="gap-2"
+                          className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                         >
                           {isSaving ? (
                             <Loader2 className="w-4 h-4 animate-spin" /> 
@@ -238,8 +239,8 @@ export const ProfileHero = ({
 // ============================================================================
 
 export const ProfileStatsCard = ({ user }: { user: UserProfile }) => (
-  // Usamos bg-primary y text-primary-foreground para que destaque pero respete el tema
-  <Card className="bg-primary text-primary-foreground border-none shadow-lg overflow-hidden relative">
+  // Usamos Primary para el fondo, texto en Primary Foreground (usualmente blanco)
+  <Card className="bg-primary text-primary-foreground border-none shadow-lg overflow-hidden relative rounded-2xl">
     {/* Decoración de fondo sutil */}
     <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
       <Star size={100} />
@@ -250,13 +251,13 @@ export const ProfileStatsCard = ({ user }: { user: UserProfile }) => (
         Estadísticas
       </h3>
       <div className="grid grid-cols-2 gap-4">
-        <div className="p-3 rounded-lg bg-primary-foreground/10 backdrop-blur-sm border border-primary-foreground/20">
+        <div className="p-3 rounded-xl bg-primary-foreground/10 backdrop-blur-sm border border-primary-foreground/20">
           <p className="text-2xl font-bold">{Number(user.reputacion).toFixed(1)}</p>
           <div className="flex items-center gap-1 text-primary-foreground/80 text-xs mt-1">
             <Star className="fill-current w-3 h-3" /> Reputación
           </div>
         </div>
-        <div className="p-3 rounded-lg bg-primary-foreground/10 backdrop-blur-sm border border-primary-foreground/20">
+        <div className="p-3 rounded-xl bg-primary-foreground/10 backdrop-blur-sm border border-primary-foreground/20">
           <p className="text-2xl font-bold">{user.resumen?.totalVentas || user.stats?.ventas || 0}</p>
           <div className="flex items-center gap-1 text-primary-foreground/80 text-xs mt-1">
             <ShieldCheck className="w-3 h-3" /> Ventas
@@ -272,11 +273,11 @@ export const ReviewsList = ({ reviews }: { reviews: Review[] }) => (
     {reviews.map((review) => (
       <div 
         key={review.id} 
-        className="flex gap-4 p-4 rounded-xl bg-card border border-border transition-colors hover:bg-accent/5"
+        className="flex gap-4 p-4 rounded-2xl bg-card border border-border transition-all hover:bg-muted/30 hover:shadow-sm"
       >
         <Avatar className="h-10 w-10 border border-border">
             <AvatarImage src={getImageUrl(review.calificador.fotoPerfilUrl)} />
-            <AvatarFallback className="bg-muted text-muted-foreground font-bold">
+            <AvatarFallback className="bg-primary/10 text-primary font-bold">
               {review.calificador.nombre.charAt(0).toUpperCase()}
             </AvatarFallback>
         </Avatar>
@@ -286,13 +287,13 @@ export const ReviewsList = ({ reviews }: { reviews: Review[] }) => (
               <span className="font-semibold text-foreground text-sm">
                 {review.calificador.nombre}
               </span>
-              <div className="flex text-yellow-500">
+              <div className="flex text-yellow-400">
                 {[...Array(5)].map((_, i) => (
                   <Star 
                     key={i} 
                     className={cn(
                       "w-3 h-3",
-                      i < Number(review.puntuacion) ? "fill-current" : "text-muted"
+                      i < Number(review.puntuacion) ? "fill-current" : "text-muted-foreground/30"
                     )} 
                   />
                 ))}
@@ -337,13 +338,13 @@ export const PublicationsList = ({
   );
   
   if (isError) return (
-    <div className="p-6 bg-destructive/10 text-destructive rounded-lg text-center border border-destructive/20 text-sm font-medium">
+    <div className="p-6 bg-destructive/10 text-destructive rounded-xl text-center border border-destructive/20 text-sm font-medium">
       Error al cargar publicaciones.
     </div>
   );
   
   if (!hasResults) return (
-    <Card className="border-dashed border-2 bg-muted/20">
+    <Card className="border-dashed border-2 border-border bg-muted/20 shadow-none">
       <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
          <div className="p-4 bg-background rounded-full mb-4 shadow-sm">
             <Ghost size={32} className="text-muted-foreground/50" />
@@ -364,7 +365,7 @@ export const PublicationsList = ({
                animate={{ opacity: 1, y: 0 }}
                transition={{ delay: index * 0.05 }}
                ref={index === items.length - 1 ? lastPostRef : null}
-               className="group relative bg-card text-card-foreground rounded-2xl shadow-sm border border-border overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full flex flex-col"
+               className="group relative bg-card text-card-foreground rounded-2xl shadow-sm border border-border overflow-hidden hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full flex flex-col"
                onClick={() => onItemClick && onItemClick(post)}
              >
                 {/* Imagen */}
@@ -373,7 +374,7 @@ export const PublicationsList = ({
                      <img 
                         src={getImageUrl(post.image)} 
                         alt={post.title} 
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
                         loading="lazy" 
                      />
                    ) : (
@@ -385,14 +386,14 @@ export const PublicationsList = ({
                    
                    {/* Badge Categoría */}
                    <div className="absolute top-3 left-3">
-                      <Badge variant="secondary" className="bg-background/80 backdrop-blur text-foreground shadow-sm border border-border font-medium">
+                      <Badge variant="secondary" className="bg-background/90 backdrop-blur text-foreground shadow-sm border border-border font-medium">
                         {post.categoryName || "Varios"}
                       </Badge>
                    </div>
                    
                    {/* Overlay Hover */}
                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-[1px]">
-                      <Button size="sm" className="bg-background text-foreground hover:bg-background/90 font-medium shadow-lg">
+                      <Button size="sm" className="bg-background text-foreground hover:bg-background/90 font-medium shadow-lg border-none">
                          <Eye className="w-4 h-4 mr-2" /> Ver Detalle
                       </Button>
                    </div>
@@ -401,7 +402,7 @@ export const PublicationsList = ({
                 {/* Contenido Texto */}
                 <div className="p-4 flex flex-col flex-1">
                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="text-sm font-bold text-foreground line-clamp-2 leading-tight">
+                      <h3 className="text-sm font-bold text-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">
                         {post.title}
                       </h3>
                    </div>
@@ -420,7 +421,7 @@ export const PublicationsList = ({
                            <Button 
                              variant="secondary" 
                              size="sm" 
-                             className="h-7 text-xs px-2.5"
+                             className="h-7 text-xs px-2.5 bg-muted text-muted-foreground hover:bg-muted/80"
                              onClick={(e) => { e.stopPropagation(); }}
                              asChild
                            >

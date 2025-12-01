@@ -12,6 +12,13 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
+  /* NUEVO: card / popover para bg-card, text-card-foreground, etc. */
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
 
@@ -452,6 +459,7 @@
   animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* Animación de grid inline para Tailwind v4 */
 @theme inline {
   --animate-grid: grid 20s linear infinite;
   @keyframes grid {

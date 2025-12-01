@@ -89,14 +89,15 @@ export default function PerfilPage() {
   
   if (isErrorProfile || !user) return (
     <div className="flex flex-col items-center justify-center h-[60vh] text-muted-foreground">
-      <Ghost size={40} className="mb-4 text-muted" />
+      <Ghost size={40} className="mb-4 opacity-50" />
       <h2 className="text-xl font-semibold text-foreground">Usuario no encontrado</h2>
       <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>Volver</Button>
     </div>
   );
 
   return (
-    <div className="w-full bg-background min-h-screen">
+    // Quitamos bg-background para dejar ver el patrón del body
+    <div className="w-full min-h-screen text-foreground">
       <div className="max-w-6xl mx-auto pb-12 px-4 md:px-8 pt-4">
         <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
           
@@ -118,8 +119,9 @@ export default function PerfilPage() {
             <div className="flex justify-end -mt-4 px-4 md:px-0">
               <Button 
                 onClick={handleContactUser} 
-                className="gap-2 rounded-full shadow-lg"
+                className="gap-2 rounded-full shadow-lg shadow-primary/20"
                 size="lg"
+                variant="default"
               >
                   <MessageCircle size={18} /> Enviar mensaje
               </Button>
@@ -130,7 +132,7 @@ export default function PerfilPage() {
             
             {/* 2. SIDEBAR (Datos Personales) */}
             <div className="lg:col-span-4 space-y-6">
-              <Card className="shadow-sm border-border overflow-hidden">
+              <Card className="shadow-sm border-border overflow-hidden bg-card/80 backdrop-blur-sm">
                 <CardHeader className="bg-muted/30 border-b border-border py-4">
                   <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground uppercase tracking-wide">
                     <Info className="text-primary w-4 h-4" /> Datos de Contacto
@@ -144,7 +146,7 @@ export default function PerfilPage() {
                     icon={<User className="w-3.5 h-3.5 text-muted-foreground" />}
                     value={user.nombre} 
                   />
-                  <Separator />
+                  <Separator className="bg-border" />
 
                   {/* CORREO */}
                   <ProfileField 
@@ -152,7 +154,7 @@ export default function PerfilPage() {
                     icon={<Mail className="w-3.5 h-3.5 text-muted-foreground" />}
                     value={user.correo} 
                   />
-                  <Separator />
+                  <Separator className="bg-border" />
 
                   {/* TELÉFONO */}
                   <ProfileField 
@@ -162,7 +164,7 @@ export default function PerfilPage() {
                       canEdit={isEditing} 
                       editComponent={
                         <Input 
-                          className="h-8"
+                          className="h-8 bg-background border-input"
                           value={formData.telefono} 
                           onChange={handlePhoneChange} 
                           placeholder="912345678"
@@ -170,7 +172,7 @@ export default function PerfilPage() {
                         />
                       } 
                   />
-                  <Separator />
+                  <Separator className="bg-border" />
 
                   {/* CAMPUS */}
                   <ProfileField 
@@ -190,7 +192,7 @@ export default function PerfilPage() {
                       } 
                   />
                   
-                  <Separator />
+                  <Separator className="bg-border" />
                   {/* DIRECCIÓN */}
                   <ProfileField 
                       label="Dirección (Opcional)" 
@@ -199,7 +201,7 @@ export default function PerfilPage() {
                       canEdit={isEditing} 
                       editComponent={
                         <Input 
-                          className="h-8"
+                          className="h-8 bg-background border-input"
                           value={formData.direccion} 
                           onChange={(e) => setFormData({...formData, direccion: e.target.value})} 
                         />
@@ -237,11 +239,11 @@ export default function PerfilPage() {
                 </TabsContent>
 
                 <TabsContent value="reviews" className="outline-none mt-0">
-                  <Card className="border-border shadow-sm">
+                  <Card className="border-border shadow-sm bg-card/80 backdrop-blur-sm">
                     <CardContent className="p-6">
                       {isLoadingReviews ? (
                         <div className="space-y-4 text-center py-10">
-                            <Loader2 className="animate-spin w-8 h-8 mx-auto text-muted-foreground" />
+                            <Loader2 className="animate-spin w-8 h-8 mx-auto text-primary" />
                             <p className="text-muted-foreground">Cargando reseñas...</p>
                         </div>
                       ) : reviewData && reviewData.reviews.length > 0 ? (
