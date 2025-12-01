@@ -4,20 +4,13 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ==========================================================================
-   TEMA ENTERPRISE: AZUL CORPORATIVO & NEUTRALES MODERNOS
+   TEMA MODERN UI: INDIGO PREMIUM & ZINC
    ========================================================================== */
 
 @theme {
   /* Mapeo de variables CSS a utilidades de Tailwind */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-
-  /* NUEVO: card / popover para bg-card, text-card-foreground, etc. */
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
 
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
@@ -38,158 +31,170 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 4px);
-  --radius-sm: calc(var(--radius) - 8px);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
 
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-    "SF Pro Display", "Inter", "system-ui", sans-serif;
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  /* Radio más suave y moderno (12px) */
+  --radius: 0.75rem;
+  
+  /* Animaciones adicionales */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
+  }
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height); }
+    to { height: 0; }
+  }
 }
 
 /* ==========================================================================
-   PALETA GLOBAL (LIGHT / DARK)
+   VARIABLES DE COLOR (OKLCH) – LOOK "TECH STARTUP"
    ========================================================================== */
 
 :root {
-  /* Fondo: casi blanco, neutro y limpio */
-  --background: oklch(0.985 0.01 260);
-  --foreground: oklch(0.22 0.03 260);
+  /* Fondo: Blanco puro con un toque imperceptible de calidez para evitar fatiga visual */
+  --background: oklch(1 0 0);
+  /* Texto: Zinc muy oscuro (no negro puro), más elegante */
+  --foreground: oklch(0.141 0.005 285.823);
 
-  /* Superficies */
-  --card: oklch(0.99 0.008 255);
-  --card-foreground: var(--foreground);
+  /* Cards: Blanco puro, elevado */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
 
-  --popover: oklch(0.99 0.008 255);
-  --popover-foreground: var(--foreground);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
 
-  /* PRIMARY – Azul corporativo (brand principal) */
-  --primary: oklch(0.58 0.18 255);        /* similar a un azul 600 */
-  --primary-foreground: oklch(0.98 0.01 260);
+  /* PRIMARY: INDIGO VIBRANTE (El cambio principal) 
+     Más profundo que el azul estándar, denota calidad y confianza. */
+  --primary: oklch(0.488 0.243 264.376); 
+  --primary-foreground: oklch(0.985 0 0);
 
-  /* SECONDARY – Neutro suave para botones secundarios / chips */
-  --secondary: oklch(0.95 0.02 260);
-  --secondary-foreground: oklch(0.28 0.03 260);
+  /* Secondary: Zinc muy claro para fondos de botones secundarios */
+  --secondary: oklch(0.97 0.001 290);
+  --secondary-foreground: oklch(0.21 0.006 285);
 
-  /* MUTED – Fondos de secciones, skeletons, etc. */
-  --muted: oklch(0.96 0.015 260);
-  --muted-foreground: oklch(0.55 0.02 260);
+  /* Muted: Para textos secundarios y fondos desactivados */
+  --muted: oklch(0.97 0.001 290);
+  --muted-foreground: oklch(0.552 0.016 285);
 
-  /* ACCENT – Para hovers, tags, bordes activos sutiles */
-  --accent: oklch(0.93 0.03 260);
-  --accent-foreground: oklch(0.25 0.04 260);
+  /* Accent: Para hovers y selecciones */
+  --accent: oklch(0.967 0.001 286);
+  --accent-foreground: oklch(0.21 0.006 285);
 
-  /* DESTRUCTIVE – Rojo profesional (errores) */
-  --destructive: oklch(0.6 0.21 25);
-  --destructive-foreground: oklch(0.98 0.01 260);
+  /* Destructive: Rojo suave pero claro */
+  --destructive: oklch(0.637 0.237 25.331);
+  --destructive-foreground: oklch(0.985 0 0);
 
-  /* Bordes / inputs muy sutiles */
-  --border: oklch(0.9 0.01 260);
-  --input: oklch(0.9 0.01 260);
-  --ring: var(--primary);
+  /* Bordes: Sutiles, apenas visibles para menor ruido visual */
+  --border: oklch(0.92 0.004 286);
+  --input: oklch(0.92 0.004 286);
+  
+  /* Ring: Coincide con el primario pero con opacidad controlada por Tailwind */
+  --ring: oklch(0.488 0.243 264.376);
 
-  /* Charts: consistentes y legibles */
-  --chart-1: var(--primary);
-  --chart-2: oklch(0.7 0.13 180);   /* verde esmeralda */
-  --chart-3: oklch(0.8 0.16 75);    /* ámbar suave */
-  --chart-4: oklch(0.72 0.14 310);  /* violeta suave */
-  --chart-5: oklch(0.68 0.14 25);   /* rojo coral */
+  /* Charts: Paleta armoniosa */
+  --chart-1: oklch(0.488 0.243 264.376); /* Primary match */
+  --chart-2: oklch(0.696 0.17 162.48);  /* Teal complementario */
+  --chart-3: oklch(0.769 0.188 70.08);  /* Naranja suave */
+  --chart-4: oklch(0.627 0.265 303.9);  /* Rosa/Violeta */
+  --chart-5: oklch(0.645 0.246 16.439); /* Rojo/Coral */
 
   --radius: 0.75rem;
 
-  /* Estados semánticos extra para tus componentes / efectos */
-  --success: oklch(0.72 0.15 145);
-  --success-foreground: oklch(0.16 0.04 150);
-
-  --warning: oklch(0.85 0.18 80);
-  --warning-foreground: oklch(0.28 0.06 70);
-
-  --info: oklch(0.78 0.14 240);
-  --info-foreground: oklch(0.24 0.05 250);
-
-  /* Magic UI – tarjetas translúcidas y glow moderno */
-  --magicui-card-bg: rgba(255, 255, 255, 0.86);
-  --magicui-card-border: rgba(228, 228, 231, 0.8);
-  --magicui-card-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
-  --warp-background-color: #f5f5f8;
+  /* Magic UI Specifics - Ajustados al nuevo Indigo */
+  --magicui-card-bg: rgba(255, 255, 255, 0.8);
+  --magicui-card-border: rgba(228, 228, 231, 0.6); /* Zinc-200 */
+  --magicui-card-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  --warp-background-color: #fafafa;
   --magicui-shiny-1: #ffffff;
-  --magicui-shiny-2: #2563eb; /* azul brand */
-  --magicui-sparkles-color: #2563eb;
+  --magicui-shiny-2: #6366f1; /* Indigo-500 */
+  --magicui-sparkles-color: #6366f1;
 }
 
-/* MODO OSCURO: Dashboard profundo estilo SaaS */
+/* MODO OSCURO: Profundo, "Midnight", no gris lavado */
 .dark {
-  /* Fondo casi negro con tinte azul, muy “dashboard” */
-  --background: oklch(0.13 0.02 260);
-  --foreground: oklch(0.97 0.01 260);
+  --background: oklch(0.1 0.005 285); /* Casi negro, tinte azul muy profundo */
+  --foreground: oklch(0.985 0 0);
 
-  --card: oklch(0.16 0.02 260);
-  --card-foreground: var(--foreground);
+  --card: oklch(0.12 0.005 285); /* Un poco más claro que el fondo */
+  --card-foreground: oklch(0.985 0 0);
 
-  --popover: oklch(0.16 0.02 260);
-  --popover-foreground: var(--foreground);
+  --popover: oklch(0.12 0.005 285);
+  --popover-foreground: oklch(0.985 0 0);
 
-  /* Primary ligeramente más brillante para destacarse en dark */
-  --primary: oklch(0.68 0.19 255);
-  --primary-foreground: oklch(0.1 0.01 260);
+  /* Primary Dark: Un poco más brillante para resaltar sobre oscuro */
+  --primary: oklch(0.6 0.24 264); 
+  --primary-foreground: oklch(0.985 0 0);
 
-  --secondary: oklch(0.22 0.02 260);
-  --secondary-foreground: var(--foreground);
+  --secondary: oklch(0.2 0.01 285);
+  --secondary-foreground: oklch(0.985 0 0);
 
-  --muted: oklch(0.22 0.01 260);
-  --muted-foreground: oklch(0.75 0.02 260);
+  --muted: oklch(0.2 0.01 285);
+  --muted-foreground: oklch(0.7 0.01 285);
 
-  --accent: oklch(0.24 0.03 260);
-  --accent-foreground: var(--foreground);
+  --accent: oklch(0.2 0.01 285);
+  --accent-foreground: oklch(0.985 0 0);
 
-  --destructive: oklch(0.53 0.21 25);
-  --destructive-foreground: var(--foreground);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.985 0 0);
 
-  --border: oklch(0.26 0.02 260);
-  --input: oklch(0.26 0.02 260);
-  --ring: var(--primary);
+  --border: oklch(0.2 0.01 285);
+  --input: oklch(0.2 0.01 285);
+  --ring: oklch(0.5 0.24 264);
 
-  --chart-1: var(--primary);
-  --chart-2: oklch(0.72 0.16 170);
-  --chart-3: oklch(0.78 0.16 75);
-  --chart-4: oklch(0.7 0.17 310);
-  --chart-5: oklch(0.68 0.18 25);
+  --chart-1: oklch(0.6 0.24 264);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
 
-  --success: oklch(0.72 0.17 145);
-  --success-foreground: oklch(0.1 0.03 150);
-
-  --warning: oklch(0.8 0.18 80);
-  --warning-foreground: oklch(0.13 0.04 70);
-
-  --info: oklch(0.78 0.16 240);
-  --info-foreground: oklch(0.1 0.03 250);
-
-  --magicui-card-bg: rgba(15, 23, 42, 0.9);
-  --magicui-card-border: rgba(51, 65, 85, 0.85);
-  --magicui-card-shadow: 0 22px 60px rgba(0, 0, 0, 0.7);
-  --warp-background-color: #020617;
+  --magicui-card-bg: rgba(24, 24, 27, 0.8); /* Zinc-950 */
+  --magicui-card-border: rgba(63, 63, 70, 0.5); /* Zinc-700 */
+  --magicui-card-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --warp-background-color: #09090b;
 }
 
 /* ==========================================================================
-   RESETEO BASE & BODY
+   ESTILOS BASE MEJORADOS
    ========================================================================== */
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border outline-ring/50;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
-    font-feature-settings: "liga" 1, "calt" 1;
-    text-rendering: optimizeLegibility;
+    @apply bg-background text-foreground;
+    /* SUSTITUCIÓN DE IMAGEN DE FONDO POR PATRÓN CSS MODERNO 
+       Esto carga instantáneamente, se ve nítido en 4K y es más profesional.
+    */
+    background-color: var(--background);
+    background-image: radial-gradient(var(--border) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-attachment: fixed;
+    /* Si el patrón es muy fuerte, usa mask-image para suavizarlo en los bordes si lo deseas, 
+       pero este radial-gradient simple es el estándar "clean look". */
   }
 }
 
 /* ==========================================================================
-   UTILIDADES PERSONALIZADAS
+   UTILIDADES & SCROLLBARS
    ========================================================================== */
 
-/* Scrollbar minimalista */
+/* Scrollbar minimalista y moderna */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -198,259 +203,29 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.6);
-  border-radius: 999px;
+  @apply bg-muted-foreground/20 rounded-full transition-colors;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.9);
+  @apply bg-muted-foreground/40;
 }
 
-/* Contenedores principales */
-.app-shell {
-  @apply min-h-screen bg-background text-foreground;
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
 
-/* Contenedor de página con max-width y paddings coherentes */
-.page-container {
-  @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8;
-}
-
-/* Cards genéricas de interfaz */
-.ui-card {
-  @apply bg-card text-card-foreground rounded-xl border border-border shadow-sm;
-}
-
-/* ==========================================================================
-   COMPONENTES: NAVBAR / SIDEBAR / LAYOUT
-   ========================================================================== */
-
-.navbar {
-  @apply sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-background/80 backdrop-blur-md px-4 sm:px-6;
-}
-
-.navbar-logo {
-  @apply flex items-center gap-2 font-semibold tracking-tight;
-}
-
-.navbar-logo-mark {
-  @apply flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm;
-}
-
-.navbar-actions {
-  @apply flex items-center gap-1 sm:gap-2;
-}
-
-.sidebar {
-  @apply flex h-full flex-col gap-2 border-r border-border bg-background/80;
-}
-
-.sidebar-section-title {
-  @apply px-4 pt-4 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground;
-}
-
-.sidebar-item {
-  @apply flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground cursor-pointer;
-}
-
-.sidebar-item-active {
-  @apply bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground;
+/* Spinner */
+.loading-spinner {
+  @apply animate-spin rounded-full h-6 w-6 border-[3px] border-primary/30 border-t-primary;
 }
 
 /* ==========================================================================
-   BOTONES
+   ANIMACIONES CUSTOM (MAGIC UI + GLOBALES)
    ========================================================================== */
 
-.btn {
-  @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-transparent px-3 py-2 text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
-}
-
-.btn-primary {
-  @apply bg-primary text-primary-foreground shadow-sm hover:bg-primary/90;
-}
-
-.btn-secondary {
-  @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
-}
-
-.btn-ghost {
-  @apply bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground;
-}
-
-.btn-outline {
-  @apply border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground;
-}
-
-.btn-destructive {
-  @apply bg-destructive text-destructive-foreground hover:bg-destructive/90;
-}
-
-.btn-icon {
-  @apply inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/60 text-muted-foreground backdrop-blur-sm hover:bg-accent hover:text-accent-foreground;
-}
-
-/* ==========================================================================
-   BADGES / CHIPS (Estados, roles, etiquetas)
-   ========================================================================== */
-
-.badge {
-  @apply inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-muted-foreground bg-muted/70;
-}
-
-.badge-primary {
-  @apply border-transparent bg-primary/10 text-primary;
-}
-
-.badge-success {
-  color: var(--success-foreground);
-  background-color: color-mix(in oklch, var(--success) 18%, transparent);
-  border-color: color-mix(in oklch, var(--success) 55%, transparent);
-  border-width: 1px;
-}
-
-.badge-warning {
-  color: var(--warning-foreground);
-  background-color: color-mix(in oklch, var(--warning) 20%, transparent);
-  border-color: color-mix(in oklch, var(--warning) 50%, transparent);
-  border-width: 1px;
-}
-
-.badge-info {
-  color: var(--info-foreground);
-  background-color: color-mix(in oklch, var(--info) 20%, transparent);
-  border-color: color-mix(in oklch, var(--info) 50%, transparent);
-  border-width: 1px;
-}
-
-/* ==========================================================================
-   INPUTS / FORMULARIOS
-   ========================================================================== */
-
-.input {
-  @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
-}
-
-/* Textarea con leves ajustes */
-.textarea {
-  @apply min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
-}
-
-/* Select */
-.select {
-  @apply flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
-}
-
-/* ==========================================================================
-   CARDS / PANELES / OVERLAYS
-   ========================================================================== */
-
-.glass-card {
-  background-color: var(--magicui-card-bg);
-  border-radius: 1rem;
-  border: 1px solid var(--magicui-card-border);
-  box-shadow: var(--magicui-card-shadow);
-  backdrop-filter: blur(18px);
-}
-
-/* Tarjetas para posts / productos marketplace */
-.post-card {
-  @apply ui-card relative overflow-hidden transition-all duration-200 hover:-translate-y-[1px] hover:shadow-md;
-}
-
-/* Header de card */
-.post-card-header {
-  @apply flex items-center justify-between gap-2 border-b border-border px-4 py-3;
-}
-
-/* Footer de card */
-.post-card-footer {
-  @apply flex items-center justify-between gap-2 border-t border-border px-4 py-3 text-xs text-muted-foreground;
-}
-
-/* ==========================================================================
-   ANIMACIONES CUSTOM
-   ========================================================================== */
-
-/* Glow suave para elementos importantes (ej. CTA principal) */
-.glow-primary {
-  box-shadow:
-    0 0 0 1px color-mix(in oklch, var(--primary) 40%, transparent),
-    0 18px 45px color-mix(in oklch, var(--primary) 28%, transparent);
-}
-
-/* Hover lift */
-.hover-lift {
-  @apply transition-transform duration-150;
-}
-.hover-lift:hover {
-  transform: translateY(-1px);
-}
-
-/* Fade-in suave para secciones al montar */
-@keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.animate-fade-in-up {
-  animation: fade-in-up 0.25s ease-out;
-}
-
-/* Skeleton loading */
-.skeleton {
-  @apply relative overflow-hidden rounded-md bg-muted;
-}
-.skeleton::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in oklch, var(--muted-foreground) 8%, transparent),
-    transparent
-  );
-  animation: shimmer 1.3s infinite;
-}
-@keyframes shimmer {
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-/* ==========================================================================
-   CHAT / MENSAJERÍA (Burbujas)
-   ========================================================================== */
-
-.chat-bubble {
-  @apply inline-flex max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-sm;
-}
-
-.chat-bubble-me {
-  @apply chat-bubble bg-primary text-primary-foreground rounded-br-sm;
-}
-
-.chat-bubble-other {
-  @apply chat-bubble bg-muted text-muted-foreground rounded-bl-sm;
-}
-
-/* ==========================================================================
-   OTROS EFECTOS
-   ========================================================================== */
-
-/* Sombra suave general para tooltips, popovers, dropdowns */
-.surface-elevated {
-  box-shadow:
-    0 18px 45px rgba(15, 23, 42, 0.16),
-    0 0 0 1px rgba(15, 23, 42, 0.06);
-}
-
-/* Animación de pulso muy sutil para notificaciones */
 @keyframes pulse-subtle {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.8; }
@@ -459,7 +234,6 @@
   animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Animación de grid inline para Tailwind v4 */
 @theme inline {
   --animate-grid: grid 20s linear infinite;
   @keyframes grid {
