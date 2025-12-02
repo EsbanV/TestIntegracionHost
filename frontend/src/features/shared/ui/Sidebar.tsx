@@ -167,7 +167,7 @@ export function Sidebar({ className }: SidebarProps) {
                   <img
                     src={LogoMUCT}
                     alt="Logo"
-                    className="h-5 w-auto brightness-0 invert"
+                    className="h-5 w-auto"
                   />
                 </div>
                 <span className="font-bold text-lg tracking-tight text-foreground">

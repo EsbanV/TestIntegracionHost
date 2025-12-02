@@ -136,7 +136,7 @@ export const Header: React.FC = () => {
           >
             {/* Contenedor del logo con primary para branding consistente */}
             <div className="h-8 w-8 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
-              <img src={LogoMUCT} alt="Logo" className="h-5 w-auto object-contain brightness-0 invert" />
+              <img src={LogoMUCT} alt="Logo" className="h-5 w-auto object-contain" />
             </div>
             
             <span className="font-bold text-lg text-foreground tracking-tight hidden sm:block">
