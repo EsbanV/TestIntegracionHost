@@ -3,83 +3,81 @@
 // ============================================================================
 // 1. TIPOS DE LA INTERFAZ DE USUARIO (Frontend Clean Data)
 // ============================================================================
+// Estos son los datos ya procesados listos para renderizar en React
+
 export type EstadoMensaje = "enviando" | "enviado" | "recibido" | "leido" | "error";
 export type AutorMensaje = "yo" | "otro" | "sistema";
 export type TipoMensaje = "texto" | "imagen" | "sistema";
 
+export interface UsuarioMinimo {
+  id: number;
+  nombre: string;
+  usuario: string;
+  fotoPerfilUrl?: string;
+}
+
 // El mensaje "limpio" que usan tus componentes React
 export interface Mensaje { 
-  id: number | string; 
-  texto: string; 
+  id: number | string; // string para IDs temporales (optimistic UI)
+  texto: string;       // Unificado: aquí siempre guardamos el contenido visual
   autor: AutorMensaje;
-  hora: string; 
-  estado?: EstadoMensaje;
-  imagenUrl?: string;
-  tipo?: string; 
+  hora: string;        // Formato HH:mm procesado
+  fechaCompleta: Date; // Objeto Date real para ordenamiento
+  estado: EstadoMensaje;
+  tipo: TipoMensaje;
+  leido: boolean;
   metadata?: any;
 }
 
-export interface TransaccionActiva {
-  id: number;
-  producto: { id: number, nombre: string, imagen?: string };
-  estadoId: number; 
-  esComprador: boolean;
-  esVendedor: boolean;
-  confirmacionVendedor: boolean;
-  confirmacionComprador: boolean;
-}
-
 export interface Chat { 
-  id: number; 
+  id: number; // ID del otro usuario (o ID de conversación si cambias la lógica)
   nombre: string; 
-  ultimoMensaje?: string; 
-  mensajes: Mensaje[]; 
+  usuario: string; // handle (@usuario)
   avatar?: string; 
-  noLeidos?: number;
-  online?: boolean;
+  ultimoMensaje?: string; 
+  fechaUltimoMensaje?: Date; // Para ordenar la lista de chats
+  mensajes: Mensaje[]; 
+  noLeidos: number;
+  online: boolean; // Estado en tiempo real
+  escribiendo?: boolean; // Estado "Typing..."
   transaccion?: TransaccionActiva | null;
 }
 
 // ============================================================================
 // 2. TIPOS DE RESPUESTA DEL BACKEND (Raw Data)
 // ============================================================================
+// Estos deben coincidir EXACTAMENTE con lo que envía res.json() y io.emit()
 
-// Interfaz polimórfica: Soporta respuesta de Prisma (camelCase) y SQL Raw (snake_case)
-// Esto es vital para manejar los sockets y fetchers sin errores de tipo
-export interface RawMessage {
-  id: number | string; // El socket puede enviar IDs temporales strings
-  contenido?: string;  // A veces llega como 'texto'
-  texto?: string;      // Soporte para ambos nombres
-  tipo: string;
+// Base del mensaje que viene de Prisma (CamelCase)
+export interface BackendMessage {
+  id: number;
+  contenido: string; // El backend refactorizado SIEMPRE envía 'contenido'
+  tipo: string;      // 'texto' | 'imagen'
   leido: boolean;
+  fechaEnvio: string; // Del JSON siempre viene string ISO
+  remitenteId: number;
+  destinatarioId: number;
+
+  // Relaciones (Include de Prisma)
+  remitente?: UsuarioMinimo;
+  destinatario?: UsuarioMinimo;
   
-  // Claves de tiempo
-  fecha_envio?: string | Date;
-  fechaEnvio?: string | Date;
-  created_at?: string | Date; // Por si acaso
-
-  // Claves de IDs (Snake vs Camel)
-  remitente_id?: number;
-  remitenteId?: number;
+  // Soporte legado para SQL Raw (solo si el backend no se normalizó al 100%)
+  // Lo marcamos como opcional, pero intentaremos no usarlo
+  remitente_id?: number; 
   destinatario_id?: number;
-  destinatarioId?: number;
-
-  // Objetos anidados (Prisma include)
-  remitente?: { id: number; nombre: string; usuario: string };
-  destinatario?: { id: number; nombre: string; usuario: string };
-
-  metadata?: any;
+  fecha_envio?: string;
 }
 
-// Respuesta de la lista de conversaciones
+// Payload específico que llega por Socket.io (evento 'nuevo_mensaje')
+export interface SocketMessagePayload extends BackendMessage {
+  // A veces los sockets traen metadata extra, por ahora es igual al BackendMessage
+}
+
+// Respuesta de la lista de conversaciones (/api/chat/conversaciones)
 export interface RawConversation {
-  usuario: {
-    id: number;
-    nombre: string;
-    usuario: string;
-    fotoPerfilUrl?: string;
-  };
-  ultimoMensaje: RawMessage;
+  usuario: UsuarioMinimo;
+  ultimoMensaje: BackendMessage; // Ahora usa la definición estricta
   unreadCount: number;
 }
 
@@ -87,30 +85,16 @@ export interface RawConversation {
 
 export interface ChatListResponse {
   ok: boolean;
-  conversaciones: RawConversation[]; // Ahora está fuertemente tipado
+  conversaciones: RawConversation[]; 
   nextPage?: number;
 }
 
 export interface MessagesResponse {
   ok: boolean;
-  mensajes: RawMessage[]; // Ahora está fuertemente tipado
+  mensajes: BackendMessage[]; 
 }
 
-// --- TIPOS PARA INFINITE QUERIES (React Query) ---
-
-export interface ChatListData {
-  pages: ChatListResponse[];
-  pageParams: number[];
-  allChats: Chat[]; 
-}
-
-export interface ChatMessagesData {
-  pages: MessagesResponse[];
-  pageParams: number[];
-  allMessages: Mensaje[];
-}
-
-// --- TRANSACCIONES ---
+// --- TRANSACCIONES (Mantenido igual, parece correcto) ---
 
 export interface ActiveTransaction {
   id: number;
@@ -129,20 +113,4 @@ export interface ActiveTransaction {
   esVendedor: boolean;
 }
 
-export interface ActiveByChatResponse {
-  ok: boolean;
-  transactions: {
-    id: number;
-    producto: {
-      id: number;
-      nombre: string;
-      imagen: string | null;
-    };
-    estadoId: number;
-    compradorId: number;
-    vendedorId: number;
-    confirmacionVendedor: boolean;
-    confirmacionComprador: boolean;
-    fecha: string;
-  }[];
-}
+export interface TransaccionActiva extends ActiveTransaction {} // Alias por compatibilidad

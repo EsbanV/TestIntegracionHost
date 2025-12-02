@@ -1,18 +1,20 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { 
-  useQuery, 
   useInfiniteQuery, 
   useMutation, 
   useQueryClient,
+  useQuery,
   InfiniteData
 } from "@tanstack/react-query";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "@/app/context/AuthContext";
+// Importamos los tipos estrictos que definimos antes
 import type { 
   Chat, 
   Mensaje, 
   ChatListResponse, 
   MessagesResponse,
+  BackendMessage,
   ActiveByChatResponse,
   ActiveTransaction
 } from "./chat.types";
@@ -20,7 +22,7 @@ import type {
 const URL_BASE = import.meta.env.VITE_API_URL;
 
 // ============================================================================
-// 0. UTILIDADES (Normalización de Datos - CRÍTICO)
+// 0. UTILIDADES (Normalización de Datos - TIPADO ESTRICTO)
 // ============================================================================
 
 const getFullImgUrl = (url?: string) => {
@@ -29,18 +31,19 @@ const getFullImgUrl = (url?: string) => {
   return `${URL_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
-// Esta función es el "puente" entre tu DB (snake_case) y el Frontend
-const normalizeMessage = (m: any, currentUserId?: number): Mensaje => {
-  // 1. Detectar ID del remitente (Soporta remitente_id y remitenteId)
+// Puente entre Backend (Raw) y Frontend (UI)
+// Ahora usa 'BackendMessage' en lugar de 'any' para seguridad
+const normalizeMessage = (m: BackendMessage | any, currentUserId?: number): Mensaje => {
+  // 1. Detectar ID del remitente (Prioridad: camelCase > snake_case > objeto)
   const remitenteId = Number(m.remitenteId ?? m.remitente_id ?? m.remitente?.id);
   
-  // 2. Detectar contenido (Soporta contenido y texto)
+  // 2. Detectar contenido
   const contenidoReal = m.contenido || m.texto || "";
   
-  // 3. Detectar fecha (Soporta fechaEnvio y fecha_envio)
+  // 3. Detectar fecha
   const fechaStr = m.fechaEnvio || m.fecha_envio || new Date().toISOString();
   
-  // 4. Parsear metadata si es mensaje de sistema
+  // 4. Parsear metadata
   let metadata = null;
   try { 
     if(m.tipo === 'sistema' && typeof contenidoReal === 'string' && contenidoReal.startsWith('{')) {
@@ -49,13 +52,15 @@ const normalizeMessage = (m: any, currentUserId?: number): Mensaje => {
   } catch {}
 
   return {
-    id: m.id || Date.now(), // Fallback ID temporal
+    id: m.id || Date.now(), 
     texto: m.tipo === 'imagen' ? '' : (m.tipo === 'sistema' ? (metadata?.text || contenidoReal) : contenidoReal),
     imagenUrl: m.tipo === 'imagen' ? getFullImgUrl(contenidoReal) : undefined,
     autor: (remitenteId === Number(currentUserId)) ? 'yo' : (m.tipo === 'sistema' ? 'sistema' : 'otro'),
     hora: new Date(fechaStr).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+    fechaCompleta: new Date(fechaStr), // Agregado para ordenamientos precisos
     estado: m.leido ? 'leido' : 'recibido',
-    tipo: m.tipo || 'texto',
+    tipo: m.tipo || 'texto' as any,
+    leido: m.leido, // Importante para UI
     metadata
   };
 };
@@ -83,7 +88,7 @@ async function fetchWithAuth<T>(url: string, token: string | null, options: Requ
 }
 
 // ============================================================================
-// 1. HOOK DE SOCKET (Actualización en Tiempo Real)
+// 1. HOOK DE SOCKET (CORREGIDO Y SINCRONIZADO)
 // ============================================================================
 export const useChatSocket = (activeChatId: number | null) => {
   const { token, user } = useAuth();
@@ -91,6 +96,7 @@ export const useChatSocket = (activeChatId: number | null) => {
   const socketRef = useRef<Socket | null>(null);
   const activeChatIdRef = useRef(activeChatId);
 
+  // Mantener ref actualizada para usar dentro de los listeners
   useEffect(() => {
     activeChatIdRef.current = activeChatId;
   }, [activeChatId]);
@@ -99,6 +105,7 @@ export const useChatSocket = (activeChatId: number | null) => {
     if (!token || !user) return;
     if (socketRef.current?.connected) return;
 
+    // Conexión
     socketRef.current = io(URL_BASE, {
       auth: { token },
       transports: ["websocket", "polling"],
@@ -106,54 +113,38 @@ export const useChatSocket = (activeChatId: number | null) => {
     });
 
     const socket = socketRef.current;
-
     socket.on("connect", () => console.log("🟢 [Socket] Conectado"));
     
-    // --- MANEJO DE MENSAJES UNIFICADO ---
-    const handleIncomingMessage = (rawMsg: any) => {
-      console.log("📨 [Socket] Mensaje recibido:", rawMsg);
+    // --- A. NUEVO MENSAJE (Event Name: 'nuevo_mensaje') ---
+    const handleIncomingMessage = (rawMsg: BackendMessage) => {
+      console.log("📨 [Socket] Mensaje:", rawMsg);
 
-      // Usamos el normalizador para sacar los IDs limpios
       const remitenteId = Number(rawMsg.remitenteId ?? rawMsg.remitente_id ?? rawMsg.remitente?.id);
       const destinatarioId = Number(rawMsg.destinatarioId ?? rawMsg.destinatario_id ?? rawMsg.destinatario?.id);
       
       const currentChatId = Number(activeChatIdRef.current);
       const myId = Number(user.id);
 
-      // ¿Es relevante para el chat que tengo abierto ahora?
-      // 1. Me lo mandaron A MÍ desde el CHAT ABIERTO.
-      // 2. Lo mandé YO hacia el CHAT ABIERTO.
+      // Lógica de relevancia: ¿Pertenece este mensaje al chat que estoy viendo?
       const esRelevante = 
-        (destinatarioId === myId && remitenteId === currentChatId) || 
-        (remitenteId === myId && destinatarioId === currentChatId);
+        (destinatarioId === myId && remitenteId === currentChatId) || // Me llega del otro
+        (remitenteId === myId && destinatarioId === currentChatId);   // Lo envié yo (desde otro tab/device)
 
       if (esRelevante) {
-        console.log("🚀 [Socket] Inyectando mensaje en UI...");
-        
-        // Convertimos el rawMsg a formato UI usando el normalizador
-        const newMessageUI = normalizeMessage(rawMsg, myId);
-
-        // Actualizamos la caché de React Query manualmente (Optimistic Update)
+        // Actualización Optimista de la Caché
         queryClient.setQueryData<InfiniteData<MessagesResponse>>(
           chatKeys.conversation(currentChatId),
           (oldData) => {
             if (!oldData) return undefined;
             
             const newPages = [...oldData.pages];
-            
-            // Inyectamos en la última página (o la única que haya)
             if (newPages.length > 0) {
-                // Truco: En React Query Infinite, a veces la data viene al revés.
-                // Asumiendo que `mensajes` es un array y los nuevos van al final:
+                // Inyectamos en la última página (la más reciente en el array)
                 const lastPageIndex = newPages.length - 1;
                 const lastPage = { ...newPages[lastPageIndex] };
                 
-                // Evitar duplicados por ID
-                if (!lastPage.mensajes.find((m: any) => m.id === newMessageUI.id)) {
-                    // Nota: Aquí inyectamos el mensaje YA NORMALIZADO o el RAW
-                    // Pero como el hook useChatMessages usa 'select' para normalizar, 
-                    // debemos inyectar algo que el 'select' entienda.
-                    // Para simplificar, inyectamos el RAW que ya sabemos que 'select' procesará bien.
+                // Evitar duplicados (por si el socket reenvía)
+                if (!lastPage.mensajes.find((m) => m.id === rawMsg.id)) {
                     lastPage.mensajes = [...lastPage.mensajes, rawMsg];
                     newPages[lastPageIndex] = lastPage;
                 }
@@ -163,13 +154,34 @@ export const useChatSocket = (activeChatId: number | null) => {
         );
       }
 
-      // Siempre refrescar la lista de chats (para actualizar "último mensaje" y badges)
+      // Siempre invalidar lista de chats (para actualizar badge de no leídos y último mensaje)
       queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
     };
 
-    // Escuchar AMBOS eventos
-    socket.on("new_message", handleIncomingMessage);   // Recibidos
-    socket.on("message_sent", handleIncomingMessage);  // Enviados (confirmación)
+    // --- B. MENSAJES LEÍDOS (Nuevo: Actualiza doble check) ---
+    const handleReadMessages = ({ leidoPor }: { leidoPor: number }) => {
+        const currentChatId = Number(activeChatIdRef.current);
+        // Si quien leyó es el usuario con el que estoy chateando
+        if (leidoPor === currentChatId) {
+            queryClient.setQueryData<InfiniteData<MessagesResponse>>(
+                chatKeys.conversation(currentChatId),
+                (oldData) => {
+                    if (!oldData) return undefined;
+                    // Recorremos todas las páginas y marcamos todo como leido = true
+                    // Esto es más visual que volver a pedir todo al backend
+                    const newPages = oldData.pages.map(page => ({
+                        ...page,
+                        mensajes: page.mensajes.map(m => ({ ...m, leido: true }))
+                    }));
+                    return { ...oldData, pages: newPages };
+                }
+            );
+        }
+    };
+
+    // 🔥 SUSCRIPCIÓN A EVENTOS (Nombres deben coincidir con chat.js)
+    socket.on("nuevo_mensaje", handleIncomingMessage);   
+    socket.on("mensajes_leidos", handleReadMessages);
 
     socket.on("transaction_event", () => {
       queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
@@ -187,11 +199,11 @@ export const useChatSocket = (activeChatId: number | null) => {
 };
 
 // ============================================================================
-// 2. HOOKS DE LECTURA (Usando el Normalizador)
+// 2. HOOKS DE LECTURA
 // ============================================================================
 
 export const useChatList = (isOpen: boolean) => {
-  const { token } = useAuth();
+  const { token, user } = useAuth(); // Necesitamos user id para saber si lo leí yo o él
   return useInfiniteQuery<ChatListResponse, Error>({
     queryKey: chatKeys.lists(),
     queryFn: ({ pageParam = 1 }) => 
@@ -203,13 +215,14 @@ export const useChatList = (isOpen: boolean) => {
     select: (data) => ({
       pages: data.pages,
       pageParams: data.pageParams,
-      allChats: data.pages.flatMap(page => page.conversaciones.map((c: any) => {
-        // Normalizamos el último mensaje para mostrarlo en la lista
-        const msg = normalizeMessage(c.ultimoMensaje, 0); 
+      allChats: data.pages.flatMap(page => page.conversaciones.map((c) => {
+        const msg = normalizeMessage(c.ultimoMensaje, user?.id); 
         return {
           id: c.usuario.id,
           nombre: c.usuario.nombre || c.usuario.usuario,
+          usuario: c.usuario.usuario, // Agregado campo faltante
           ultimoMensaje: msg.tipo === 'imagen' ? '📷 Imagen' : msg.texto,
+          fechaUltimoMensaje: msg.fechaCompleta,
           avatar: getFullImgUrl(c.usuario.fotoPerfilUrl),
           noLeidos: c.unreadCount || 0,
           mensajes: [],
@@ -232,43 +245,24 @@ export const useChatMessages = (activeChatId: number | null, isOpen: boolean) =>
     initialPageParam: null as number | null,
     getNextPageParam: (lastPage) => {
       if (!lastPage.ok || !lastPage.mensajes?.length) return undefined;
-      return lastPage.mensajes[0].id; 
+      // Pagination backwards: Tomamos el ID del mensaje más viejo (el primero del array)
+      return lastPage.mensajes[0].id as number; 
     },
     enabled: !!token && !!activeChatId && isOpen,
     staleTime: Infinity, 
-    
-    // 🔥 AQUÍ ESTÁ LA MAGIA: Usamos normalizeMessage en el select
     select: (data) => ({
       pages: data.pages,
       pageParams: data.pageParams,
       allMessages: data.pages.flatMap(page => 
-        page.mensajes.map((m: any) => normalizeMessage(m, user?.id))
+        page.mensajes.map((m) => normalizeMessage(m, user?.id))
       )
     })
   });
 };
 
-// ... Resto de hooks (useChatTransactions, useChatActions, useRateLimiter)
-// (Mantén el resto del código tal cual te lo envié anteriormente, es correcto)
-
-export const useChatTransactions = (activeChatId: number | null, isOpen: boolean) => {
-  const { token, user } = useAuth();
-  return useQuery<ActiveTransaction[]>({
-    queryKey: chatKeys.transaction(activeChatId || 0),
-    queryFn: async () => {
-      if (!activeChatId) return [];
-      const data = await fetchWithAuth<ActiveByChatResponse>(`/api/transactions/active-by-chat/${activeChatId}`, token);
-      if (!data.ok || !Array.isArray(data.transactions)) return [];
-      return data.transactions.map((t) => ({
-        ...t,
-        esComprador: t.compradorId === user?.id,
-        esVendedor: t.vendedorId === user?.id,
-      }));
-    },
-    enabled: !!token && !!activeChatId && isOpen,
-    staleTime: 0,
-  });
-};
+// ============================================================================
+// 3. ACTIONS (Optimizadas)
+// ============================================================================
 
 export const useChatActions = () => {
   const { token } = useAuth();
@@ -293,23 +287,29 @@ export const useChatActions = () => {
         tipo = 'imagen';
       }
 
-      return fetchWithAuth<{ ok: boolean, mensaje?: any }>('/api/chat/send', token, {
+      // La respuesta ahora contiene { ok: true, mensaje: BackendMessage }
+      return fetchWithAuth<{ ok: boolean, mensaje: BackendMessage }>('/api/chat/send', token, {
         method: 'POST',
         body: JSON.stringify({ destinatarioId: chatId, contenido, tipo }),
       });
     },
-    // No invalidamos en onSuccess porque confiamos en el socket.
-    // Solo invalidamos si hay error para asegurar consistencia.
+    onSuccess: (data, variables) => {
+       // Opcional: Si el socket tarda, podemos inyectar manualmente aquí también
+       // Pero con la corrección del socket no debería ser necesario.
+    },
     onError: (_, variables) => {
+      // Si falla, invalidamos para asegurar que el usuario vea el estado real
       queryClient.invalidateQueries({ queryKey: chatKeys.conversation(variables.chatId) });
     },
   });
 
   const markAsReadMutation = useMutation({
-    mutationFn: (chatId: number) => fetchWithAuth(`/api/chat/conversacion/${chatId}/mark-read`, token, { method: 'POST' }),
+    mutationFn: (chatId: number) => 
+        fetchWithAuth(`/api/chat/conversacion/${chatId}/mark-read`, token, { method: 'POST' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: chatKeys.lists() }),
   });
 
+  // ... Transaction mutations se mantienen igual ...
   const confirmTransactionMutation = useMutation({
     mutationFn: async ({ txId, type }: { txId: number, type: 'delivery' | 'receipt', chatUserId: number }) => {
       const endpoint = type === 'delivery' ? 'confirm-delivery' : 'confirm-receipt';
@@ -338,6 +338,25 @@ export const useChatActions = () => {
     cancelTransaction: cancelTransactionMutation.mutateAsync,
     isSending: sendMessageMutation.isPending,
   };
+};
+
+export const useChatTransactions = (activeChatId: number | null, isOpen: boolean) => {
+  const { token, user } = useAuth();
+  return useQuery<ActiveTransaction[]>({
+    queryKey: chatKeys.transaction(activeChatId || 0),
+    queryFn: async () => {
+      if (!activeChatId) return [];
+      const data = await fetchWithAuth<ActiveByChatResponse>(`/api/transactions/active-by-chat/${activeChatId}`, token);
+      if (!data.ok || !Array.isArray(data.transactions)) return [];
+      return data.transactions.map((t) => ({
+        ...t,
+        esComprador: t.compradorId === user?.id,
+        esVendedor: t.vendedorId === user?.id,
+      }));
+    },
+    enabled: !!token && !!activeChatId && isOpen,
+    staleTime: 0,
+  });
 };
 
 export function useRateLimiter({ maxRequests, windowMs, cooldownMs }: { maxRequests: number; windowMs: number; cooldownMs: number }) {
