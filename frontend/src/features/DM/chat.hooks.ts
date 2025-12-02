@@ -14,8 +14,7 @@ import type {
   ChatListResponse, 
   MessagesResponse,
   ActiveByChatResponse,
-  ActiveTransaction,
-  RawMessage
+  ActiveTransaction
 } from "./chat.types";
 
 const URL_BASE = import.meta.env.VITE_API_URL;
@@ -29,7 +28,7 @@ const getFullImgUrl = (url?: string) => {
 export const chatKeys = {
   all: ['chat'] as const,
   lists: () => [...chatKeys.all, 'list'] as const,
-  // Forzamos que el ID sea string en la key para evitar desajustes "123" vs 123
+  // Convertimos a String para evitar bugs de "1" !== 1
   conversation: (chatId: number | string) => [...chatKeys.all, 'messages', String(chatId)] as const,
   transaction: (chatId: number | string) => [...chatKeys.all, 'transaction', String(chatId)] as const,
 };
@@ -50,7 +49,7 @@ async function fetchWithAuth<T>(url: string, token: string | null, options: Requ
 }
 
 // ============================================================================
-// 1. HOOK DE SOCKET (CORREGIDO PARA ACTUALIZACIÓN EN TIEMPO REAL)
+// 1. HOOK DE SOCKET (OPTIMIZADO PARA TU DB)
 // ============================================================================
 export const useChatSocket = (activeChatId: number | null) => {
   const { token, user } = useAuth();
@@ -63,7 +62,7 @@ export const useChatSocket = (activeChatId: number | null) => {
   }, [activeChatId]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !user) return;
     if (socketRef.current?.connected) return;
 
     socketRef.current = io(URL_BASE, {
@@ -76,48 +75,36 @@ export const useChatSocket = (activeChatId: number | null) => {
 
     socket.on("connect", () => console.log("🟢 Socket Conectado"));
     
-    // --- MANEJO DE MENSAJES (OPTIMISTIC UPDATE) ---
+    // --- NUEVO MENSAJE ---
     socket.on("new_message", (rawMsg: any) => {
-      console.log("📨 Socket Msg:", rawMsg);
-
-      const currentChatId = activeChatIdRef.current;
+      // 1. Detección robusta de IDs (Soporte para snake_case de tu DB y camelCase de Prisma)
+      const remitenteId = Number(rawMsg.remitenteId ?? rawMsg.remitente_id ?? rawMsg.remitente?.id);
+      const destinatarioId = Number(rawMsg.destinatarioId ?? rawMsg.destinatario_id ?? rawMsg.destinatario?.id);
       
-      // Normalizar IDs para comparación (Socket a veces manda strings, DB numbers)
-      const msgRemitenteId = Number(rawMsg.remitenteId ?? rawMsg.remitente_id ?? rawMsg.remitente?.id);
-      const msgDestinatarioId = Number(rawMsg.destinatarioId ?? rawMsg.destinatario_id ?? rawMsg.destinatario?.id);
-      const currentChatIdNum = Number(currentChatId);
+      const currentChatId = Number(activeChatIdRef.current);
+      const myId = Number(user.id);
 
-      // Verificar relevancia
-      const esParaMi = msgDestinatarioId === user?.id && msgRemitenteId === currentChatIdNum;
-      const esMio = msgRemitenteId === user?.id && msgDestinatarioId === currentChatIdNum;
+      // 2. ¿Es relevante para el chat abierto?
+      // Es relevante si el mensaje viene DEL usuario actual O si YO se lo envié al usuario actual
+      const esDelChatAbierto = currentChatId && (
+        remitenteId === currentChatId || destinatarioId === currentChatId
+      );
 
-      if (esParaMi || esMio) {
-        // 1. Crear un objeto que simule ser una fila de la DB (RawMessage)
-        // Esto es CRUCIAL para que el 'select' de useChatMessages lo entienda
-        const dbLikeMessage: RawMessage = {
-          id: rawMsg.id || Date.now(),
-          contenido: rawMsg.contenido || rawMsg.texto || "", // Normalizar contenido
-          tipo: rawMsg.tipo || 'texto',
-          leido: false,
-          fechaEnvio: new Date().toISOString(), // Usar ISO string como la DB
-          remitenteId: msgRemitenteId,
-          destinatarioId: msgDestinatarioId,
-          metadata: rawMsg.metadata
-        };
-
-        // 2. Inyectar en caché (Infinite Query)
+      if (esDelChatAbierto) {
+        // 3. Inyección Optimista (Sin Fetch)
         queryClient.setQueryData<InfiniteData<MessagesResponse>>(
-          chatKeys.conversation(currentChatIdNum),
+          chatKeys.conversation(currentChatId),
           (oldData) => {
             if (!oldData) return undefined;
 
             const newPages = [...oldData.pages];
             
-            // Inyectar en la página 0 (la más reciente)
+            // Inyectamos en la primera página (la más reciente)
             if (newPages.length > 0) {
+                // Clonamos para no mutar el estado directamente
                 const firstPage = { ...newPages[0] };
-                // Añadimos al final del array de mensajes
-                firstPage.mensajes = [...firstPage.mensajes, dbLikeMessage];
+                // Añadimos al final del array existente
+                firstPage.mensajes = [...firstPage.mensajes, rawMsg]; 
                 newPages[0] = firstPage;
             }
 
@@ -126,7 +113,7 @@ export const useChatSocket = (activeChatId: number | null) => {
         );
       }
 
-      // 3. Actualizar lista lateral siempre
+      // 4. Actualizar lista de conversaciones (para el contador de no leídos y último mensaje)
       queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
     });
 
@@ -146,11 +133,13 @@ export const useChatSocket = (activeChatId: number | null) => {
 };
 
 // ============================================================================
-// 2. HOOKS DE LECTURA (Selectores Robustos)
+// 2. HOOKS DE LECTURA (Corregidos)
 // ============================================================================
 
+// LISTA DE CHATS
 export const useChatList = (isOpen: boolean) => {
   const { token } = useAuth();
+  
   return useInfiniteQuery<ChatListResponse, Error>({
     queryKey: chatKeys.lists(),
     queryFn: ({ pageParam = 1 }) => 
@@ -162,24 +151,31 @@ export const useChatList = (isOpen: boolean) => {
     select: (data) => ({
       pages: data.pages,
       pageParams: data.pageParams,
-      allChats: data.pages.flatMap(page => page.conversaciones.map((c: any) => ({
-        id: c.usuario.id,
-        nombre: c.usuario.nombre || c.usuario.usuario,
-        ultimoMensaje: c.ultimoMensaje?.tipo === 'imagen' ? '📷 Imagen' : (c.ultimoMensaje?.contenido || c.ultimoMensaje?.texto), // Soporte doble
-        avatar: getFullImgUrl(c.usuario.fotoPerfilUrl),
-        noLeidos: c.unreadCount || 0,
-        mensajes: [],
-        online: false
-      } as Chat)))
+      allChats: data.pages.flatMap(page => page.conversaciones.map((c: any) => {
+        // Manejo defensivo de ultimoMensaje
+        const contenidoMsg = c.ultimoMensaje?.contenido || c.ultimoMensaje?.texto || "";
+        const tipoMsg = c.ultimoMensaje?.tipo || "texto";
+
+        return {
+          id: c.usuario.id,
+          nombre: c.usuario.nombre || c.usuario.usuario,
+          // Si es imagen, mostramos texto "Imagen", si no el contenido
+          ultimoMensaje: tipoMsg === 'imagen' ? '📷 Imagen' : contenidoMsg,
+          avatar: getFullImgUrl(c.usuario.fotoPerfilUrl),
+          noLeidos: c.unreadCount || 0,
+          mensajes: [],
+          online: false
+        } as Chat;
+      }))
     })
   });
 };
 
+// MENSAJES DE CONVERSACIÓN (Aquí estaba el error probable)
 export const useChatMessages = (activeChatId: number | null, isOpen: boolean) => {
   const { token, user } = useAuth();
 
   return useInfiniteQuery<MessagesResponse, Error>({
-    // Usamos String() para asegurar coincidencia con la key del socket
     queryKey: chatKeys.conversation(activeChatId || 0),
     queryFn: ({ pageParam = null }) => {
       const cursor = pageParam ? `?cursor=${pageParam}` : '';
@@ -188,29 +184,40 @@ export const useChatMessages = (activeChatId: number | null, isOpen: boolean) =>
     initialPageParam: null as number | null,
     getNextPageParam: (lastPage) => {
       if (!lastPage.ok || !lastPage.mensajes?.length) return undefined;
+      // Cursor basado en el ID más antiguo (asumiendo orden descendente de fetch, ascendente de render)
       return lastPage.mensajes[0].id; 
     },
     enabled: !!token && !!activeChatId && isOpen,
-    staleTime: Infinity, // IMPORTANTE: No refrescar automáticamente para no sobrescribir el socket
+    staleTime: Infinity, // No refrescar automáticamente para no pisar el socket
     
-    // SELECTOR: Aquí transformamos la data Raw (DB + Socket) a data UI
+    // Transformación de datos
     select: (data) => ({
       pages: data.pages,
       pageParams: data.pageParams,
-      allMessages: data.pages.flatMap(page => page.mensajes).map((m: RawMessage) => {
+      allMessages: data.pages.flatMap(page => page.mensajes).map((m: any) => {
+        // 1. Intentar parsear metadata si es sistema
         let metadata = null;
-        try { if(m.tipo === 'sistema' && typeof m.contenido === 'string') metadata = JSON.parse(m.contenido); } catch {}
+        try { 
+          if(m.tipo === 'sistema' && typeof m.contenido === 'string' && m.contenido.startsWith('{')) {
+             metadata = JSON.parse(m.contenido); 
+          }
+        } catch {}
         
-        // Normalización defensiva (Maneja lo que venga del socket o de la DB)
+        // 2. Normalizar ID de remitente (DB: remitente_id, API: remitenteId)
+        // Convertimos a Number para comparar seguramente con user.id
+        const remitenteId = Number(m.remitenteId ?? m.remitente_id);
+        const myId = Number(user?.id);
+
         const contenidoReal = m.contenido || m.texto || "";
-        const remitenteIdReal = Number(m.remitenteId ?? m.remitente_id);
         const fechaReal = m.fechaEnvio || m.fecha_envio || new Date();
 
         return {
           id: m.id,
+          // Si es sistema y tiene metadata, usar metadata.text, si no contenidoReal
           texto: m.tipo === 'imagen' ? '' : (m.tipo === 'sistema' ? (metadata?.text || contenidoReal) : contenidoReal),
           imagenUrl: m.tipo === 'imagen' ? getFullImgUrl(contenidoReal) : undefined,
-          autor: (remitenteIdReal === user?.id) ? 'yo' : (m.tipo === 'sistema' ? 'sistema' : 'otro'),
+          // Lógica de autor:
+          autor: (remitenteId === myId) ? 'yo' : (m.tipo === 'sistema' ? 'sistema' : 'otro'),
           hora: new Date(fechaReal).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
           estado: m.leido ? 'leido' : 'recibido',
           tipo: m.tipo,
@@ -221,10 +228,8 @@ export const useChatMessages = (activeChatId: number | null, isOpen: boolean) =>
   });
 };
 
-// ... (Resto de hooks: useChatTransactions, useChatActions, useRateLimiter - IGUALES)
-// Solo asegúrate de copiar también el resto del archivo anterior si lo tenías completo.
-// Aquí te dejo el resto por si acaso:
-
+// ... Resto de hooks (useChatTransactions, useChatActions, useRateLimiter) se mantienen igual ...
+// (Asegúrate de mantener el resto del archivo que te envié antes o pídemelo si lo necesitas completo)
 export const useChatTransactions = (activeChatId: number | null, isOpen: boolean) => {
   const { token, user } = useAuth();
   return useQuery<ActiveTransaction[]>({
@@ -267,16 +272,16 @@ export const useChatActions = () => {
         tipo = 'imagen';
       }
 
-      return fetchWithAuth<{ ok: boolean, mensaje?: RawMessage }>('/api/chat/send', token, {
+      return fetchWithAuth<{ ok: boolean, mensaje?: any }>('/api/chat/send', token, {
         method: 'POST',
         body: JSON.stringify({ destinatarioId: chatId, contenido, tipo }),
       });
     },
-    // No usamos onSuccess aquí para evitar doble render, confiamos en el evento del socket que llega instantáneamente
-    // Pero si el socket falla, podemos invalidar
-    onError: (_, variables) => {
-        queryClient.invalidateQueries({ queryKey: chatKeys.conversation(variables.chatId) });
-    }
+    onSuccess: (data, variables) => {
+        // Opcional: Si el backend devuelve el mensaje creado, podríamos inyectarlo aquí también
+        // Pero confiamos en el socket para eso.
+        queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
+    },
   });
 
   const markAsReadMutation = useMutation({
