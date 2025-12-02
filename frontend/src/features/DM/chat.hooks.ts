@@ -268,6 +268,8 @@ export const useChatActions = () => {
   const { token } = useAuth();
   const queryClient = useQueryClient();
 
+// Dentro de useChatActions...
+
   const sendMessageMutation = useMutation({
     mutationFn: async ({ chatId, text, file }: { chatId: number; text: string; file?: File }) => {
       let contenido = text;
@@ -287,18 +289,49 @@ export const useChatActions = () => {
         tipo = 'imagen';
       }
 
-      // La respuesta ahora contiene { ok: true, mensaje: BackendMessage }
+      // La respuesta del backend trae el mensaje guardado en 'mensaje'
       return fetchWithAuth<{ ok: boolean, mensaje: BackendMessage }>('/api/chat/send', token, {
         method: 'POST',
         body: JSON.stringify({ destinatarioId: chatId, contenido, tipo }),
       });
     },
-    onSuccess: (data, variables) => {
-       // Opcional: Si el socket tarda, podemos inyectar manualmente aquí también
-       // Pero con la corrección del socket no debería ser necesario.
+    // 🔥 AQUÍ ESTÁ LA CORRECCIÓN: Inyectamos el mensaje en NUESTRA pantalla
+    onSuccess: (response, variables) => {
+      if (!response.ok || !response.mensaje) return;
+
+      const newMessage = response.mensaje; // El mensaje Raw del backend
+      const chatId = variables.chatId;
+
+      // 1. Actualizar la conversación abierta instantáneamente
+      queryClient.setQueryData<InfiniteData<MessagesResponse>>(
+        chatKeys.conversation(chatId),
+        (oldData) => {
+          if (!oldData) return undefined;
+
+          // Creamos una copia profunda de las páginas para no mutar estado directamente
+          const newPages = [...oldData.pages];
+          
+          if (newPages.length > 0) {
+            // Insertamos en la última página (la más reciente)
+            const lastPageIndex = newPages.length - 1;
+            const lastPage = { ...newPages[lastPageIndex] };
+            
+            // Validamos que no exista ya (por seguridad)
+            if (!lastPage.mensajes.find(m => m.id === newMessage.id)) {
+               // Agregamos el mensaje raw. El hook de lectura se encarga de normalizarlo después.
+               lastPage.mensajes = [...lastPage.mensajes, newMessage];
+               newPages[lastPageIndex] = lastPage;
+            }
+          }
+          return { ...oldData, pages: newPages };
+        }
+      );
+
+      // 2. Actualizar la lista lateral de chats (para poner este chat primero y actualizar el texto)
+      queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
     },
     onError: (_, variables) => {
-      // Si falla, invalidamos para asegurar que el usuario vea el estado real
+      // Si falla, invalidamos para asegurar consistencia
       queryClient.invalidateQueries({ queryKey: chatKeys.conversation(variables.chatId) });
     },
   });
