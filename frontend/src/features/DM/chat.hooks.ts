@@ -3,7 +3,8 @@ import {
   useQuery, 
   useInfiniteQuery, 
   useMutation, 
-  useQueryClient
+  useQueryClient,
+  InfiniteData
 } from "@tanstack/react-query";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "@/app/context/AuthContext";
@@ -16,9 +17,6 @@ import type {
   ActiveTransaction
 } from "./chat.types";
 
-// ============================================================================
-// 0. CONFIGURACIÓN Y UTILS
-// ============================================================================
 const URL_BASE = import.meta.env.VITE_API_URL;
 
 const getFullImgUrl = (url?: string) => {
@@ -27,7 +25,6 @@ const getFullImgUrl = (url?: string) => {
   return `${URL_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
-// Centralizamos las claves para evitar errores y facilitar la invalidación global
 export const chatKeys = {
   all: ['chat'] as const,
   lists: () => [...chatKeys.all, 'list'] as const,
@@ -35,7 +32,6 @@ export const chatKeys = {
   transaction: (chatId: number) => [...chatKeys.all, 'transaction', chatId] as const,
 };
 
-// Fetcher genérico
 async function fetchWithAuth<T>(url: string, token: string | null, options: RequestInit = {}): Promise<T> {
   if (!token) throw new Error("No autenticado");
   const res = await fetch(`${URL_BASE}${url}`, {
@@ -52,14 +48,12 @@ async function fetchWithAuth<T>(url: string, token: string | null, options: Requ
 }
 
 // ============================================================================
-// 1. HOOK DE SOCKET (Conexión Estable)
+// 1. HOOK DE SOCKET (OPTIMIZADO)
 // ============================================================================
 export const useChatSocket = (activeChatId: number | null) => {
-  const { token } = useAuth();
+  const { token, user } = useAuth(); // Necesitamos 'user' para saber quién soy
   const queryClient = useQueryClient();
   const socketRef = useRef<Socket | null>(null);
-  
-  // Referencia mutable para que el socket lea el chat actual sin desconectarse
   const activeChatIdRef = useRef(activeChatId);
 
   useEffect(() => {
@@ -68,11 +62,10 @@ export const useChatSocket = (activeChatId: number | null) => {
 
   useEffect(() => {
     if (!token) return;
-
-    // Evitar múltiples conexiones si ya existe
     if (socketRef.current?.connected) return;
 
-    console.log("🔌 Conectando Socket...");
+    console.log("🔌 Iniciando conexión Socket...");
+    
     socketRef.current = io(URL_BASE, {
       auth: { token },
       transports: ["websocket", "polling"],
@@ -81,50 +74,102 @@ export const useChatSocket = (activeChatId: number | null) => {
 
     const socket = socketRef.current;
 
-    socket.on("connect", () => console.log("🟢 Socket Online:", socket.id));
-    socket.on("disconnect", (reason) => console.warn("🟡 Socket Offline:", reason));
-
-    // EVENTO: Nuevo Mensaje
-    socket.on("new_message", (msg: any) => {
-      // 1. Siempre refrescar la lista (para notificaciones/contadores)
-      queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
-
-      // 2. Si el mensaje es del chat que estoy viendo, refrescar esa conversación
-      const currentId = activeChatIdRef.current;
-      const esRelevante = (msg.remitente?.id === currentId) || (msg.destinatario?.id === currentId);
-
-      if (currentId && esRelevante) {
-         queryClient.invalidateQueries({ queryKey: chatKeys.conversation(currentId) });
-      }
+    socket.on("connect", () => console.log("🟢 Socket Conectado:", socket.id));
+    socket.on("disconnect", () => console.warn("🟡 Socket Desconectado"));
+    
+    // DEBUG: Ver qué llega exactamente
+    socket.onAny((event, ...args) => {
+      console.log(`📡 Evento Socket: ${event}`, args);
     });
 
-    // EVENTO: Transacciones (cambios de estado)
-    socket.on("transaction_event", () => {
+    // --- MANEJO DE MENSAJES (OPTIMISTIC UPDATE) ---
+    socket.on("new_message", (rawMsg: any) => {
+      // 1. Normalizar el objeto mensaje (Backend a veces manda estructuras diferentes)
+      const newMessage: Mensaje = {
+        id: rawMsg.id || Date.now(), // Fallback ID temporal si no viene
+        texto: rawMsg.contenido || rawMsg.texto || "",
+        autor: (rawMsg.remitenteId === user?.id || rawMsg.remitente?.id === user?.id) ? 'yo' : 'otro',
+        hora: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+        estado: 'recibido',
+        tipo: rawMsg.tipo || 'texto',
+        imagenUrl: rawMsg.tipo === 'imagen' ? getFullImgUrl(rawMsg.contenido) : undefined
+      };
+
+      const currentChatId = activeChatIdRef.current;
+      
+      // Determinar ID del remitente y destinatario de forma segura
+      const remitenteId = rawMsg.remitente?.id || rawMsg.remitenteId;
+      const destinatarioId = rawMsg.destinatario?.id || rawMsg.destinatarioId;
+
+      // 2. Verificar si pertenece al chat abierto
+      const esDelChatAbierto = 
+        currentChatId && (remitenteId === currentChatId || destinatarioId === currentChatId);
+
+      if (esDelChatAbierto) {
+        console.log("🚀 Inyectando mensaje en caché:", newMessage);
+        
+        // ACTUALIZACIÓN DIRECTA DE LA CACHÉ (Sin esperar fetch)
+        queryClient.setQueryData<InfiniteData<MessagesResponse>>(
+          chatKeys.conversation(currentChatId),
+          (oldData) => {
+            if (!oldData) return undefined;
+
+            // Clonamos las páginas para respetar inmutabilidad
+            const newPages = [...oldData.pages];
+            
+            // Asumiendo que la página 0 tiene los mensajes más recientes (ajustar según tu backend)
+            // Si tu backend manda los más nuevos al final, usa push en el último array.
+            // Aquí asumo que 'mensajes' es un array y agregamos al final para que aparezca abajo.
+            if (newPages.length > 0) {
+                const firstPage = { ...newPages[0] };
+                // Añadimos el mensaje crudo o normalizado según lo que espere tu UI
+                // Nota: Tu UI espera estructura de backend en useChatMessages select, 
+                // pero aquí estamos inyectando.
+                // Truco: React Query 'select' corre DESPUÉS de esto.
+                // Debemos inyectar el formato CRUDO que espera el 'select' de useChatMessages
+                firstPage.mensajes = [...firstPage.mensajes, rawMsg]; 
+                newPages[0] = firstPage;
+            }
+
+            return {
+              ...oldData,
+              pages: newPages,
+            };
+          }
+        );
+        
+        // Backup: Invalidar para asegurar consistencia a largo plazo
+        queryClient.invalidateQueries({ queryKey: chatKeys.conversation(currentChatId) });
+      }
+
+      // 3. Siempre actualizar la lista lateral (para que suba el chat o marque no leído)
       queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
-      const currentId = activeChatIdRef.current;
-      if (currentId) {
-        queryClient.invalidateQueries({ queryKey: chatKeys.transaction(currentId) });
-        queryClient.invalidateQueries({ queryKey: chatKeys.conversation(currentId) });
+    });
+
+    socket.on("transaction_event", () => {
+      console.log("💰 Cambio en transacción");
+      queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
+      const id = activeChatIdRef.current;
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: chatKeys.transaction(id) });
+        queryClient.invalidateQueries({ queryKey: chatKeys.conversation(id) });
       }
     });
 
     return () => {
-      // Solo desconectar si se desmonta el componente raíz o cambia el token
-      if (socket) socket.disconnect();
+      socket.disconnect();
     };
-  }, [token, queryClient]); 
+  }, [token, queryClient, user?.id]); // Agregamos user.id para saber quién es 'yo'
 
   return socketRef;
 };
 
 // ============================================================================
-// 2. HOOKS DE LECTURA (Queries)
+// 2. RESTO DE HOOKS (Sin cambios mayores, solo asegurando tipos)
 // ============================================================================
 
-// A. LISTA DE CHATS (Infinito)
 export const useChatList = (isOpen: boolean) => {
   const { token } = useAuth();
-  
   return useInfiniteQuery<ChatListResponse, Error>({
     queryKey: chatKeys.lists(),
     queryFn: ({ pageParam = 1 }) => 
@@ -132,7 +177,7 @@ export const useChatList = (isOpen: boolean) => {
     initialPageParam: 1,
     getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
     enabled: !!token && isOpen,
-    staleTime: 1000 * 60, // 1 min caché
+    staleTime: 1000 * 60,
     select: (data) => ({
       pages: data.pages,
       pageParams: data.pageParams,
@@ -149,10 +194,8 @@ export const useChatList = (isOpen: boolean) => {
   });
 };
 
-// B. MENSAJES DE CONVERSACIÓN
 export const useChatMessages = (activeChatId: number | null, isOpen: boolean) => {
   const { token, user } = useAuth();
-
   return useInfiniteQuery<MessagesResponse, Error>({
     queryKey: chatKeys.conversation(activeChatId!),
     queryFn: ({ pageParam = null }) => {
@@ -162,13 +205,15 @@ export const useChatMessages = (activeChatId: number | null, isOpen: boolean) =>
     initialPageParam: null as number | null,
     getNextPageParam: (lastPage) => {
       if (!lastPage.ok || !lastPage.mensajes?.length) return undefined;
-      return lastPage.mensajes[0].id; // Cursor es el mensaje más viejo
+      // Si usas cursor basado en ID, usualmente es el ID del más antiguo para cargar hacia atrás
+      return lastPage.mensajes[0].id; 
     },
     enabled: !!token && !!activeChatId && isOpen,
-    staleTime: 0, // Siempre fresco
+    staleTime: 0, // Importante: 0 para que siempre busque nuevos al montar
     select: (data) => ({
       pages: data.pages,
       pageParams: data.pageParams,
+      // Aplanamos y mapeamos
       allMessages: data.pages.flatMap(page => page.mensajes).map((m: any) => {
         let metadata = null;
         try { if(m.tipo === 'sistema') metadata = JSON.parse(m.contenido); } catch {}
@@ -188,18 +233,14 @@ export const useChatMessages = (activeChatId: number | null, isOpen: boolean) =>
   });
 };
 
-// C. TRANSACCIONES ACTIVAS
 export const useChatTransactions = (activeChatId: number | null, isOpen: boolean) => {
   const { token, user } = useAuth();
-
   return useQuery<ActiveTransaction[]>({
     queryKey: chatKeys.transaction(activeChatId || 0),
     queryFn: async () => {
       if (!activeChatId) return [];
       const data = await fetchWithAuth<ActiveByChatResponse>(`/api/transactions/active-by-chat/${activeChatId}`, token);
-      
       if (!data.ok || !Array.isArray(data.transactions)) return [];
-
       return data.transactions.map((t) => ({
         ...t,
         esComprador: t.compradorId === user?.id,
@@ -211,21 +252,15 @@ export const useChatTransactions = (activeChatId: number | null, isOpen: boolean
   });
 };
 
-// ============================================================================
-// 3. HOOK DE ACCIONES (Mutaciones)
-// ============================================================================
-
 export const useChatActions = () => {
   const { token } = useAuth();
   const queryClient = useQueryClient();
 
-  // A. Enviar Mensaje
   const sendMessageMutation = useMutation({
     mutationFn: async ({ chatId, text, file }: { chatId: number; text: string; file?: File }) => {
       let contenido = text;
       let tipo = 'texto';
 
-      // Subir imagen primero si existe
       if (file) {
         const formData = new FormData();
         formData.append('image', file);
@@ -246,21 +281,20 @@ export const useChatActions = () => {
       });
     },
     onSuccess: (_, variables) => {
+      // Al enviar, también invalidamos para asegurar que tenemos la respuesta del servidor (ID real, fecha real)
       queryClient.invalidateQueries({ queryKey: chatKeys.conversation(variables.chatId) });
       queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
     },
   });
 
-  // B. Marcar Leído
   const markAsReadMutation = useMutation({
     mutationFn: (chatId: number) => fetchWithAuth(`/api/chat/conversacion/${chatId}/mark-read`, token, { method: 'POST' }),
     onSuccess: (_, chatId) => {
-      queryClient.invalidateQueries({ queryKey: chatKeys.lists() }); // Actualizar contadores
-      queryClient.invalidateQueries({ queryKey: chatKeys.conversation(chatId) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
+      // No necesariamente necesitamos recargar toda la conversacion solo por marcar leido
     },
   });
 
-  // C. Confirmar Transacción
   const confirmTransactionMutation = useMutation({
     mutationFn: async ({ txId, type }: { txId: number, type: 'delivery' | 'receipt', chatUserId: number }) => {
       const endpoint = type === 'delivery' ? 'confirm-delivery' : 'confirm-receipt';
@@ -272,7 +306,6 @@ export const useChatActions = () => {
     },
   });
 
-  // D. Cancelar Transacción
   const cancelTransactionMutation = useMutation({
     mutationFn: async ({ txId }: { txId: number, chatUserId: number }) => {
       return fetchWithAuth(`/api/transactions/${txId}/cancel`, token, { method: 'PATCH' });
@@ -292,9 +325,6 @@ export const useChatActions = () => {
   };
 };
 
-// ============================================================================
-// 4. RATE LIMITER (Anti-Spam Local)
-// ============================================================================
 export function useRateLimiter({ maxRequests, windowMs, cooldownMs }: { maxRequests: number; windowMs: number; cooldownMs: number }) {
   const [isLimited, setIsLimited] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -302,7 +332,7 @@ export function useRateLimiter({ maxRequests, windowMs, cooldownMs }: { maxReque
 
   const checkRateLimit = useCallback(() => {
     const now = Date.now();
-    timestamps.current = timestamps.current.filter(t => now - t < windowMs); // Limpiar viejos
+    timestamps.current = timestamps.current.filter(t => now - t < windowMs);
 
     if (isLimited) return false;
 
